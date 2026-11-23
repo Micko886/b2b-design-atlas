@@ -1,0 +1,374 @@
+{
+  "created_at": "2026-11-23T16:22:41.141800+00:00",
+  "attempted": 22,
+  "accepted": 19,
+  "rejected": 3,
+  "new_notes": 38,
+  "new_modules": 38,
+  "total_sites": 31,
+  "total_modules": 54,
+  "approved": [
+    "oshcut",
+    "fathom",
+    "materialise",
+    "weerg",
+    "stratasys",
+    "sgw-designworks",
+    "design1st",
+    "studiored",
+    "ideo",
+    "ptc",
+    "flexport",
+    "project44",
+    "fourkites",
+    "freightos",
+    "shipbob",
+    "quickparts",
+    "keyence",
+    "hatch",
+    "3dsystems"
+  ],
+  "results": [
+    {
+      "id": "oshcut",
+      "kind": "website",
+      "url": "https://www.oshcut.com/",
+      "resolved_url": "https://www.oshcut.com/",
+      "title": "Laser Cutting and Sheet Metal Services | OSH Cut",
+      "status": "captured",
+      "image_file": "screenshots/sites/oshcut.webp",
+      "contrast": 61.9
+    },
+    {
+      "id": "oshcut-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 101.3
+    },
+    {
+      "id": "fathom",
+      "kind": "website",
+      "url": "https://fathommfg.com/",
+      "resolved_url": "https://fathommfg.com/",
+      "title": "FATHOM Advanced Manufacturing: Instant Quotes, 3D Printing",
+      "status": "captured",
+      "image_file": "screenshots/sites/fathom.webp",
+      "contrast": 62.8
+    },
+    {
+      "id": "fathom-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 118.6
+    },
+    {
+      "id": "materialise",
+      "kind": "website",
+      "url": "https://www.materialise.com/en",
+      "resolved_url": "https://www.materialise.com/en",
+      "title": "Materialise | 3D Printing Innovators",
+      "status": "captured",
+      "image_file": "screenshots/sites/materialise.webp",
+      "contrast": 109.7
+    },
+    {
+      "id": "materialise-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 171.0
+    },
+    {
+      "id": "weerg",
+      "kind": "website",
+      "url": "https://www.weerg.com/",
+      "resolved_url": "https://www.weerg.com/",
+      "title": "High Quality 3D Printing & CNC Machining Services - Weerg",
+      "status": "captured",
+      "image_file": "screenshots/sites/weerg.webp",
+      "contrast": 88.5
+    },
+    {
+      "id": "weerg-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 108.2
+    },
+    {
+      "id": "stratasys",
+      "kind": "website",
+      "url": "https://www.stratasys.com/en/",
+      "resolved_url": "https://www.stratasys.com/en/",
+      "title": "Industrial 3D Printers & Additive Manufacturing Solutions | Stratasys",
+      "status": "captured",
+      "image_file": "screenshots/sites/stratasys.webp",
+      "contrast": 99.9
+    },
+    {
+      "id": "stratasys-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 139.3
+    },
+    {
+      "id": "nordicsemi",
+      "status": "rejected",
+      "url": "https://www.nordicsemi.com/",
+      "reason": "HTTP 403"
+    },
+    {
+      "id": "sgw-designworks",
+      "kind": "website",
+      "url": "https://www.sgwdesignworks.com/",
+      "resolved_url": "https://www.sgwdesignworks.com/",
+      "title": "Industrial Design Firm | Product Engineering Services | SGW",
+      "status": "captured",
+      "image_file": "screenshots/sites/sgw-designworks.webp",
+      "contrast": 31.8
+    },
+    {
+      "id": "sgw-designworks-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 26.0
+    },
+    {
+      "id": "design1st",
+      "kind": "website",
+      "url": "https://design1st.com/",
+      "resolved_url": "https://design1st.com/",
+      "title": "Product Design Company | End-to-End Product Development | Design 1st",
+      "status": "captured",
+      "image_file": "screenshots/sites/design1st.webp",
+      "contrast": 84.7
+    },
+    {
+      "id": "design1st-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 113.9
+    },
+    {
+      "id": "219-design",
+      "status": "rejected",
+      "url": "https://219design.com/",
+      "reason": "HTTP 403"
+    },
+    {
+      "id": "studiored",
+      "kind": "website",
+      "url": "https://www.studiored.com/",
+      "resolved_url": "https://www.studiored.com/",
+      "title": "Studio Red | Product Development, UX/UI, Engineering, & Prototyping",
+      "status": "captured",
+      "image_file": "screenshots/sites/studiored.webp",
+      "contrast": 107.0
+    },
+    {
+      "id": "studiored-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 140.4
+    },
+    {
+      "id": "ideo",
+      "kind": "website",
+      "url": "https://www.ideo.com/",
+      "resolved_url": "https://www.ideo.com/",
+      "title": "IDEO : Human-centered design",
+      "status": "captured",
+      "image_file": "screenshots/sites/ideo.webp",
+      "contrast": 79.8
+    },
+    {
+      "id": "ideo-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 86.2
+    },
+    {
+      "id": "arup",
+      "status": "rejected",
+      "url": "https://www.arup.com/",
+      "reason": "Blank or low-information opening screenshot"
+    },
+    {
+      "id": "ptc",
+      "kind": "website",
+      "url": "https://www.ptc.com/en",
+      "resolved_url": "https://www.ptc.com/en",
+      "title": "Global Leader in Product Lifecycle Management Software | PTC",
+      "status": "captured",
+      "image_file": "screenshots/sites/ptc.webp",
+      "contrast": 91.1
+    },
+    {
+      "id": "ptc-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 157.5
+    },
+    {
+      "id": "flexport",
+      "kind": "website",
+      "url": "https://www.flexport.com/",
+      "resolved_url": "https://www.flexport.com/",
+      "title": "Freight Forwarding & Supply Chain Platform | Flexport",
+      "status": "captured",
+      "image_file": "screenshots/sites/flexport.webp",
+      "contrast": 75.0
+    },
+    {
+      "id": "flexport-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 129.3
+    },
+    {
+      "id": "project44",
+      "kind": "website",
+      "url": "https://www.project44.com/",
+      "resolved_url": "https://www.project44.com/",
+      "title": "Decision Intelligence Platform | project44",
+      "status": "captured",
+      "image_file": "screenshots/sites/project44.webp",
+      "contrast": 67.6
+    },
+    {
+      "id": "project44-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 97.8
+    },
+    {
+      "id": "fourkites",
+      "kind": "website",
+      "url": "https://www.fourkites.ai/",
+      "resolved_url": "https://www.fourkites.ai/",
+      "title": "FourKites: AI-Powered Supply Chain Orchestration",
+      "status": "captured",
+      "image_file": "screenshots/sites/fourkites.webp",
+      "contrast": 61.1
+    },
+    {
+      "id": "fourkites-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 89.4
+    },
+    {
+      "id": "freightos",
+      "kind": "website",
+      "url": "https://www.freightos.com/",
+      "resolved_url": "https://www.freightos.com/",
+      "title": "Freightos | Online Freight Shipping Marketplace & Platform",
+      "status": "captured",
+      "image_file": "screenshots/sites/freightos.webp",
+      "contrast": 79.9
+    },
+    {
+      "id": "freightos-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 133.0
+    },
+    {
+      "id": "shipbob",
+      "kind": "website",
+      "url": "https://www.shipbob.com/",
+      "resolved_url": "https://www.shipbob.com/",
+      "title": "Global Ecommerce Fulfillment Solution | ShipBob",
+      "status": "captured",
+      "image_file": "screenshots/sites/shipbob.webp",
+      "contrast": 87.6
+    },
+    {
+      "id": "shipbob-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 51.9
+    },
+    {
+      "id": "quickparts",
+      "kind": "website",
+      "url": "https://quickparts.com/",
+      "resolved_url": "https://quickparts.com/",
+      "title": "Prototype to Production Manufacturing Solutions - Quickparts",
+      "status": "captured",
+      "image_file": "screenshots/sites/quickparts.webp",
+      "contrast": 58.3
+    },
+    {
+      "id": "quickparts-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 55.5
+    },
+    {
+      "id": "keyence",
+      "kind": "website",
+      "url": "https://www.keyence.com/",
+      "resolved_url": "https://www.keyence.com/",
+      "title": "KEYENCE CORPORATION OF AMERICA",
+      "status": "captured",
+      "image_file": "screenshots/sites/keyence.webp",
+      "contrast": 35.6
+    },
+    {
+      "id": "keyence-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 42.5
+    },
+    {
+      "id": "hatch",
+      "kind": "website",
+      "url": "https://www.hatch.com/",
+      "resolved_url": "https://www.hatch.com/",
+      "title": "Hatch - Consulting engineering and project implementation",
+      "status": "captured",
+      "image_file": "screenshots/sites/hatch.webp",
+      "contrast": 36.2
+    },
+    {
+      "id": "hatch-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 166.5
+    },
+    {
+      "id": "3dsystems",
+      "kind": "website",
+      "url": "https://www.3dsystems.com/",
+      "resolved_url": "https://www.3dsystems.com/",
+      "title": "3D Printers, Software, Medical Devices & Dental | 3D Systems",
+      "status": "captured",
+      "image_file": "screenshots/sites/3dsystems.webp",
+      "contrast": 99.6
+    },
+    {
+      "id": "3dsystems-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 124.3
+    }
+  ]
+}
