@@ -18,7 +18,7 @@ jobs:
       - name: Install app + browser
         run: |
           base64 -d atlas-source-v10.b64 | tar -xz -C .
-          python -m pip install -q -r requirements.txt pytest playwright
+          python -m pip install -q -r requirements.txt pytest playwright httpx2
           python -m playwright install --with-deps chromium
       - name: Verify source and tests
         run: |
