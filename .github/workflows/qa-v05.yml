@@ -1,0 +1,89 @@
+name: QA B2B Atlas v0.5 editorial redesign
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/qa-v05.yml'
+permissions:
+  contents: write
+jobs:
+  visual-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install browser
+        run: |
+          python -m pip install -q playwright
+          python -m playwright install --with-deps chromium
+      - name: Run actual website QA
+        run: |
+          python - <<'PY'
+          import asyncio
+          from pathlib import Path
+          from playwright.async_api import async_playwright
+
+          BASE='https://b2b-design-atlas-preview.onrender.com'
+          async def run():
+            async with async_playwright() as p:
+              browser=await p.chromium.launch(headless=True,args=['--no-sandbox'])
+              for viewport,name in [({'width':1440,'height':900},'desktop'),({'width':390,'height':844},'mobile')]:
+                page=await browser.new_page(viewport=viewport,device_scale_factor=1)
+                errors=[]
+                page.on('pageerror',lambda err: errors.append(str(err)))
+                await page.goto(BASE,wait_until='networkidle',timeout=75000)
+                await page.locator('.hero-copy h1').wait_for()
+                count=await page.locator('.case-card').count()
+                assert count>=7,('cards',count)
+                await page.evaluate("""async () => {
+                   for (let y=0; y<document.documentElement.scrollHeight; y+=550) {
+                      scrollTo(0,y);await new Promise(r=>setTimeout(r,50));
+                   }
+                   scrollTo(0,0);
+                   await Promise.race([Promise.all([...document.images].map(x=>x.decode().catch(()=>null))),new Promise(r=>setTimeout(r,5000))]);
+                }""")
+                Path('screenshots/qa-v05').mkdir(parents=True,exist_ok=True)
+                await page.screenshot(path='screenshots/qa-v05/home-'+name+'.png',full_page=True)
+                overflow=await page.evaluate('document.documentElement.scrollWidth>window.innerWidth+2')
+                print('HOME',name,'count=',count,'overflow=',overflow,'errors=',errors,flush=True)
+                assert not overflow and not errors
+                await page.goto(BASE+'/websites',wait_until='networkidle',timeout=75000)
+                await page.locator('.case-card').first.wait_for()
+                sites=await page.locator('.case-card').count()
+                assert sites==10,('sites',sites)
+                await page.evaluate("""async () => {
+                   for(let y=0;y<document.documentElement.scrollHeight;y+=550){scrollTo(0,y);await new Promise(r=>setTimeout(r,50))}
+                   scrollTo(0,0);
+                   await Promise.race([Promise.all([...document.images].map(x=>x.decode().catch(()=>null))),new Promise(r=>setTimeout(r,5000))]);
+                }""")
+                await page.screenshot(path='screenshots/qa-v05/websites-'+name+'.png',full_page=True)
+                await page.get_by_role('button',name='Manufacturing',exact=True).click()
+                filtered=await page.locator('.case-card').count()
+                print('FILTER',name,filtered,flush=True)
+                assert 0<filtered<sites
+                await page.goto(BASE+'/websites/fictiv',wait_until='networkidle',timeout=75000)
+                await page.locator('.detail-screenshot img').first.wait_for()
+                await page.screenshot(path='screenshots/qa-v05/detail-'+name+'.png',full_page=True)
+                await page.get_by_role('button',name='Add to board').click()
+                await page.goto(BASE+'/board',wait_until='networkidle',timeout=75000)
+                boardcount=await page.locator('.board-entry').count()
+                assert boardcount==1,('board count',boardcount)
+                print('BOARD',name,boardcount,flush=True)
+                if name=='desktop':
+                  await page.goto(BASE+'/sections',wait_until='networkidle',timeout=75000)
+                  assert await page.locator('.case-card').count()>=15
+                  await page.screenshot(path='screenshots/qa-v05/sections-desktop.png',full_page=True)
+                await page.close()
+              await browser.close()
+          asyncio.run(run())
+          PY
+      - name: Commit QA evidence
+        run: |
+          git config user.name "B2B Atlas QA"
+          git config user.email "actions@users.noreply.github.com"
+          git add screenshots/qa-v05/
+          git diff --cached --quiet || (git commit -m "Record V0.5 desktop and mobile visual QA" && git restore . && git pull --rebase origin main && git push origin HEAD:main)
