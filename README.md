@@ -1,23 +1,11 @@
-# B2B Atlas · V0.3 — White Editorial Edition
+# B2B Atlas · v1.6 reviewed gallery
+Global B2B website inspiration directory.
 
-A design-reference research library for global B2B website designers.
+- **Websites:** 3-column balanced gallery on large screens; no masonry-like row gaps.
+- **Sections:** genuine cropped screenshots, fit inside their visual frame rather than aggressively cropped.
+- **Patterns:** real examples compared in horizontal rows without labels covering images.
+- **Source of truth:** deployed screenshots/ in this repository contain authentic captures. The app archive intentionally excludes local placeholder screenshots and takes those assets from this folder.
+- **Deployment:** Dockerfile extracts atlas-source-v16.b64 into /srv/atlas and copies the screenshots directory as a separate tracked asset tree.
+- **Production caveat:** free Render storage is ephemeral and no rights to republish third-party screenshots are implied.
 
-## What's new
-- White, typography-led editorial layout across Home, Websites, Sections, Patterns, Saved and Design Board.
-- 12 real B2B company source references linked to official websites.
-- 25 independently authored page and section research notes with source URLs.
-- Source references and fictional original concepts are clearly separated.
-- Search, filtering, detail analysis, saved references, board and Markdown export.
-- No third-party screenshots are republished. Preview images are original editorial schematic representations, not live-site screenshots.
-
-## Start
-```bash
-pip install -r requirements.txt
-python run.py
-```
-Render Dockerfile builds from atlas-source.tar.gz.
-
-## Limits
-SQLite on Render free service is ephemeral. Saved/board data is browser-local. Administrative write routes remain secured by ATLAS_ADMIN_TOKEN. No screenshot publication rights are inferred.
-
-Editorial source metadata, CSV exports, app code and tests live within the archive.
+Run locally by unpacking atlas-source-v16.b64 (base64 -d | tar -xz) and installing requirements.txt. For the same images as production, also copy the tracked screenshots folder from this repository.
