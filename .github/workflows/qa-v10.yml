@@ -56,7 +56,8 @@ jobs:
                   assert await page.locator('#mobile-drawer').is_visible()
                   await page.locator('#menu-btn').click()
                   assert await page.locator('#mobile-drawer').is_hidden()
-                assert await page.locator('#compare-tray').is_hidden(), 'Comparison tray visible before selection'\n                await page.screenshot(path=str(folder/f'home-{device}.png'),full_page=False)
+                assert await page.locator('#compare-tray').is_hidden(), 'Comparison tray visible before selection'
+                await page.screenshot(path=str(folder/f'home-{device}.png'),full_page=False)
                 await page.goto(ROOT+'/websites',wait_until='networkidle',timeout=60000)
                 await page.locator('.website-grid .site-tile').first.wait_for()
                 all_sites=await page.locator('.website-grid .site-tile').count()
@@ -68,7 +69,9 @@ jobs:
                 await page.locator('[data-filter="sector"][data-value=""]').first.click()
                 assert await page.locator('.website-grid .site-tile').count()==10
                 await page.goto(ROOT+'/sections',wait_until='networkidle',timeout=60000)
-                assert await page.locator('.module-grid .module-tile').count()==16\n                if device=='mobile':\n                  assert await page.locator('.section-index-layout .filter-sidebar .sidebar-group').first.is_hidden(), 'Duplicate mobile section filters'
+                assert await page.locator('.module-grid .module-tile').count()==16
+                if device=='mobile':
+                  assert await page.locator('.section-index-layout .filter-sidebar .sidebar-group').first.is_hidden(), 'Duplicate mobile section filters'
                 await page.screenshot(path=str(folder/f'sections-{device}.png'),full_page=False)
                 await page.locator('.section-tabs [data-filter="category"][data-value="Products"]').click()
                 filtered=await page.locator('.module-grid .module-tile').count()
