@@ -1,0 +1,38 @@
+name: B2B Atlas V1.2 Chrome screenshots
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/qa-v12-chrome.yml']
+permissions:
+  contents: write
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Capture live pages with system Chrome
+        run: |
+          set -eux
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "$CHROME"
+          mkdir -p screenshots/qa-v12
+          for page in home websites sections; do
+            case "$page" in
+              home) url="https://b2b-design-atlas-preview.onrender.com/" ;;
+              websites) url="https://b2b-design-atlas-preview.onrender.com/websites" ;;
+              sections) url="https://b2b-design-atlas-preview.onrender.com/sections" ;;
+            esac
+            "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --window-size=1440,1000 --virtual-time-budget=9000 --screenshot="screenshots/qa-v12/${page}-desktop.png" "$url"
+            "$CHROME" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --window-size=390,844 --force-device-scale-factor=1 --virtual-time-budget=9000 --screenshot="screenshots/qa-v12/${page}-mobile.png" "$url"
+          done
+          test -s screenshots/qa-v12/home-desktop.png
+          test -s screenshots/qa-v12/websites-desktop.png
+          test -s screenshots/qa-v12/sections-desktop.png
+      - name: Save screenshots
+        run: |
+          git config user.name "Atlas QA Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add screenshots/qa-v12/
+          git diff --cached --quiet || (git commit -m "Save V1.2 Chrome visual screenshots" && git pull --rebase origin main && git push origin HEAD:main)
