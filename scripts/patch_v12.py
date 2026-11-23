@@ -16,3 +16,53 @@ OVERRIDE='/* V1.2 — refined monochrome system: white canvas, restrained gray s
 if "V1.2 — refined monochrome system" not in css:
     css_path.write_text(css+"\n"+OVERRIDE)
 print("Applied V1.2 monochrome layout patch")
+
+
+# V1.3 — structural gallery composition, not another color patch.
+V13 = r'''
+/* V1.3 / BLACK-WHITE GALLERY RECONSTRUCTION */
+:root{--paper:#fff;--paper2:#f4f4f5;--canvas:#fff;--ink:#111;--ink2:#191919;--muted:#707070;--subtle:#a1a1a1;--line:#e7e7e7;--line2:#f0f0f0;--accent:#111;--accent-soft:#f4f4f4;--navy:#111;--sage:#f2f2f2;--mint:#e9e9e9;--radius:13px;--max:1540px}
+body{background:#fff;color:#111}
+.site-header{background:rgba(255,255,255,.95);backdrop-filter:blur(22px);border-color:#ededed}
+.nav-inner{height:70px}.brand-symbol{background:#111;transform:none;border-radius:9px}.brand-symbol i,.brand-symbol i:nth-child(2),.brand-symbol i:nth-child(3){background:#fff}.brand-name{color:#111}.brand-name span{color:#777}
+.primary-nav{margin-left:44px;gap:30px}.primary-nav a{color:#707070;font-weight:600}.primary-nav a.active{color:#111}.primary-nav a.active:after{background:#111;height:2px}.nav-search,.tool-icon,.menu-toggle{border-color:#e5e5e5;background:#fff}.nav-board{background:#111;border-radius:9px}.front-ribbon{display:none!important}
+.wrap{width:min(calc(100% - 96px),1540px)}
+/* HOME: compact intro, then a controlled irregular gallery */
+.introduction{grid-template-columns:.72fr 1.28fr;gap:90px;padding:56px 0 34px;align-items:end}.introduction h1{font-size:clamp(48px,5vw,76px);line-height:.96;letter-spacing:-4px;margin:8px 0 16px;max-width:650px}.hero-note{font-size:14px;color:#707070;max-width:560px}.intro-search{height:60px;border:1px solid #dedede;border-radius:13px;box-shadow:0 14px 38px rgba(0,0,0,.045);max-width:620px}.intro-search button{background:#111;border-radius:9px;width:46px;height:46px}.filters-quick{padding:14px 0 22px;margin-bottom:0;border-top:1px solid #eee;border-bottom:1px solid #eee}.filters-quick a{border:0;border-radius:0;background:transparent;padding:8px 13px;color:#666}.filters-quick a:hover{background:#111;color:#fff}
+.home-gallery{padding:66px 0 116px}.shelf-heading{margin-bottom:30px}.shelf-heading h2{font-size:32px;letter-spacing:-1.4px}
+.home-wall{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:52px 18px;align-items:start}
+.home-wall>.site-tile{grid-column:span 4;margin:0!important}
+.home-wall>.site-tile:nth-child(1){grid-column:span 7}
+.home-wall>.site-tile:nth-child(2){grid-column:span 5;margin-top:96px!important}
+.home-wall>.site-tile:nth-child(3){grid-column:span 5}
+.home-wall>.site-tile:nth-child(4){grid-column:span 7;margin-top:56px!important}
+.home-wall>.site-tile:nth-child(5){grid-column:span 4}
+.home-wall>.site-tile:nth-child(6){grid-column:span 4;margin-top:82px!important}
+.home-wall>.site-tile:nth-child(7){grid-column:span 4}
+.home-wall .site-tile--featured .site-image{aspect-ratio:1.48}
+.site-image{border:0;border-radius:12px;background:#f4f4f4;box-shadow:none}.site-tile:hover .site-image{transform:translateY(-4px);box-shadow:0 25px 55px rgba(0,0,0,.10)}.site-tile-footer{padding-top:12px}.tile-name{font-size:15px}.tile-domain{font-size:9px}.tile-source{color:#111}.tile-source:hover{background:#111;color:#fff;border-color:#111}
+/* black visual break */
+.home-split-band{background:#111;color:#fff;padding:88px 0 96px;border:0}.split-band-inner{grid-template-columns:.72fr 1.28fr;gap:80px;align-items:center}.subhead-white{color:#777}.split-band-copy h2{font-size:56px;line-height:.96;letter-spacing:-3px;margin:12px 0 18px}.split-band-copy p{color:#aaa;font-size:14px;max-width:390px}.split-band-copy>a{background:#fff;color:#111;border-radius:9px;padding:11px 15px}.split-band-examples{gap:16px;align-items:start}.dark-preview{transform:none}.dark-preview-alt{transform:translateY(72px)}.dark-preview img{height:310px;border:0;border-radius:12px;box-shadow:0 25px 60px rgba(0,0,0,.35)}.dark-preview span{color:#888}.dark-preview span b{color:#fff}
+.more-sections{padding:95px 0 126px}.home-module-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:48px 18px}.home-module-grid>.module-tile{grid-column:span 4}.home-module-grid>.module-tile:nth-child(1){grid-column:span 7}.home-module-grid>.module-tile:nth-child(2){grid-column:span 5;margin-top:80px}.home-module-grid>.module-tile:nth-child(3){grid-column:span 5}.home-module-grid>.module-tile:nth-child(4){grid-column:span 7;margin-top:46px}
+/* LIBRARY PAGES: no backend-like composition */
+.library-masthead{grid-template-columns:.65fr 1.35fr;gap:70px;padding:52px 0 28px}.library-masthead h1{font-size:70px;line-height:.92;letter-spacing:-4px}.library-masthead>p{max-width:520px;justify-self:end}.library-main--full{padding-top:20px}.library-tools{border:0;border-bottom:1px solid #e5e5e5;border-radius:0;background:#fff;box-shadow:none;padding-left:0;padding-right:0}.filter-strip{padding:13px 0 22px;border-bottom:1px solid #eee}.filter-strip button{border:0;border-radius:0;background:transparent;padding:8px 13px;color:#666}.filter-strip button.active,.filter-strip button:hover{background:#111;color:#fff}.library-result-line{margin:24px 0 26px}
+.website-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:50px 18px}
+.website-grid>.site-tile{grid-column:span 4;margin:0!important}
+.website-grid>.site-tile:nth-child(6n+1),.website-grid>.site-tile:nth-child(6n+5){grid-column:span 6}
+.website-grid>.site-tile:nth-child(6n+2){grid-column:span 6;margin-top:84px!important}
+.website-grid>.site-tile:nth-child(6n+4){margin-top:52px!important}
+.module-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:48px 18px}
+.module-grid>.module-tile{grid-column:span 4;margin:0!important}
+.module-grid>.module-tile:nth-child(7n+1){grid-column:span 8}
+.module-grid>.module-tile:nth-child(7n+2){grid-column:span 4;margin-top:86px!important}
+.module-grid>.module-tile:nth-child(7n+5){grid-column:span 5}
+.module-grid>.module-tile:nth-child(7n+6){grid-column:span 7;margin-top:58px!important}
+.module-picture{border:0;border-radius:12px;background:#f4f4f4;box-shadow:none}.module-tile:hover .module-picture{transform:translateY(-3px);box-shadow:0 22px 50px rgba(0,0,0,.10)}
+/* supporting UI */
+.detail-media,.detail-side-block,.research-insight,.board-row,.pattern-card,.comparison-window,.quick-panel{box-shadow:none;border-color:#e8e8e8}.section-tabs button.active,.sidebar-choice.active,.detail-actions .primary{background:#111;color:#fff;border-color:#111}.compare-tray{background:#111;color:#fff}.site-footer{background:#f5f5f5}
+@media(max-width:1050px){.introduction{grid-template-columns:1fr;gap:22px;padding-top:38px}.home-wall>.site-tile,.home-wall>.site-tile:nth-child(n),.website-grid>.site-tile,.website-grid>.site-tile:nth-child(n),.module-grid>.module-tile,.module-grid>.module-tile:nth-child(n){grid-column:span 6;margin-top:0!important}.split-band-inner{grid-template-columns:1fr;gap:36px}.dark-preview-alt{transform:none}.home-module-grid>.module-tile,.home-module-grid>.module-tile:nth-child(n){grid-column:span 6;margin-top:0}.library-masthead{grid-template-columns:1fr;gap:12px}.library-masthead>p{justify-self:start}}
+@media(max-width:650px){.wrap{width:calc(100% - 30px)}.introduction{padding:28px 0 22px}.introduction h1{font-size:44px;letter-spacing:-2.6px}.home-gallery{padding:42px 0 66px}.home-wall,.website-grid,.module-grid,.home-module-grid{grid-template-columns:1fr;gap:32px}.home-wall>.site-tile,.home-wall>.site-tile:nth-child(n),.website-grid>.site-tile,.website-grid>.site-tile:nth-child(n),.module-grid>.module-tile,.module-grid>.module-tile:nth-child(n),.home-module-grid>.module-tile,.home-module-grid>.module-tile:nth-child(n){grid-column:auto;margin-top:0!important}.home-split-band{padding:54px 0 64px}.split-band-copy h2{font-size:40px;letter-spacing:-2px}.split-band-examples{grid-template-columns:1fr 1fr}.dark-preview img{height:155px}.more-sections{padding:56px 0 76px}.library-masthead{padding:30px 0 18px}.library-masthead h1{font-size:48px;letter-spacing:-2.7px}.filter-strip{padding-top:8px}.library-tools{min-height:50px}.tool-search kbd,.sort-label{display:none}}
+'''
+if "V1.3 / BLACK-WHITE GALLERY RECONSTRUCTION" not in css:
+    css_path.write_text(css+"\n"+V13)
+print("Applied V1.3 visual reconstruction")
