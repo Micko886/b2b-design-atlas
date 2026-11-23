@@ -1,7 +1,7 @@
 # B2B Atlas · v1.6 reviewed gallery
 Global B2B website inspiration directory.
 
-- **Websites:** 3-column balanced gallery on large screens; no masonry-like row gaps.
+- **Websites:** real 3-column masonry gallery on large screens; no masonry-like row gaps.
 - **Sections:** genuine cropped screenshots, fit inside their visual frame rather than aggressively cropped.
 - **Patterns:** real examples compared in horizontal rows without labels covering images.
 - **Source of truth:** deployed screenshots/ in this repository contain authentic captures. The app archive intentionally excludes local placeholder screenshots and takes those assets from this folder.
