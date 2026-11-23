@@ -1,0 +1,104 @@
+name: Acceptance — B2B Atlas V1.0 design rebuild
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/qa-v10.yml']
+permissions:
+  contents: write
+jobs:
+  browser-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install app + browser
+        run: |
+          base64 -d atlas-source-v10.b64 | tar -xz -C .
+          python -m pip install -q -r requirements.txt pytest playwright
+          python -m playwright install --with-deps chromium
+      - name: Verify source and tests
+        run: |
+          PYTHONPATH=. python -m pytest -q
+          node --check static/assets/atlas-v10.js
+          python create_module_catalog.py
+      - name: Run local preview
+        run: |
+          ATLAS_DB_PATH=/tmp/b2b-v10.sqlite3 PORT=8765 python run.py >/tmp/b2b-v10-server.log 2>&1 &
+          for i in $(seq 1 40); do curl -fsS http://127.0.0.1:8765/api/health && break || sleep 1; done
+      - name: Browser design + functional acceptance
+        run: |
+          python - <<'PY'
+          import asyncio
+          from pathlib import Path
+          from playwright.async_api import async_playwright
+          ROOT='http://127.0.0.1:8765'
+          async def main():
+            folder=Path('screenshots/qa-v10')
+            folder.mkdir(parents=True,exist_ok=True)
+            async with async_playwright() as p:
+              browser=await p.chromium.launch(headless=True,args=['--no-sandbox'])
+              for device,width,height in [('desktop',1440,900),('mobile',390,844),('tablet',820,900)]:
+                context=await browser.new_context(viewport={'width':width,'height':height},device_scale_factor=1)
+                page=await context.new_page()
+                errors=[]
+                page.on('pageerror',lambda error:errors.append(str(error)))
+                await page.goto(ROOT,wait_until='networkidle',timeout=60000)
+                await page.locator('.home-wall .site-tile').first.wait_for()
+                assert await page.locator('.home-wall .site-tile').count()>=7
+                assert await page.locator('.home-module-grid .module-tile').count()>=3
+                if device=='mobile':
+                  assert await page.locator('#mobile-drawer').is_hidden()
+                  await page.locator('#menu-btn').click()
+                  assert await page.locator('#mobile-drawer').is_visible()
+                  await page.locator('#menu-btn').click()
+                  assert await page.locator('#mobile-drawer').is_hidden()
+                await page.screenshot(path=str(folder/f'home-{device}.png'),full_page=False)
+                await page.goto(ROOT+'/websites',wait_until='networkidle',timeout=60000)
+                await page.locator('.website-grid .site-tile').first.wait_for()
+                all_sites=await page.locator('.website-grid .site-tile').count()
+                assert all_sites==10,('sites',all_sites)
+                await page.screenshot(path=str(folder/f'websites-{device}.png'),full_page=False)
+                await page.locator('[data-filter="sector"][data-value="Manufacturing"]').first.click()
+                narrowed=await page.locator('.website-grid .site-tile').count()
+                assert 0<narrowed<all_sites,('filter sites',narrowed)
+                await page.locator('[data-clear-filters]').first.click()
+                assert await page.locator('.website-grid .site-tile').count()==10
+                await page.goto(ROOT+'/sections',wait_until='networkidle',timeout=60000)
+                assert await page.locator('.module-grid .module-tile').count()==16
+                await page.screenshot(path=str(folder/f'sections-{device}.png'),full_page=False)
+                await page.locator('[data-filter="category"][data-value="Products"]').first.click()
+                filtered=await page.locator('.module-grid .module-tile').count()
+                assert 0<filtered<16,('module category filter',filtered)
+                await page.locator('[data-clear-filters]').first.click()
+                await page.locator('[data-compare]').first.click()
+                await page.locator('[data-compare]').nth(1).click()
+                assert await page.locator('#compare-tray').evaluate('(el)=>el.classList.contains("visible")')
+                await page.locator('[data-open-compare]').click()
+                assert await page.locator('.comparison-unit').count()==2
+                await page.locator('.close-round[data-close-compare]').click()
+                assert await page.locator('.comparison-window').count()==0
+                await page.goto(ROOT+'/websites/fictiv',wait_until='networkidle',timeout=60000)
+                assert await page.locator('.detail-media img').count()==1
+                await page.locator('[data-board-add]').click()
+                await page.goto(ROOT+'/board',wait_until='networkidle',timeout=60000)
+                assert await page.locator('.board-row').count()==1
+                overflow=await page.evaluate('document.documentElement.scrollWidth-innerWidth')
+                assert overflow<=2,(device,'overflow',overflow)
+                assert not errors,(device,'errors',errors)
+                print('PASS V1',device,'10 sites / 16 module regions / filters / compare / board; errors',len(errors),flush=True)
+                await page.close()
+                await context.close()
+              await browser.close()
+          asyncio.run(main())
+          PY
+      - name: Preserve browser screenshot evidence
+        if: success()
+        run: |
+          git config user.name "B2B Atlas QA"
+          git config user.email "actions@users.noreply.github.com"
+          git add screenshots/qa-v10/
+          git diff --cached --quiet || (git commit -m "Save V1.0 design acceptance screenshots" && git restore . && git pull --rebase origin main && git push origin HEAD:main)
