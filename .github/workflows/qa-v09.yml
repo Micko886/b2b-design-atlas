@@ -48,6 +48,12 @@ jobs:
                 for route,name in [('/','home'),('/websites','websites'),('/sections','sections'),('/websites/fictiv','detail')]:
                   await pg.goto(ROOT+route,wait_until='networkidle',timeout=60000)
                   await pg.locator('h1').first.wait_for()
+                  if mode=='mobile' and name=='home':
+                    assert await pg.locator('#main-nav').is_hidden(),'Mobile navigation must default to closed'
+                    await pg.locator('#menu-button').click()
+                    assert await pg.locator('#main-nav').is_visible(),'Menu button must open navigation'
+                    await pg.locator('#menu-button').click()
+                    assert await pg.locator('#main-nav').is_hidden(),'Menu button must close navigation'
                   await pg.evaluate("""async()=>{for(let y=0;y<document.documentElement.scrollHeight;y+=650){scrollTo(0,y);await new Promise(r=>setTimeout(r,35))}scrollTo(0,0);await Promise.race([Promise.all([...document.images].map(i=>i.decode().catch(()=>null))),new Promise(r=>setTimeout(r,4000))])}""")
                   assert not errors,(mode,name,errors)
                   overflow=await pg.evaluate('document.documentElement.scrollWidth-innerWidth')
