@@ -22,9 +22,9 @@ jobs:
           python -m playwright install --with-deps chromium
       - name: Verify source and tests
         run: |
+          python create_module_catalog.py
           PYTHONPATH=. python -m pytest -q
           node --check static/assets/atlas-v10.js
-          python create_module_catalog.py
       - name: Run local preview
         run: |
           ATLAS_DB_PATH=/tmp/b2b-v10.sqlite3 PORT=8765 python run.py >/tmp/b2b-v10-server.log 2>&1 &
