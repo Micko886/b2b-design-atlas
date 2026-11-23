@@ -1,0 +1,363 @@
+{
+  "capture_time": "2026-11-23T07:13:17.681129+00:00",
+  "results": [
+    {
+      "id": "fictiv",
+      "type": "sites",
+      "url": "https://www.fictiv.com/",
+      "resolved_url": "https://www.fictiv.com/",
+      "title": "Fictiv: Sourcing Simplified for Custom Manufacturing Services",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/sites/fictiv.webp"
+    },
+    {
+      "id": "protolabs",
+      "type": "sites",
+      "url": "https://www.protolabs.com/",
+      "resolved_url": "https://www.protolabs.com/",
+      "title": "Protolabs | Rapid Prototyping & On-demand Production Services",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/sites/protolabs.webp"
+    },
+    {
+      "id": "formlabs",
+      "type": "sites",
+      "url": "https://formlabs.com/",
+      "resolved_url": "https://formlabs.com/",
+      "title": "Professional 3D Printers by Formlabs | Formlabs",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/sites/formlabs.webp"
+    },
+    {
+      "id": "sandvik-coromant",
+      "type": "sites",
+      "url": "https://www.sandvik.coromant.com/",
+      "resolved_url": "https://www.sandvik.coromant.com/en-us",
+      "title": "Sandvik Coromant - manufacturing tools & machining solutions",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/sites/sandvik-coromant.webp"
+    },
+    {
+      "id": "kuka",
+      "type": "sites",
+      "url": "https://www.kuka.com/en-us/products",
+      "resolved_url": "https://www.kuka.com/en-us/products",
+      "title": "Products for Intelligent Automation | KUKA Global",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/sites/kuka.webp"
+    },
+    {
+      "id": "molex",
+      "type": "sites",
+      "url": "https://www.molex.com/en-us/products/industrial-solutions",
+      "status": "not_captured",
+      "error": "Page.goto: net::ERR_HTTP2_PROTOCOL_ERROR at https://www.molex.com/en-us/products/industrial-solutions\nCall log:\n  - navigating to \"https://www.molex.com/en-us/products/industrial-solutions\", waiting until \"domcontentload",
+      "checked_at": "2026-11-23T07:13:17.681129+00:00"
+    },
+    {
+      "id": "festo",
+      "type": "sites",
+      "url": "https://www.festo.com/us/en/full-category-overview",
+      "status": "not_captured",
+      "error": "HTTP 403",
+      "checked_at": "2026-11-23T07:13:17.681129+00:00"
+    },
+    {
+      "id": "gensler",
+      "type": "sites",
+      "url": "https://www.gensler.com/",
+      "resolved_url": "https://www.gensler.com/",
+      "title": "Gensler | Creating a Better World Through the Power of Design",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/sites/gensler.webp"
+    },
+    {
+      "id": "hexagon",
+      "type": "sites",
+      "url": "https://hexagon.com/company/divisions/manufacturing-intelligence",
+      "resolved_url": "https://hexagon.com/company/divisions/manufacturing-intelligence",
+      "title": "Manufacturing Intelligence | Hexagon",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/sites/hexagon.webp"
+    },
+    {
+      "id": "arburg",
+      "type": "sites",
+      "url": "https://www.arburg.com/en/product-world/",
+      "resolved_url": "https://www.arburg.com/en/product-world/",
+      "title": "Machines for plastics processing | Product world | ARBURG",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/sites/arburg.webp"
+    },
+    {
+      "id": "igus",
+      "type": "sites",
+      "url": "https://www.igus.com/",
+      "resolved_url": "https://www.igus.com/",
+      "title": "Dry-running motion plastics\u00ae components | igus\u00ae",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/sites/igus.webp"
+    },
+    {
+      "id": "xometry",
+      "type": "sites",
+      "url": "https://www.xometry.com/capabilities/",
+      "resolved_url": "https://www.xometry.com/capabilities/",
+      "title": "Xometry Manufacturing Capability Navigator | Xometry | On-Demand Manufactring for Custom Parts",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/sites/xometry.webp"
+    },
+    {
+      "id": "fictiv-0",
+      "type": "notes",
+      "url": "https://www.fictiv.com/capabilities",
+      "resolved_url": "https://www.fictiv.com/capabilities",
+      "title": "Manufacturing Process Selection & Capabilities Hub | Fictiv",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/notes/fictiv-0.webp"
+    },
+    {
+      "id": "fictiv-1",
+      "type": "notes",
+      "url": "https://www.fictiv.com/why-choose-fictiv/how-it-works",
+      "resolved_url": "https://www.fictiv.com/why-choose-fictiv/how-it-works",
+      "title": "How Fictiv Works - Fictiv",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/notes/fictiv-1.webp"
+    },
+    {
+      "id": "fictiv-2",
+      "type": "notes",
+      "url": "https://www.fictiv.com/inside-the-factory",
+      "resolved_url": "https://www.fictiv.com/inside-the-factory",
+      "title": "Inside the Factory - Fictiv",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/notes/fictiv-2.webp"
+    },
+    {
+      "id": "protolabs-3",
+      "type": "notes",
+      "url": "https://www.protolabs.com/services/",
+      "resolved_url": "https://www.protolabs.com/services/",
+      "title": "Online Digital Manufacturing Services",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/notes/protolabs-3.webp"
+    },
+    {
+      "id": "protolabs-4",
+      "type": "notes",
+      "url": "https://www.protolabs.com/services/3d-printing/",
+      "resolved_url": "https://www.protolabs.com/services/3d-printing/",
+      "title": "Online 3D Printing Service | Instant 3D Printing Quote",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/notes/protolabs-4.webp"
+    },
+    {
+      "id": "formlabs-5",
+      "type": "notes",
+      "url": "https://formlabs.com/applications/",
+      "resolved_url": "https://formlabs.com/applications/",
+      "title": "3D Printing Applications | Formlabs",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/notes/formlabs-5.webp"
+    },
+    {
+      "id": "formlabs-6",
+      "type": "notes",
+      "url": "https://formlabs.com/industries/",
+      "resolved_url": "https://formlabs.com/industries/",
+      "title": "Precise and Versatile 3D Printing for Professionals Across Industries | Formlabs",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/notes/formlabs-6.webp"
+    },
+    {
+      "id": "sandvik-coromant-7",
+      "type": "notes",
+      "url": "https://www.sandvik.coromant.com/",
+      "resolved_url": "https://www.sandvik.coromant.com/en-us",
+      "title": "Sandvik Coromant - manufacturing tools & machining solutions",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/notes/sandvik-coromant-7.webp"
+    },
+    {
+      "id": "sandvik-coromant-8",
+      "type": "notes",
+      "url": "https://www.sandvik.coromant.com/en-us/latest-cutting-tools-and-solutions",
+      "resolved_url": "https://www.sandvik.coromant.com/en-us/latest-cutting-tools-and-solutions",
+      "title": "Sandvik Coromant - Latest cutting tools and solutions",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/notes/sandvik-coromant-8.webp"
+    },
+    {
+      "id": "kuka-9",
+      "type": "notes",
+      "url": "https://www.kuka.com/en-us/products",
+      "resolved_url": "https://www.kuka.com/en-us/products",
+      "title": "Products for Intelligent Automation | KUKA Global",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/notes/kuka-9.webp"
+    },
+    {
+      "id": "kuka-10",
+      "type": "notes",
+      "url": "https://www.kuka.com/en-us/products/robotics-systems/industrial-robots/",
+      "resolved_url": "https://www.kuka.com/en-us/products/robotics-systems/industrial-robots/",
+      "title": "Industrial robots for every application and industry | KUKA Global",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/notes/kuka-10.webp"
+    },
+    {
+      "id": "molex-11",
+      "type": "notes",
+      "url": "https://www.molex.com/en-us/products/industrial-solutions",
+      "status": "not_captured",
+      "error": "Page.goto: net::ERR_HTTP2_PROTOCOL_ERROR at https://www.molex.com/en-us/products/industrial-solutions\nCall log:\n  - navigating to \"https://www.molex.com/en-us/products/industrial-solutions\", waiting until \"domcontentload",
+      "checked_at": "2026-11-23T07:13:17.681129+00:00"
+    },
+    {
+      "id": "molex-12",
+      "type": "notes",
+      "url": "https://www.molex.com/en-us/about",
+      "status": "not_captured",
+      "error": "Page.goto: net::ERR_HTTP2_PROTOCOL_ERROR at https://www.molex.com/en-us/about\nCall log:\n  - navigating to \"https://www.molex.com/en-us/about\", waiting until \"domcontentloaded\"\n",
+      "checked_at": "2026-11-23T07:13:17.681129+00:00"
+    },
+    {
+      "id": "festo-13",
+      "type": "notes",
+      "url": "https://www.festo.com/us/en/full-category-overview",
+      "status": "not_captured",
+      "error": "HTTP 403",
+      "checked_at": "2026-11-23T07:13:17.681129+00:00"
+    },
+    {
+      "id": "festo-14",
+      "type": "notes",
+      "url": "https://www.festo.com/us/en/e/about-festo/company/business-areas-id_3703",
+      "status": "not_captured",
+      "error": "HTTP 403",
+      "checked_at": "2026-11-23T07:13:17.681129+00:00"
+    },
+    {
+      "id": "gensler-15",
+      "type": "notes",
+      "url": "https://www.gensler.com/projects",
+      "resolved_url": "https://www.gensler.com/projects",
+      "title": "Projects | Gensler",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/notes/gensler-15.webp"
+    },
+    {
+      "id": "gensler-16",
+      "type": "notes",
+      "url": "https://www.gensler.com/",
+      "resolved_url": "https://www.gensler.com/",
+      "title": "Gensler | Creating a Better World Through the Power of Design",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/notes/gensler-16.webp"
+    },
+    {
+      "id": "hexagon-17",
+      "type": "notes",
+      "url": "https://hexagon.com/products/product-groups/manufacturing-intelligence",
+      "resolved_url": "https://hexagon.com/products/product-groups/manufacturing-intelligence",
+      "title": "Manufacturing Intelligence | Hexagon",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/notes/hexagon-17.webp"
+    },
+    {
+      "id": "hexagon-18",
+      "type": "notes",
+      "url": "https://hexagon.com/company/divisions/manufacturing-intelligence/what-we-do",
+      "resolved_url": "https://hexagon.com/company/divisions/manufacturing-intelligence/what-we-do",
+      "title": "What we do | Hexagon",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/notes/hexagon-18.webp"
+    },
+    {
+      "id": "arburg-19",
+      "type": "notes",
+      "url": "https://www.arburg.com/en/product-world/",
+      "resolved_url": "https://www.arburg.com/en/product-world/",
+      "title": "Machines for plastics processing | Product world | ARBURG",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/notes/arburg-19.webp"
+    },
+    {
+      "id": "arburg-20",
+      "type": "notes",
+      "url": "https://www.arburg.com/en/us/consulting-service/applications-technology/",
+      "resolved_url": "https://www.arburg.com/en/us/consulting-service/applications-technology/",
+      "title": "Optimum machine technology for your plastic parts production | ARBURG",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/notes/arburg-20.webp"
+    },
+    {
+      "id": "igus-21",
+      "type": "notes",
+      "url": "https://www.igus.com/company/all-products",
+      "resolved_url": "https://www.igus.com/company/all-products",
+      "title": "Improve what moves with igus\u00ae motion plastics",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/notes/igus-21.webp"
+    },
+    {
+      "id": "igus-22",
+      "type": "notes",
+      "url": "https://www.igus.com/company/our-products",
+      "resolved_url": "https://www.igus.com/company/our-products",
+      "title": "motion plastics - plastics for motion | igus\u00ae",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/notes/igus-22.webp"
+    },
+    {
+      "id": "xometry-23",
+      "type": "notes",
+      "url": "https://www.xometry.com/capabilities/",
+      "resolved_url": "https://www.xometry.com/capabilities/",
+      "title": "Xometry Manufacturing Capability Navigator | Xometry | On-Demand Manufactring for Custom Parts",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/notes/xometry-23.webp"
+    },
+    {
+      "id": "xometry-24",
+      "type": "notes",
+      "url": "https://www.xometry.com/capabilities/cnc-machining-service/",
+      "resolved_url": "https://www.xometry.com/capabilities/cnc-machining-service/",
+      "title": "Custom Online CNC Machining Services - Metal and Plastic Instant Quotes",
+      "status": "captured",
+      "captured_at": "2026-11-23T07:13:17.681129+00:00",
+      "path": "screenshots/notes/xometry-24.webp"
+    }
+  ]
+}
