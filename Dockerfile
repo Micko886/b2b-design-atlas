@@ -5,6 +5,8 @@ COPY atlas-source-v11.b64 /tmp/atlas-source.b64
 RUN base64 -d /tmp/atlas-source.b64 | tar -xz -C /srv/atlas && rm /tmp/atlas-source.b64
 COPY scripts/patch_v12.py /tmp/patch_v12.py
 RUN python /tmp/patch_v12.py && rm /tmp/patch_v12.py
+COPY scripts/patch_v14.py /tmp/patch_v14.py
+RUN python /tmp/patch_v14.py && rm /tmp/patch_v14.py
 COPY screenshots/ /srv/atlas/screenshots/
 RUN pip install --no-cache-dir -r requirements.txt && mkdir -p /srv/atlas/data
 RUN python create_module_catalog.py
