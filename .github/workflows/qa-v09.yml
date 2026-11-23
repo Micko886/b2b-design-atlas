@@ -26,6 +26,8 @@ jobs:
           base64 -d atlas-source-v09.b64 | tar -xz -C .
           python -m pip install -q -r requirements.txt
           python create_module_catalog.py
+          sed -i "s@/srv/atlas/static@$(pwd)/static@g" scripts/patch-v09-site-review.py
+          python scripts/patch-v09-site-review.py
           ATLAS_DB_PATH=/tmp/atlas-qa-v09.sqlite3 PORT=8977 python run.py > /tmp/atlas-v09.log 2>&1 &
           for i in $(seq 1 25); do curl -fsS http://127.0.0.1:8977/api/health && break || sleep 1; done
       - name: Browser screenshot and functionality tests
