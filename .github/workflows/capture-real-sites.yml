@@ -34,4 +34,4 @@ jobs:
           git config user.name "B2B Atlas Capture Bot"
           git config user.email "actions@users.noreply.github.com"
           git add screenshots/
-          git diff --cached --quiet || (git commit -m "Add authentic captured B2B website screenshots" && git pull --rebase origin main && git push origin HEAD:main)
+          git diff --cached --quiet || (git commit -m "Add authentic captured B2B website screenshots" && git restore . && git pull --rebase origin main && git push origin HEAD:main)
