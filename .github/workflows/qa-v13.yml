@@ -34,8 +34,8 @@ jobs:
               ready=False
               for _ in range(24):
                 await page.goto(BASE+'/?v=13',wait_until='networkidle',timeout=80000)
-                bg=await page.locator('.home-split-band').evaluate("el=>getComputedStyle(el).backgroundColor")
-                cols=await page.locator('.home-wall').evaluate("el=>getComputedStyle(el).gridTemplateColumns")
+                bg=await page.locator('.v13-black-band').evaluate("el=>getComputedStyle(el).backgroundColor")
+                cols=await page.locator('.v13-site-wall').evaluate("el=>getComputedStyle(el).gridTemplateColumns")
                 if bg=='rgb(17, 17, 17)' and len(cols.split())>=10:
                   ready=True; break
                 await page.wait_for_timeout(5000)
@@ -51,8 +51,8 @@ jobs:
                   assert overflow<=2,(mode,name,overflow)
                   assert not errors,(mode,name,errors)
                   if name=='home' and mode=='desktop':
-                    assert await page.locator('.home-wall .site-tile').count()>=7
-                    bg=await page.locator('.home-split-band').evaluate("el=>getComputedStyle(el).backgroundColor")
+                    assert await page.locator('.v13-site-wall .site-tile').count()>=7
+                    bg=await page.locator('.v13-black-band').evaluate("el=>getComputedStyle(el).backgroundColor")
                     assert bg=='rgb(17, 17, 17)',bg
                   await page.screenshot(path=str(out/f'{name}-{mode}.png'),full_page=(mode=='desktop'))
                   print('PASS',mode,name,'overflow',overflow,flush=True)
