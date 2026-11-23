@@ -1,0 +1,62 @@
+name: V1.4 website card visual QA
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/qa-v14-card.yml']
+permissions:
+  contents: write
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Chromium
+        run: |
+          pip install -q playwright
+          playwright install --with-deps chromium
+      - name: Check live cards
+        run: |
+          python - <<'PY'
+          import asyncio
+          from pathlib import Path
+          from playwright.async_api import async_playwright
+          BASE='https://b2b-design-atlas-preview.onrender.com'
+          async def main():
+            out=Path('screenshots/qa-v14');out.mkdir(parents=True,exist_ok=True)
+            async with async_playwright() as p:
+              browser=await p.chromium.launch(headless=True,args=['--no-sandbox'])
+              for mode,width in [('desktop',1440),('mobile',390)]:
+                page=await browser.new_page(viewport={'width':width,'height':900},device_scale_factor=1)
+                errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+                await page.goto(BASE+'/websites',wait_until='networkidle',timeout=80000)
+                first=page.locator('.site-card').first
+                await first.wait_for()
+                count=await page.locator('.site-card').count()
+                assert count==10,count
+                assert await page.locator('.site-card .tile-name[translate="no"]').count()==10
+                assert await page.locator('.site-card .tile-domain[translate="no"]').count()==10
+                if mode=='desktop':
+                  await first.hover()
+                  assert await first.locator('.site-card-visit').evaluate("(e)=>getComputedStyle(e).opacity")=='1'
+                  await first.screenshot(path=str(out/'card-fictiv-desktop.png'))
+                overflow=await page.evaluate('document.documentElement.scrollWidth-innerWidth')
+                assert overflow<=2,overflow
+                assert not errors,errors
+                await page.screenshot(path=str(out/f'websites-{mode}.png'),full_page=False)
+                print('PASS',mode,'cards',count,'overflow',overflow,flush=True)
+                await page.close()
+              await browser.close()
+          asyncio.run(main())
+          PY
+      - name: Save visual evidence
+        if: success()
+        run: |
+          git config user.name "Atlas QA"
+          git config user.email "actions@users.noreply.github.com"
+          git add screenshots/qa-v14/
+          git diff --cached --quiet || (git commit -m "Record V1.4 website card visual QA" && git restore . && git pull --rebase origin main && git push origin HEAD:main)
