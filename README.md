@@ -1,9 +1,23 @@
-# B2B Design Atlas (preview v0.2)
+# B2B Atlas · V0.3 — White Editorial Edition
 
-FastAPI + SQLite reference-library pilot. Starter data includes fictional design studies, not verified third-party sites.
+A design-reference research library for global B2B website designers.
 
-Deploy: Render Docker service, built from atlas-source.tar.gz. The archive contains app, static, run.py and requirements.txt.
+## What's new
+- White, typography-led editorial layout across Home, Websites, Sections, Patterns, Saved and Design Board.
+- 12 real B2B company source references linked to official websites.
+- 25 independently authored page and section research notes with source URLs.
+- Source references and fictional original concepts are clearly separated.
+- Search, filtering, detail analysis, saved references, board and Markdown export.
+- No third-party screenshots are republished. Preview images are original editorial schematic representations, not live-site screenshots.
 
-Local: extract archive and run pip install -r requirements.txt && python run.py.
+## Start
+```bash
+pip install -r requirements.txt
+python run.py
+```
+Render Dockerfile builds from atlas-source.tar.gz.
 
-Public admin write operations are disabled by default: ATLAS_ADMIN_TOKEN is not configured. This demo uses ephemeral SQLite storage, not production-grade durable persistence.
+## Limits
+SQLite on Render free service is ephemeral. Saved/board data is browser-local. Administrative write routes remain secured by ATLAS_ADMIN_TOKEN. No screenshot publication rights are inferred.
+
+Editorial source metadata, CSV exports, app code and tests live within the archive.
