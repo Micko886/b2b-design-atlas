@@ -37,7 +37,7 @@ CARD_CSS=r'''
 .site-card-actions .saved{background:#111!important;color:#fff!important;border-color:#111!important}
 .site-card-actions .shot-preview{opacity:0;transform:translateY(3px) scale(.96);pointer-events:none}
 .site-card:hover .shot-preview,.site-card .shot-preview:focus-visible{opacity:1;transform:none;pointer-events:auto}
-.site-card-body{display:block;padding:14px 10px 16px;min-height:94px}
+.site-card-body{display:block;padding:13px 10px 14px;min-height:82px}
 .site-card-kicker{display:flex;align-items:center;gap:7px;min-width:0;color:#8d8d93;font-size:9px;line-height:1.2;letter-spacing:.015em;margin-bottom:7px;white-space:nowrap;overflow:hidden}
 .site-card-kicker>span{overflow:hidden;text-overflow:ellipsis}
 .site-card-kicker .tile-domain{margin:0;color:#6e6e73;font-size:9px;font-weight:600;flex:0 1 auto}
@@ -52,7 +52,7 @@ CARD_CSS=r'''
 .site-card-visit:hover{color:#111}
 .site-tile--featured.site-card{border-radius:20px;padding:9px 9px 0}
 .site-tile--featured.site-card .site-image{border-radius:13px}
-.site-tile--featured.site-card .site-card-body{padding:16px 12px 18px;min-height:102px}
+.site-tile--featured.site-card .site-card-body{padding:14px 12px 16px;min-height:90px}
 .site-tile--featured.site-card .tile-name{font-size:18px;letter-spacing:-.48px}
 .site-card .tile-source{display:none!important}
 @media(hover:none){.site-card-visit{opacity:1;transform:none}.site-card-actions .shot-preview{display:none}}
