@@ -7,6 +7,8 @@ COPY scripts/patch_v12.py /tmp/patch_v12.py
 RUN python /tmp/patch_v12.py && rm /tmp/patch_v12.py
 COPY scripts/patch_v14.py /tmp/patch_v14.py
 RUN python /tmp/patch_v14.py && rm /tmp/patch_v14.py
+COPY scripts/patch_v15.py /tmp/patch_v15.py
+RUN python /tmp/patch_v15.py && rm /tmp/patch_v15.py
 COPY screenshots/ /srv/atlas/screenshots/
 RUN pip install --no-cache-dir -r requirements.txt && mkdir -p /srv/atlas/data
 RUN python create_module_catalog.py
