@@ -20,7 +20,7 @@ jobs:
         run: |
           python -m pip install -q playwright
           python -m playwright install --with-deps chromium
-          base64 -d atlas-source-v16.b64 | tar -xz -C .
+          tar -xzf atlas-source-v16.tar.gz -C .
           python -m pip install -q -r requirements.txt
           python create_module_catalog.py
       - name: Start site
