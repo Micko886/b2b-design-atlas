@@ -6,5 +6,7 @@ RUN base64 -d /tmp/atlas-source.b64 | tar -xz -C /srv/atlas && rm /tmp/atlas-sou
 COPY screenshots/ /srv/atlas/screenshots/
 RUN pip install --no-cache-dir -r requirements.txt && mkdir -p /srv/atlas/data
 RUN python create_module_catalog.py
+COPY scripts/patch-v09-site-review.py /tmp/patch-v09-site-review.py
+RUN python /tmp/patch-v09-site-review.py && rm /tmp/patch-v09-site-review.py
 EXPOSE 8000
 CMD ["python","run.py"]
