@@ -45,7 +45,7 @@ jobs:
                     await new Promise(r=>setTimeout(r,90));
                   }
                   window.scrollTo(0,0);
-                  await Promise.all(Array.from(document.images).map(i=>i.decode().catch(()=>null)));
+                  await Promise.race([Promise.all(Array.from(document.images).map(i=>{i.loading='eager';return i.decode().catch(()=>null);})), new Promise(r=>setTimeout(r,6500))]);
                 }""")
                 await page.screenshot(path=str(pth/f'home-{mode}.png'),full_page=True)
                 print('HOME',mode,'h1=',await page.locator('h1').first.inner_text(),'cards=',await page.locator('.reference-tile').count(),flush=True)
@@ -60,7 +60,7 @@ jobs:
                     await new Promise(r=>setTimeout(r,90));
                   }
                   window.scrollTo(0,0);
-                  await Promise.all(Array.from(document.images).map(i=>i.decode().catch(()=>null)));
+                  await Promise.race([Promise.all(Array.from(document.images).map(i=>{i.loading='eager';return i.decode().catch(()=>null);})), new Promise(r=>setTimeout(r,6500))]);
                 }""")
                 await page.screenshot(path=str(pth/f'websites-{mode}.png'),full_page=True)
                 print('WEBSITES',mode,await page.locator('.reference-tile').count(),flush=True)
