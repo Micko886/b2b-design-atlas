@@ -1,14 +1,9 @@
-# B2B Design Atlas — v0.2 Preview
+# B2B Design Atlas (preview v0.2)
 
-B2B website design inspiration library, original concept studies, section gallery, layout patterns, and local design board.
+FastAPI + SQLite reference-library pilot. Starter data includes fictional design studies, not verified third-party sites.
 
-## Deployment
-Git-backed Render Docker service. Dockerfile unpacks `atlas-source.tar.xz` and starts FastAPI on Render's assigned `PORT`.
+Deploy: Render Docker service, built from atlas-source.tar.gz. The archive contains app, static, run.py and requirements.txt.
 
-- `/`: design gallery and board
-- `/api/health`: health check
-- `/api/stats`: content counts
+Local: extract archive and run pip install -r requirements.txt && python run.py.
 
-The editorial write endpoints are disabled until `ATLAS_ADMIN_TOKEN` is configured. The free preview has an ephemeral SQLite database. Do not use it for persistent content management or user accounts.
-
-**The starter designs are fictional original studies, not sourced real company websites.**
+Public admin write operations are disabled by default: ATLAS_ADMIN_TOKEN is not configured. This demo uses ephemeral SQLite storage, not production-grade durable persistence.
