@@ -50,6 +50,15 @@ jobs:
                   overflow=await page.evaluate('document.documentElement.scrollWidth>window.innerWidth+2')
                   assert not overflow,(mode,name,'overflow')
                   assert not errors,(mode,name,errors)
+                  # Force-load all native lazy images before asserting full-page capture completeness.
+                  await page.evaluate("""async()=>{
+                    const imgs=[...document.images];
+                    for(const img of imgs) img.loading='eager';
+                    await Promise.race([
+                      Promise.all(imgs.map(img=>img.decode().catch(()=>null))),
+                      new Promise(resolve=>setTimeout(resolve,11000))
+                    ]);
+                  }""")
                   broken=await page.evaluate('[...document.images].filter(x=>!x.naturalWidth).length')
                   assert broken==0,(mode,name,'broken images',broken)
                   if name=='websites':
