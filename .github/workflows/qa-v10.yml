@@ -70,10 +70,10 @@ jobs:
                 await page.goto(ROOT+'/sections',wait_until='networkidle',timeout=60000)
                 assert await page.locator('.module-grid .module-tile').count()==16
                 await page.screenshot(path=str(folder/f'sections-{device}.png'),full_page=False)
-                await page.locator('[data-filter="category"][data-value="Products"]').first.click()
+                await page.locator('.section-tabs [data-filter="category"][data-value="Products"]').click()
                 filtered=await page.locator('.module-grid .module-tile').count()
                 assert 0<filtered<16,('module category filter',filtered)
-                await page.locator('[data-filter="category"][data-value=""]').first.click()
+                await page.locator('.section-tabs [data-filter="category"][data-value=""]').click()
                 await page.locator('[data-compare]').first.click()
                 await page.locator('[data-compare]').nth(1).click()
                 assert await page.locator('#compare-tray').evaluate('(el)=>el.classList.contains("visible")')
