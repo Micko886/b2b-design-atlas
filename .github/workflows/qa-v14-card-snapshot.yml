@@ -1,0 +1,53 @@
+name: V1.4 website card snapshot
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/qa-v14-card-snapshot.yml']
+permissions:
+  contents: write
+jobs:
+  snap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Chromium
+        run: |
+          pip install -q playwright
+          playwright install --with-deps chromium
+      - name: Capture live card
+        run: |
+          python - <<'PY'
+          import asyncio
+          from pathlib import Path
+          from playwright.async_api import async_playwright
+          BASE='https://b2b-design-atlas-preview.onrender.com'
+          async def main():
+            out=Path('screenshots/qa-v14-final');out.mkdir(parents=True,exist_ok=True)
+            async with async_playwright() as p:
+              b=await p.chromium.launch(headless=True,args=['--no-sandbox'])
+              for mode,width in [('desktop',1440),('mobile',390)]:
+                pg=await b.new_page(viewport={'width':width,'height':900})
+                await pg.goto(BASE+'/websites',wait_until='networkidle',timeout=80000)
+                first=pg.locator('.site-card').first
+                await first.wait_for()
+                assert await pg.locator('.site-card').count()==10
+                assert await pg.locator('.site-card .tile-name[translate="no"]').count()==10
+                if mode=='desktop':
+                  await first.hover();await pg.wait_for_timeout(400)
+                  await first.screenshot(path=str(out/'card-fictiv-desktop.png'))
+                await pg.screenshot(path=str(out/f'websites-{mode}.png'),full_page=False)
+                print('PASS',mode,flush=True)
+                await pg.close()
+              await b.close()
+          asyncio.run(main())
+          PY
+      - name: Commit screenshots
+        run: |
+          git config user.name "Atlas QA"
+          git config user.email "actions@users.noreply.github.com"
+          git add screenshots/qa-v14-final/
+          git diff --cached --quiet || (git commit -m "Save V1.4 final website card screenshots" && git restore . && git pull --rebase origin main && git push origin HEAD:main)
