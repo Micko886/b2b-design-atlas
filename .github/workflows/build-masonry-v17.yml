@@ -1,0 +1,104 @@
+name: Build and visually verify V1.7 masonry
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-masonry-v17.yml'
+permissions:
+  contents: write
+jobs:
+  build-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prepare source and install browser
+        run: |
+          mkdir -p "$RUNNER_TEMP/atlas-v17"
+          tar -xzf atlas-source-v16.tar.gz -C "$RUNNER_TEMP/atlas-v17"
+          python scripts/apply-masonry-v17.py "$RUNNER_TEMP/atlas-v17"
+          cp -a screenshots "$RUNNER_TEMP/atlas-v17/screenshots"
+          python -m pip install -q -r "$RUNNER_TEMP/atlas-v17/requirements.txt"
+          python -m pip install -q playwright
+          python -m playwright install --with-deps chromium
+          cd "$RUNNER_TEMP/atlas-v17"
+          python create_module_catalog.py
+      - name: Start local preview
+        run: |
+          cd "$RUNNER_TEMP/atlas-v17"
+          ATLAS_DB_PATH=/tmp/b2b-atlas-v17.sqlite3 PORT=8797 python run.py >/tmp/atlas-v17-server.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8797/api/health && break || sleep 1; done
+      - name: Verify real flowing columns, source imagery, and capture screenshots
+        run: |
+          python - <<'PY'
+          import asyncio, math
+          from pathlib import Path
+          from playwright.async_api import async_playwright
+          BASE='http://127.0.0.1:8797'
+          async def main():
+            folder=Path('screenshots/qa-v17'); folder.mkdir(parents=True,exist_ok=True)
+            async with async_playwright() as p:
+              browser=await p.chromium.launch(headless=True,args=['--no-sandbox'])
+              for mode,width in [('desktop',1440),('tablet',880),('mobile',390)]:
+                page=await browser.new_page(viewport={'width':width,'height':900},device_scale_factor=1)
+                errors=[]; page.on('pageerror',lambda e:errors.append(str(e)))
+                for route,typ in [('/websites','websites'),('/sections','sections')]:
+                  await page.goto(BASE+route,wait_until='networkidle',timeout=70000)
+                  await page.evaluate("""async()=>{
+                    const imgs=[...document.images];
+                    for(const img of imgs)img.loading='eager';
+                    await Promise.race([Promise.all(imgs.map(x=>x.decode().catch(()=>null))),new Promise(r=>setTimeout(r,9000))]);
+                  }""")
+                  selector='.v13-website-wall' if typ=='websites' else '.v13-section-wall'
+                  cardcls='.site-card' if typ=='websites' else '.module-card'
+                  count=await page.locator(selector+' > '+cardcls).count()
+                  assert count==(10 if typ=='websites' else 16),(typ,mode,count)
+                  computed=await page.locator(selector).evaluate("(x)=>({display:getComputedStyle(x).display,count:getComputedStyle(x).columnCount})")
+                  expected='3' if width>=1180 else '2' if width>=680 else '1'
+                  assert computed=={'display':'block','count':expected},(typ,mode,computed)
+                  rects=await page.locator(selector+' > '+cardcls).evaluate_all("""els=>els.map(e=>{let r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,bottom:r.bottom}})""")
+                  groups={}
+                  for rect in rects:groups.setdefault(round(rect['x']),[]).append(rect)
+                  assert len(groups)==int(expected),(typ,mode,'columns',len(groups),groups.keys())
+                  # No shared Grid row gaps or manual vertical offsets.
+                  for x,rs in groups.items():
+                    rs.sort(key=lambda z:z['y'])
+                    for a,b in zip(rs,rs[1:]):
+                      gap=b['y']-a['bottom']
+                      assert -1<=gap<=32,(typ,mode,'column gap',round(gap,1),x)
+                  if typ=='websites' and mode=='desktop':
+                    heights=await page.locator(selector+' .site-image').evaluate_all("els=>els.map(x=>x.getBoundingClientRect().height)")
+                    assert max(heights)-min(heights)>20,('thumbnails not varied',heights)
+                  broken=await page.evaluate('[...document.images].filter(i=>!i.naturalWidth).length')
+                  assert broken==0,(typ,mode,'broken images',broken)
+                  assert await page.evaluate('document.documentElement.scrollWidth<=window.innerWidth+2'),(typ,mode,'overflow')
+                  assert not errors,(typ,mode,errors)
+                  await page.screenshot(path=str(folder/f'{typ}-{mode}.png'),full_page=(mode=='desktop'))
+                  print('PASS V17 masonry',typ,mode,'columns',expected,'cards',count,flush=True)
+                await page.close()
+              await browser.close()
+          asyncio.run(main())
+          PY
+      - name: Build deployable source only after visual QA passes
+        run: |
+          tar -czf atlas-source-v17.tar.gz \
+            --exclude='./screenshots' --exclude='./data' \
+            --exclude='__pycache__' --exclude='.pytest_cache' \
+            -C "$RUNNER_TEMP/atlas-v17" .
+          sed -i 's/atlas-source-v16.tar.gz/atlas-source-v17.tar.gz/g' Dockerfile
+          sed -i 's/3-column balanced gallery/real 3-column masonry gallery/g' README.md
+      - name: Commit verified bundle and screenshots
+        run: |
+          git config user.name "B2B Atlas QA"
+          git config user.email "actions@users.noreply.github.com"
+          git add atlas-source-v17.tar.gz Dockerfile screenshots/qa-v17/ README.md
+          if ! git diff --cached --quiet; then
+            git commit -m "Deliver verified V1.7 real masonry galleries"
+            git restore .
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
