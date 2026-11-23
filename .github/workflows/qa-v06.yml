@@ -1,0 +1,74 @@
+name: Verify Atlas V0.6 quiet gallery
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/qa-v06.yml']
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Chromium
+        run: |
+          pip install -q playwright
+          playwright install --with-deps chromium
+      - name: Verify live desktop and mobile
+        run: |
+          python - <<'PY'
+          import asyncio
+          from pathlib import Path
+          from playwright.async_api import async_playwright
+          URL='https://b2b-design-atlas-preview.onrender.com'
+          async def main():
+            dest=Path('screenshots/qa-v06')
+            dest.mkdir(parents=True,exist_ok=True)
+            async with async_playwright() as p:
+              b=await p.chromium.launch(headless=True,args=['--no-sandbox'])
+              for label,w in [('desktop',1440),('mobile',390)]:
+                page=await b.new_page(viewport={'width':w,'height':900},device_scale_factor=1)
+                errors=[]
+                page.on('pageerror',lambda error:errors.append(str(error)))
+                await page.goto(URL+'/',wait_until='networkidle',timeout=75000)
+                await page.locator('.lead-grid .case-card').first.wait_for()
+                css=await page.evaluate("""()=>{
+                  const h=document.querySelector('.home-hero');
+                  const a=document.querySelector('.hero-copy h1');
+                  return {heroBg:getComputedStyle(h).backgroundColor,accent:getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),headline:a.textContent};
+                }""")
+                assert css['heroBg']=='rgb(255, 255, 255)',css
+                assert css['accent']=='#1d2024',css
+                assert await page.locator('.lead-grid .case-card').count()==2
+                assert not await page.evaluate('document.documentElement.scrollWidth>window.innerWidth+2')
+                await page.screenshot(path=str(dest/f'home-{label}.png'),full_page=False)
+                await page.goto(URL+'/websites',wait_until='networkidle',timeout=75000)
+                cards=await page.locator('.case-card').count()
+                assert cards>=10,cards
+                await page.get_by_role('button',name='Manufacturing',exact=True).click()
+                filtered=await page.locator('.case-card').count()
+                assert 0<filtered<cards,(filtered,cards)
+                await page.screenshot(path=str(dest/f'websites-{label}.png'),full_page=False)
+                await page.goto(URL+'/websites/fictiv',wait_until='networkidle',timeout=75000)
+                await page.locator('.detail-screenshot img').first.wait_for()
+                await page.get_by_role('button',name='Add to board').click()
+                await page.goto(URL+'/board',wait_until='networkidle',timeout=75000)
+                assert await page.locator('.board-entry').count()==1
+                assert not errors,errors
+                print('V06 OK',label,css, 'websites',cards,'filtered',filtered,'board',1,flush=True)
+                await page.close()
+              await b.close()
+          asyncio.run(main())
+          PY
+      - name: Save evidence
+        if: success()
+        run: |
+          git config user.name "Atlas QA Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add screenshots/qa-v06/
+          git diff --cached --quiet || (git commit -m "Save V0.6 live visual QA evidence" && git restore . && git pull --rebase origin main && git push origin HEAD:main)
