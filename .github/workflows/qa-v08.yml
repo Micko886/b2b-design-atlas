@@ -1,0 +1,77 @@
+name: Validate B2B Atlas V0.8 editorial gallery
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/qa-v08.yml']
+permissions:
+  contents: write
+jobs:
+  live-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install chromium
+        run: |
+          pip install -q playwright
+          playwright install --with-deps chromium
+      - name: Real web browser visual QA
+        run: |
+          python - <<'PY'
+          import asyncio,json
+          from pathlib import Path
+          from playwright.async_api import async_playwright
+          base='https://b2b-design-atlas-preview.onrender.com'
+          async def task():
+            out=Path('screenshots/qa-v08');out.mkdir(parents=True,exist_ok=True)
+            async with async_playwright() as p:
+              browser=await p.chromium.launch(headless=True,args=['--no-sandbox'])
+              for name,width in [('desktop',1440),('mobile',390)]:
+                page=await browser.new_page(viewport={'width':width,'height':900},device_scale_factor=1)
+                errors=[]
+                page.on('pageerror',lambda e:errors.append(str(e)))
+                for route,label in [('/','home'),('/websites','websites'),('/sections','sections'),('/sections/fictiv-capability-hero','module-detail')]:
+                  await page.goto(base+route,wait_until='networkidle',timeout=80000)
+                  await page.locator('h1').first.wait_for()
+                  if label=='home':
+                    assert await page.locator('.v8-feature').count()==3
+                    assert await page.locator('.v8-module-card').count()>=3
+                  if label=='websites':
+                    assert await page.locator('.v8-website-grid .v8-tile').count()==10
+                    await page.locator('[data-filter="sector"][data-value="Manufacturing"]').first.click()
+                    assert 0<await page.locator('.v8-website-grid .v8-tile').count()<10
+                  if label=='sections':
+                    assert await page.locator('.v8-section-grid .v8-module-card').count()==16
+                    await page.locator('.v8-category-ribbon [data-value="Products"]').first.click()
+                    n=await page.locator('.v8-section-grid .v8-module-card').count()
+                    assert 1<=n<=10,n
+                  if label=='module-detail':
+                    assert await page.locator('.detail-screenshot img').count()==1
+                    await page.get_by_role('button',name='Add to board').click()
+                  if label in ('websites','sections'):
+                    # Restore all cases for screenshots
+                    await page.goto(base+route,wait_until='networkidle',timeout=80000)
+                  await page.evaluate("""async()=>{for(let y=0;y<document.documentElement.scrollHeight;y+=700){scrollTo(0,y);await new Promise(r=>setTimeout(r,45));}scrollTo(0,0);await Promise.race([Promise.all([...document.images].map(i=>i.decode().catch(()=>0))),new Promise(r=>setTimeout(r,4000))])}""")
+                  overflow=await page.evaluate('document.documentElement.scrollWidth-innerWidth')
+                  assert overflow<=2,(label,name,'overflow',overflow)
+                  assert not errors,(label,name,errors)
+                  await page.screenshot(path=str(out/f'{label}-{name}.png'),full_page=(name=='desktop' and label in ['home','websites','sections']))
+                  print('PASS',name,label,'h1',await page.locator('h1').first.inner_text(),'overflow',overflow,'errors',len(errors),flush=True)
+                await page.goto(base+'/board',wait_until='networkidle',timeout=80000)
+                assert await page.locator('.board-entry').count()==1
+                print('PASS BOARD',name,flush=True)
+                await page.close()
+              await browser.close()
+          asyncio.run(task())
+          PY
+      - name: Upload QA images to repository
+        if: success()
+        run: |
+          git config user.name "B2B Atlas QA"
+          git config user.email "actions@users.noreply.github.com"
+          git add screenshots/qa-v08/
+          git diff --cached --quiet || (git commit -m "Record live V0.8 gallery design QA screenshots" && git restore . && git pull --rebase origin main && git push origin HEAD:main)
