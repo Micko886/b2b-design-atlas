@@ -27,26 +27,9 @@ jobs:
           python -m playwright install --with-deps chromium
       - name: Extract site sources
         run: base64 -d atlas-source-v04.b64 | tar -xz -C .
-      - name: Use consent-aware browser capture
+      - name: Dismiss visible cookie overlays via official buttons
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          p=Path('capture_real_sites.py')
-          data=p.read_text()
-          original="['Accept all','Accept All Cookies','Allow all cookies','Accept Cookies','I agree']"
-          replacement="['Reject All','Reject all cookies','Decline All','Decline','Only necessary','Allow All','Accept All','Accept all cookies','Accept Cookies','Accept','I agree']"
-          assert original in data, "Unexpected capture script: cannot update cookie control"
-          data=data.replace(original,replacement)
-          data=data.replace('name=label,exact=True',"name=re.compile('^'+re.escape(label)+'
-      - name: Commit checked browser screenshots
-        run: |
-          git config user.name "B2B Atlas Capture Bot"
-          git config user.email "actions@users.noreply.github.com"
-          git add screenshots/
-          git diff --cached --quiet || (git commit -m "Add authentic captured B2B website screenshots" && git restore . && git pull --rebase origin main && git push origin HEAD:main)
-,re.I)")
-          p.write_text(data)
-          PY
+          sed -i "s/'Accept all'/'REJECT ALL','Allow All','Accept','Accept all'/g" capture_real_sites.py
       - name: Capture real site screenshots
         run: python capture_real_sites.py
       - name: Commit checked browser screenshots
@@ -54,4 +37,4 @@ jobs:
           git config user.name "B2B Atlas Capture Bot"
           git config user.email "actions@users.noreply.github.com"
           git add screenshots/
-          git diff --cached --quiet || (git commit -m "Add authentic captured B2B website screenshots" && git restore . && git pull --rebase origin main && git push origin HEAD:main)
+          git diff --cached --quiet || (git commit -m "Update actual B2B website browser captures" && git restore . && git pull --rebase origin main && git push origin HEAD:main)
