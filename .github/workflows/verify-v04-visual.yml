@@ -1,0 +1,66 @@
+name: Verify B2B Atlas v0.4 visual experience
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-v04-visual.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  visual-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install browser
+        run: |
+          pip install -q playwright pillow
+          playwright install --with-deps chromium
+      - name: Exercise live visual experience
+        run: |
+          python - <<'PY'
+          import asyncio, json
+          from pathlib import Path
+          from playwright.async_api import async_playwright
+          url='https://b2b-design-atlas-preview.onrender.com'
+          async def run():
+            pth=Path('screenshots/qa')
+            pth.mkdir(parents=True,exist_ok=True)
+            async with async_playwright() as p:
+              browser=await p.chromium.launch(headless=True,args=['--no-sandbox'])
+              for width,mode in ((1440,'desktop'),(390,'mobile')):
+                page=await browser.new_page(viewport={'width':width,'height':900},device_scale_factor=1)
+                errors=[]
+                page.on('pageerror',lambda e:errors.append(str(e)))
+                await page.goto(url+'/',wait_until='networkidle',timeout=80000)
+                await page.locator('.site-screenshot, .browser-canvas img').first.wait_for(state='visible',timeout=20000)
+                await page.screenshot(path=str(pth/f'home-{mode}.png'),full_page=True)
+                print('HOME',mode,'h1=',await page.locator('h1').first.inner_text(),'cards=',await page.locator('.reference-tile').count(),flush=True)
+                overflow=await page.evaluate('document.documentElement.scrollWidth>window.innerWidth+2')
+                print('OVERFLOW',mode,overflow,flush=True)
+                assert not overflow,'horizontal overflow on '+mode
+                await page.goto(url+'/websites',wait_until='networkidle',timeout=80000)
+                assert await page.locator('.reference-tile').count()>=8
+                await page.screenshot(path=str(pth/f'websites-{mode}.png'),full_page=True)
+                print('WEBSITES',mode,await page.locator('.reference-tile').count(),flush=True)
+                await page.locator('.filter-chip').filter(has_text='Manufacturing').first.click()
+                print('FILTER',mode,await page.locator('.reference-tile').count(),flush=True)
+                await page.goto(url+'/websites/fictiv',wait_until='networkidle',timeout=80000)
+                assert await page.locator('.detail-figure img').count()==1
+                await page.screenshot(path=str(pth/f'case-{mode}.png'),full_page=True)
+                print('CASE',mode,await page.locator('h1').first.inner_text(),flush=True)
+                assert not errors,errors
+                await page.close()
+              await browser.close()
+          asyncio.run(run())
+          PY
+      - name: Store verified visual screenshots
+        run: |
+          git config user.name "B2B Atlas QA Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add screenshots/qa/
+          git diff --cached --quiet || (git commit -m "Save V0.4 screenshot QA evidence" && git restore . && git pull --rebase origin main && git push origin HEAD:main)
