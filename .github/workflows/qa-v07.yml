@@ -1,0 +1,81 @@
+name: Validate V0.7 editorial redesign
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/qa-v07.yml']
+permissions:
+  contents: write
+jobs:
+  visual-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install browser
+        run: |
+          python -m pip install -q playwright
+          python -m playwright install --with-deps chromium
+      - name: Inspect real B2B Atlas V0.7
+        run: |
+          python - <<'PY'
+          import asyncio
+          from pathlib import Path
+          from playwright.async_api import async_playwright
+          URL='https://b2b-design-atlas-preview.onrender.com'
+          async def main():
+            folder=Path('screenshots/qa-v07')
+            folder.mkdir(parents=True,exist_ok=True)
+            async with async_playwright() as playwright:
+              browser=await playwright.chromium.launch(headless=True,args=['--no-sandbox'])
+              for mode,width in [('desktop',1440),('mobile',390),('tablet',820)]:
+                page=await browser.new_page(viewport={'width':width,'height':900},device_scale_factor=1)
+                errors=[]
+                page.on('pageerror',lambda e:errors.append(str(e)))
+                await page.goto(URL,wait_until='networkidle',timeout=75000)
+                await page.locator('.curation-grid .case-card').first.wait_for(timeout=25000)
+                assert await page.locator('.curation-grid .case-card').count()==3
+                assert await page.locator('.editorial-selection .case-card').count()>=3
+                assert await page.locator('.taxonomy-grid a').count()>=5
+                overflow=await page.evaluate('document.documentElement.scrollWidth-window.innerWidth')
+                print('HOME',mode,'h1:',await page.locator('h1').first.inner_text(),'overflow',overflow,'errors',errors,flush=True)
+                assert overflow<=2 and not errors
+                await page.screenshot(path=str(folder/f'home-{mode}.png'),full_page=False)
+                if mode=='desktop': 
+                  await page.evaluate("""async()=>{for(let y=0;y<document.body.scrollHeight;y+=500){window.scrollTo(0,y); await new Promise(r=>setTimeout(r,35));}scrollTo(0,0)}""")
+                  await page.screenshot(path=str(folder/'home-full-desktop.png'),full_page=True)
+                await page.goto(URL+'/websites',wait_until='networkidle',timeout=75000)
+                await page.locator('.archive-grid .case-card').first.wait_for()
+                n=await page.locator('.archive-grid .case-card').count()
+                assert n==10,n
+                await page.screenshot(path=str(folder/f'websites-{mode}.png'),full_page=False)
+                await page.get_by_role('button',name='Manufacturing',exact=True).first.click()
+                filtered=await page.locator('.archive-grid .case-card').count()
+                assert filtered>0 and filtered<n
+                print('FILTER',mode,n,filtered,flush=True)
+                await page.goto(URL+'/sections',wait_until='networkidle',timeout=75000)
+                count=await page.locator('.archive-grid .case-card').count()
+                assert count>=20,count
+                await page.screenshot(path=str(folder/f'sections-{mode}.png'),full_page=False)
+                print('SECTIONS',mode,count,flush=True)
+                if mode in ['desktop','mobile']:
+                  await page.goto(URL+'/websites/fictiv',wait_until='networkidle',timeout=75000)
+                  assert await page.locator('.detail-screenshot img').count()==1
+                  await page.get_by_role('button',name='Add to board').click()
+                  await page.goto(URL+'/board',wait_until='networkidle',timeout=75000)
+                  assert await page.locator('.board-entry').count()==1
+                  print('BOARD',mode,'passed',flush=True)
+                await page.close()
+              await browser.close()
+          asyncio.run(main())
+          PY
+      - name: Save QA visuals
+        if: success()
+        run: |
+          git config user.name "Atlas Design QA"
+          git config user.email "actions@users.noreply.github.com"
+          git add screenshots/qa-v07/
+          git diff --cached --quiet || (git commit -m "Record V0.7 editorial visual QA" && git restore . && git pull --rebase origin main && git push origin HEAD:main)
