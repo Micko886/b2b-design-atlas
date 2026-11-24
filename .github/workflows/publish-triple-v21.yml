@@ -34,7 +34,7 @@ jobs:
           cd "$RUNNER_TEMP/atlas-v21-release"
           python -m pip install -q -r requirements.txt
           python -m pip install -q playwright
-          python -m playwright install --with-deps chromium
+          google-chrome --version
           python create_module_catalog.py
           python -m compileall -q app
           node --check static/assets/atlas-v10.js
@@ -59,7 +59,7 @@ jobs:
           folder=Path('screenshots/qa-v21');folder.mkdir(parents=True,exist_ok=True)
           async def check():
             async with async_playwright() as p:
-              browser=await p.chromium.launch(headless=True,args=['--no-sandbox','--disable-dev-shm-usage'])
+              browser=await p.chromium.launch(headless=True,channel='chrome',args=['--no-sandbox','--disable-dev-shm-usage'])
               for name,w in [('desktop',1440),('mobile',390)]:
                 page=await browser.new_page(viewport={'width':w,'height':900},device_scale_factor=1)
                 errors=[];page.on('pageerror',lambda exc:errors.append(str(exc)))
@@ -89,7 +89,6 @@ jobs:
                     assert await page.locator('.pattern-family-v21').count()==5
                     assert await page.locator('.pattern-study-v21').count()==20
                     assert await page.locator('.pattern-source-v21').count()==40
-                    assert await page.locator('.pattern-source-v21 a[href]').count()==0 or True
                   await page.screenshot(path=str(folder/f'{kind}-{name}.png'),full_page=(name=='desktop' and kind!='sections' and kind!='patterns'))
                   print('V21_QA_PASS',name,kind,flush=True)
                 await page.close()
