@@ -1,0 +1,50 @@
+name: Improve selected V2.1 real screenshots using consent controls
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/recapture-v21-consent.yml']
+permissions:
+  contents: write
+jobs:
+  recapture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Browser capture through preinstalled Chrome
+        run: |
+          python -m pip install -q playwright pillow
+          python -m py_compile scripts/recapture-v21-consent.py
+          google-chrome --version
+          python scripts/recapture-v21-consent.py
+      - name: Verify and preserve all screenshot updates
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from PIL import Image
+          records=json.loads(Path('screenshots/research-v21/recapture-report.json').read_text())
+          for r in records:
+            if r['status']!='recaptured':continue
+            sid=r['id']
+            for root,base in [('sites',sid+'.webp'),('notes',sid+'-hero.webp'),('notes',sid+'-detail.webp'),('modules',sid+'-hero.webp'),('modules',sid+'-detail.webp')]:
+              p=Path('screenshots')/root/base
+              with Image.open(p) as im:
+                assert im.width==1440 and im.height>=550,(p,im.size)
+          print('RECAPTURE_V21_RESULTS',records)
+          PY
+      - name: Commit audited authentic screenshots
+        run: |
+          git config user.name "B2B Atlas Screenshot QA"
+          git config user.email "actions@users.noreply.github.com"
+          git add screenshots/sites screenshots/notes screenshots/modules screenshots/research-v21/recapture-report.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Improve real V2.1 screenshot previews through normal privacy controls"
+            git restore .
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
