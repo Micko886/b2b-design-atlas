@@ -1,20 +1,31 @@
-# B2B Atlas · V1.7 real masonry galleries
+# B2B Atlas · Visual Research Library
 
-Global B2B website inspiration directory using actual source-attributed company screenshots.
+A curated library of real B2B websites, page sections, and design patterns. Explore actual screenshots, research design decisions, study source-checked project profiles, and save reference briefs.
 
-## Actual waterfall layout
+## Frontend: clean rebuild
 
-- **Websites:** CSS multi-column masonry (not Grid), with independently stacked columns and varied image-preview aspect ratios.
-- **Sections:** independently stacked columns sized to the real crop's native aspect ratio, without imposing artificial image heights.
-- **Breakpoints:** 3 columns desktop, 2 tablet, 1 mobile; compact mode 4 / 3 / 2.
-- **Spacing:** 18px horizontal and 22px vertical on desktop, no manual margin-top offsets or shared-grid-row gaps.
-- **Order:** column-major (top to bottom in each column); this is a flowing, responsive CSS column layout.
-- **Source images:** original screenshots remain available in case details and original source sites are linked. The gallery can crop the preview for visual rhythm.
+The application now uses **one HTML shell, one CSS design system, and one JavaScript entrypoint**, all under `frontend/`. Historic V24–V36 layered frontend scripts were removed and are not loaded.
 
-## Verified
+- `frontend/index.html` — semantic document, header, overlay and SPA entry.
+- `frontend/app.css` — unified responsive design language, white background and electric blue accents.
+- `frontend/app.js` — homepage, site and section galleries, pattern studies, research profiles, saved references and project board.
+- `frontend/research.json` — five reviewed research profiles (including Vast and Fictiv).
+- `frontend/patterns.json` — 20 curated design patterns.
 
-GitHub Actions Chromium QA (V1.7) passed on Websites and Sections at desktop, tablet, and mobile sizes, including independent column positions, adjacent card gaps, image loads and no horizontal overflow.
+The Docker build preserves the existing Python API and source-attributed screenshots. It replaces the old frontend directly instead of adding another CSS or JS override. Screenshot color palettes are generated from existing image files.
 
-Production source: `atlas-source-v17.tar.gz` — the Docker image unpacks this archive and copies the tracked `screenshots/` folder.
+## UX / Design
 
-Screenshots are for source-attributed visual study, not third-party code redistribution.
+Home: a compact branded hero and real website preview stack, with search and featured cases.
+
+Websites and Sections: full-width native-ratio masonry gallery, filter bar, compact metadata and three-color swatches. No duplicate navigation sidebar.
+
+Detail: actual source screenshots with a thumbnail gallery, project attributes, color/typography evidence, design breakdowns and linked sections and patterns.
+
+Patterns: independent educational examples tied to actual section captures. Board and saved items are kept in the browser's local storage.
+
+## Release checks
+
+Review desktop (1440px), tablet (768px) and mobile (390px) for layout overflow, real image loading, category and style filters, search, screenshot switching, source links, patterns, saved items, board notes, export and keyboard access.
+
+See `frontend/README.md` for the design contract.
