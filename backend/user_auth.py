@@ -98,6 +98,10 @@ user_id TEXT NOT NULL REFERENCES atlas_users(id) ON DELETE CASCADE,
 kind TEXT NOT NULL CHECK(kind IN ('site','module','pattern','article')),
 slug TEXT NOT NULL,note TEXT NOT NULL DEFAULT '',tags_json TEXT NOT NULL DEFAULT '[]',
 updated_at TEXT NOT NULL,PRIMARY KEY(user_id,kind,slug))""",
+"""CREATE TABLE IF NOT EXISTS atlas_user_comparisons (
+id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES atlas_users(id) ON DELETE CASCADE,
+name TEXT NOT NULL,site_ids_json TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)""",
+"""CREATE INDEX IF NOT EXISTS atlas_comparisons_user ON atlas_user_comparisons(user_id,created_at)""",
 """CREATE TABLE IF NOT EXISTS atlas_password_resets (
 token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES atlas_users(id) ON DELETE CASCADE,
 expires_at TEXT NOT NULL,created_at TEXT NOT NULL)"""
@@ -289,6 +293,24 @@ class Annotation(BaseModel):
             if x.casefold() not in [a.casefold() for a in cleaned]:cleaned.append(x)
         return cleaned
 
+class ComparisonPayload(BaseModel):
+    name:str=Field(min_length=1,max_length=64)
+    site_ids:list[str]=Field(min_length=2,max_length=4)
+    @field_validator("name")
+    @classmethod
+    def clean_comparison_name(cls,v):
+        v=v.strip()
+        if not v or any(ord(c)<32 for c in v):raise ValueError("对比名称无效。")
+        return v
+    @field_validator("site_ids")
+    @classmethod
+    def clean_site_ids(cls,v):
+        if not 2<=len(v)<=4:raise ValueError("一次对比需要选择 2–4 个网站。")
+        if any(not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,110}",x) for x in v):
+            raise ValueError("网站标识无效。")
+        if len(set(v))!=len(v):raise ValueError("同一网站不能重复加入对比。")
+        return v
+
 
 def register_auth_routes(app:FastAPI):
     router=APIRouter(prefix="/api")
@@ -361,12 +383,15 @@ def register_auth_routes(app:FastAPI):
                     FROM atlas_user_folder_items i
                     JOIN atlas_user_folders f ON f.id=i.folder_id WHERE f.user_id=?""",(user_id,))
             metadata=conn.all("SELECT kind,slug,note,tags_json FROM atlas_item_annotations WHERE user_id=?",(user_id,))
+            comparisons=conn.all("SELECT id,name,site_ids_json,created_at,updated_at FROM atlas_user_comparisons WHERE user_id=? ORDER BY updated_at DESC",(user_id,))
         combined=sorted(items+extra,key=lambda x:x["created_at"],reverse=True)
         return {"saved":[x["kind"]+":"+x["slug"] for x in combined if x["collection"]=="saved"],
                 "board":[x["kind"]+":"+x["slug"] for x in combined if x["collection"]=="board"],
                 "notes":{x["kind"]+":"+x["slug"]:x["note"] for x in combined if x["collection"]=="board" and x["note"]},
                 "folders":folders,"folderItems":{f["id"]:[x["kind"]+":"+x["slug"] for x in memberships if x["folder_id"]==f["id"]] for f in folders},
-                "annotations":{x["kind"]+":"+x["slug"]:{"note":x["note"],"tags":__import__("json").loads(x["tags_json"])} for x in metadata}}
+                "annotations":{x["kind"]+":"+x["slug"]:{"note":x["note"],"tags":__import__("json").loads(x["tags_json"])} for x in metadata},
+                "comparisons":[{"id":x["id"],"name":x["name"],"site_ids":__import__("json").loads(x["site_ids_json"]),
+                                "created_at":x["created_at"],"updated_at":x["updated_at"]} for x in comparisons]}
     def saved_in_db(conn,user_id,kind,slug):
         table="atlas_user_items" if kind in ("site","module") else "atlas_user_entities"
         return conn.one("SELECT slug FROM "+table+" WHERE user_id=? AND collection='saved' AND kind=? AND slug=?",(user_id,kind,slug)) is not None
@@ -472,6 +497,41 @@ def register_auth_routes(app:FastAPI):
                 VALUES(?,?,?,?,?,?) ON CONFLICT(user_id,kind,slug)
                 DO UPDATE SET note=excluded.note,tags_json=excluded.tags_json,updated_at=excluded.updated_at""",
                 (s["user_id"],kind,slug,data.note,__import__("json").dumps(data.tags,ensure_ascii=False),now()))
+        return {"ok":True}
+    @router.get("/me/comparisons")
+    def list_comparisons(request:Request,response:Response):
+        s=required(request);response.headers["Cache-Control"]="no-store"
+        return library_data(s["user_id"])["comparisons"]
+    @router.post("/me/comparisons",status_code=201)
+    def create_comparison(data:ComparisonPayload,request:Request):
+        origin(request);s=required(request);check_csrf(request,s)
+        limit(request,"comparison-create",30,3600)
+        uid=s["user_id"]
+        with db() as conn:
+            row=conn.one("SELECT COUNT(*) AS n FROM atlas_user_comparisons WHERE user_id=?",(uid,))
+            if row["n"]>=40:error(409,"每个账户最多保存 40 组网站对比。")
+            cid=str(uuid.uuid4());stamp=now()
+            conn.execute("""INSERT INTO atlas_user_comparisons(id,user_id,name,site_ids_json,created_at,updated_at)
+                VALUES(?,?,?,?,?,?)""",(cid,uid,data.name,__import__("json").dumps(data.site_ids),stamp,stamp))
+        return {"id":cid,"name":data.name,"site_ids":data.site_ids,"created_at":stamp,"updated_at":stamp}
+    @router.patch("/me/comparisons/{comparison_id}")
+    def update_comparison(comparison_id:str,data:ComparisonPayload,request:Request):
+        origin(request);s=required(request);check_csrf(request,s)
+        if not FOLDER_ID.fullmatch(comparison_id):error(404,"对比记录不存在。")
+        with db() as conn:
+            old=conn.one("SELECT id FROM atlas_user_comparisons WHERE id=? AND user_id=?",(comparison_id,s["user_id"]))
+            if not old:error(404,"对比记录不存在。")
+            stamp=now()
+            conn.execute("UPDATE atlas_user_comparisons SET name=?,site_ids_json=?,updated_at=? WHERE id=? AND user_id=?",
+                         (data.name,__import__("json").dumps(data.site_ids),stamp,comparison_id,s["user_id"]))
+        return {"id":comparison_id,"name":data.name,"site_ids":data.site_ids,"updated_at":stamp}
+    @router.delete("/me/comparisons/{comparison_id}")
+    def delete_comparison(comparison_id:str,request:Request):
+        origin(request);s=required(request);check_csrf(request,s)
+        if not FOLDER_ID.fullmatch(comparison_id):error(404,"对比记录不存在。")
+        with db() as conn:
+            cur=conn.execute("DELETE FROM atlas_user_comparisons WHERE id=? AND user_id=?",(comparison_id,s["user_id"]))
+            if cur.rowcount==0:error(404,"对比记录不存在。")
         return {"ok":True}
     @router.get("/me/export")
     def export_personal_data(request:Request,response:Response):
