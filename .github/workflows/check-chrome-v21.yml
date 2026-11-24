@@ -1,0 +1,18 @@
+name: Check available system Chrome on visual QA runner
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/check-chrome-v21.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm system Chrome executable and version
+        run: |
+          command -v google-chrome || true
+          command -v chromium || true
+          google-chrome --version || true
+          test -x /usr/bin/google-chrome
