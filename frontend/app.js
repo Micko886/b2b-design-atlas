@@ -57,16 +57,19 @@ function visibleAdvancedFilters(){return ['siteType','audienceTerm','structureTe
 function activeDiscoveryFilters(type){
  return [['q','搜索',state.q], [type==='websites'?'sector':'category',type==='websites'?'行业':'模块',type==='websites'?state.sector:state.category],['style','风格',state.style],['color','截图色',state.color],['siteType','网站类型',state.siteType],['audienceTerm','客户',AUDIENCE_TERMS.find(x=>x[1]===state.audienceTerm)?.[0]||state.audienceTerm],['structureTerm','页面结构',STRUCTURE_TERMS.find(x=>x[1]===state.structureTerm)?.[0]||state.structureTerm],['styleTag','研究风格',state.styleTag],['researchOnly','研究档案',state.researchOnly==='verified'?'已核实':'']].filter(x=>x[2]);
 }
+function advancedSelection(entries,selected,all,field){
+ return '<label class="filter-select"><span class="sr-only">'+h(all)+'</span><select data-field="'+field+'" aria-label="'+h(all)+'"><option value="">'+h(all)+'</option>'+entries.map(([label,value])=>'<option value="'+h(value)+'" '+(value===selected?'selected':'')+'>'+h(label)+'</option>').join('')+'</select></label>';
+}
 function discoveryAdvancedControls(type){
  const typeOpts=researchSiteTypes(),tags=researchStyleTags();
  const advancedActive=visibleAdvancedFilters().length;
  return `<details class="discovery-advanced" ${advancedActive?'open':''}><summary><span>高级研究筛选</span><small>从已收录的企业档案和页面结构中匹配 · ${Object.keys(state.profiles).length} 份深度档案</small><b>${advancedActive||'+'}</b></summary><div class="discovery-advanced-inner">
  <div class="discovery-advanced-fields">
  ${selection(typeOpts,state.siteType,'全部网站类型','siteType')}
- ${selection(AUDIENCE_TERMS.map(x=>x[1]),state.audienceTerm,'全部目标客户','audienceTerm')}
- ${selection(STRUCTURE_TERMS.map(x=>x[1]),state.structureTerm,'全部页面结构','structureTerm')}
+ ${advancedSelection(AUDIENCE_TERMS,state.audienceTerm,'目标客户关键词','audienceTerm')}
+ ${advancedSelection(STRUCTURE_TERMS,state.structureTerm,'页面结构关键词','structureTerm')}
  ${selection(tags,state.styleTag,'已核实视觉风格','styleTag')}
- ${selection(['verified'],state.researchOnly,'全部研究状态','researchOnly')}
+ ${advancedSelection([['有人工检查档案','verified']],state.researchOnly,'研究资料完整度','researchOnly')}
  </div><p class="discovery-advanced-note">目标客户按企业档案中的英文关键词匹配；页面结构来自已记录的模块顺序；“已核实”仅表示有人工检查的研究档案，不代表网站质量排名。未记录的字段不会被推测。</p></div></details>`;
 }
 function matchList(type){const isSite=type==='websites';let src=isSite?state.sites.slice():state.modules.slice();let q=state.q.trim().toLowerCase(),terms=q.split(/\s+/).filter(Boolean);
@@ -79,7 +82,7 @@ if(state.color&&!pal(x).some(c=>colorFamily(c)===state.color))return false;
 if(state.siteType&&p?.type!==state.siteType)return false;
 if(state.styleTag&&!(p?.style||[]).includes(state.styleTag))return false;
 if(state.audienceTerm&&!(p?.audience||'').toLowerCase().includes(state.audienceTerm.toLowerCase()))return false;
-if(state.structureTerm&&!new RegExp(state.structureTerm,'i').test(researchStructureText(p)))return false;
+if(state.structureTerm&&(!STRUCTURE_TERMS.some(x=>x[1]===state.structureTerm)||!new RegExp(state.structureTerm,'i').test(researchStructureText(p))))return false;
 if(state.researchOnly==='verified'&&!p?.checked)return false;
 if(terms.length){const hay=[s.name,s.sector,s.focus,s.summary,s.takeaway,s.visual_style,...(s.design_strengths||[]),x.title,x.lesson,x.category,p?.type,p?.audience,p?.about,p?.country,...(p?.style||[]),...((p?.structure||[]).flatMap(z=>Array.isArray(z)?z:[])),...((p?.breakdown||[]).flatMap(z=>Array.isArray(z)?z:[]))].filter(Boolean).join(' ').toLowerCase();
 if(!terms.every(t=>hay.includes(t)))return false}return true});
