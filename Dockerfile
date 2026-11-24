@@ -6,8 +6,11 @@ RUN tar -xzf /tmp/atlas-source.tar.gz -C /srv/atlas && rm /tmp/atlas-source.tar.
 COPY screenshots/ /srv/atlas/screenshots/
 COPY enhancements/atlas-research.js /srv/atlas/static/assets/atlas-research.js
 COPY enhancements/atlas-research.css /srv/atlas/static/assets/atlas-research.css
-RUN python -c "from pathlib import Path; p=Path('static/index.html'); s=p.read_text(); assert '</head>' in s; p.write_text(s.replace('</head>', '<link rel=\"stylesheet\" href=\"/assets/atlas-research.css?v=24\"><script defer src=\"/assets/atlas-research.js?v=24\"></script></head>'))"
+COPY enhancements/atlas-next.js /srv/atlas/static/assets/atlas-next.js
+COPY enhancements/atlas-next.css /srv/atlas/static/assets/atlas-next.css
+COPY enhancements/build_palettes.py /srv/atlas/build_palettes.py
+RUN python -c "from pathlib import Path; p=Path('static/index.html'); s=p.read_text(); assert '</head>' in s; p.write_text(s.replace('</head>', '<link rel=\"stylesheet\" href=\"/assets/atlas-research.css?v=30\"><script defer src=\"/assets/atlas-research.js?v=30\"></script><link rel=\"stylesheet\" href=\"/assets/atlas-next.css?v=30\"><script defer src=\"/assets/atlas-next.js?v=30\"></script></head>'))"
 RUN pip install --no-cache-dir -r requirements.txt && mkdir -p /srv/atlas/data
-RUN python create_module_catalog.py
+RUN python create_module_catalog.py && python build_palettes.py
 EXPOSE 8000
 CMD ["python","run.py"]
