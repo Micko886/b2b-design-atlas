@@ -152,7 +152,7 @@ async def main():
  existing_notes={x['id'] for x in data['notes']}
  existing_mods={x['id'] for x in mods}
  async with async_playwright() as p:
-  browser=await p.chromium.launch(headless=True,args=['--no-sandbox','--disable-dev-shm-usage'])
+  browser=await p.chromium.launch(headless=True,channel='chrome',args=['--no-sandbox','--disable-dev-shm-usage'])
   sem=asyncio.Semaphore(3)
   home=await asyncio.gather(*(home_capture(browser,sem,row,existing) for row in CONF['sites']))
   approved=[x[0]['id'] for x in home if x[0]]
