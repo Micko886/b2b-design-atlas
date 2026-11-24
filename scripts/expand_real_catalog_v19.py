@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Curated Atlas V1.8 catalog expansion. Capture real pages, never synthesize visuals.
+"""Curated Atlas V1.9 catalog expansion. Capture real pages, never synthesize visuals.
 
 Run from extracted source with the repo's tracked screenshots folder present.
 Only browser-verified successful captures enter source_index.json.
@@ -13,7 +13,7 @@ from playwright.async_api import async_playwright
 
 ROOT=Path(__file__).resolve().parents[1]
 SCREENS=ROOT/'screenshots'
-OUT=SCREENS/'research-v18'
+OUT=SCREENS/'research-v19'
 AUDIT=[]
 STAMP=datetime.datetime.now(datetime.timezone.utc).isoformat()
 # Company, sector, specific visual learning objective; actual source URLs vetted separately.
