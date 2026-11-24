@@ -1,0 +1,132 @@
+name: Expand B2B Atlas with real company captures V1.9
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/expand-catalog-v19.yml'
+permissions:
+  contents: write
+concurrency:
+  group: atlas-v19-curation
+  cancel-in-progress: false
+jobs:
+  curate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Browser and dependencies
+        run: |
+          python -m pip install -q playwright pillow
+          python -m playwright install --with-deps chromium
+          mkdir -p "$RUNNER_TEMP/atlas-v19"
+          tar -xzf atlas-source-v18.tar.gz -C "$RUNNER_TEMP/atlas-v19"
+          cp -a screenshots "$RUNNER_TEMP/atlas-v19/screenshots"
+          mkdir -p "$RUNNER_TEMP/atlas-v19/scripts"
+          cp scripts/expand_real_catalog_v19.py "$RUNNER_TEMP/atlas-v19/scripts/"
+          python -m pip install -q -r "$RUNNER_TEMP/atlas-v19/requirements.txt"
+      - name: Capture only verified authentic websites and sections
+        run: |
+          cd "$RUNNER_TEMP/atlas-v19"
+          python scripts/expand_real_catalog_v19.py
+          python create_module_catalog.py
+      - name: Feature verified new references on the homepage
+        run: |
+          python - <<'PY'
+          import json,os,pathlib
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'atlas-v19'
+          approved=json.loads((root/'screenshots/research-v19/audit.json').read_text())['approved']
+          import re
+          preferred=[x for x in ['boston-dynamics','corning','onshape','ge-vernova','universal-robots','vestas','schneider-electric','siemens-healthineers','celonis','rockwell-automation'] if x in approved][:6]
+          p=root/'static/assets/atlas-v10.js'
+          s=p.read_text()
+          match=re.search(r"const curated=\[[^\]]*\](?=\.map\(id=>state\.sites\.find)",s)
+          assert match, 'Cannot locate homepage curated list'
+          old_ids=re.findall(r"'([^']+)'",match.group())
+          merged=list(dict.fromkeys(preferred+old_ids))
+          s=s[:match.start()]+"const curated=["+','.join(repr(x) for x in merged)+"]"+s[match.end():]
+          p.write_text(s)
+          print('HOMEPAGE_FEATURED',preferred)
+          PY
+      - name: Boot local server
+        run: |
+          cd "$RUNNER_TEMP/atlas-v19"
+          ATLAS_DB_PATH=/tmp/atlas-v19.sqlite3 PORT=8798 python run.py >/tmp/v19-server.log 2>&1 &
+          for i in $(seq 1 45); do curl -fsS http://127.0.0.1:8798/api/health && break || sleep 1; done
+      - name: Acceptance test all published screenshots and responsive layouts
+        run: |
+          python - <<'PY'
+          import asyncio,json,os,pathlib
+          from playwright.async_api import async_playwright
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'atlas-v19'
+          report=json.loads((root/'screenshots/research-v19/audit.json').read_text())
+          assert report['accepted']>=12
+          assert report['new_modules']>=report['accepted']
+          async def check():
+            async with async_playwright() as p:
+              browser=await p.chromium.launch(headless=True,args=['--no-sandbox'])
+              for mode,width in [('desktop',1440),('mobile',390)]:
+                page=await browser.new_page(viewport={'width':width,'height':900},device_scale_factor=1)
+                errs=[];page.on('pageerror',lambda exc:errs.append(str(exc)))
+                for path,typ in [('/','home'),('/websites','websites'),('/sections','sections')]:
+                  await page.goto('http://127.0.0.1:8798'+path,wait_until='networkidle',timeout=70000)
+                  await page.evaluate("""async()=>{
+                    const imgs=[...document.images];for(const i of imgs)i.loading='eager';
+                    await Promise.race([Promise.all(imgs.map(i=>i.decode().catch(()=>null))),new Promise(r=>setTimeout(r,9000))])
+                  }""")
+                  assert not errs,(mode,typ,errs)
+                  assert await page.evaluate('document.documentElement.scrollWidth<=innerWidth+3'),(mode,typ,'overflow')
+                  if typ=='websites':
+                    count=await page.locator('.v13-website-wall .site-card').count()
+                    assert count==29+report['accepted'],('website cards',count)
+                    for sid in report['approved']:
+                      el=page.locator('.v13-website-wall .site-card img[src="/screenshots/sites/'+sid+'.webp"]')
+                      assert await el.count()==1,(sid,'missing website')
+                      assert await el.first.evaluate('(x)=>x.naturalWidth>0'),(sid,'broken image')
+                  if typ=='sections':
+                    count=await page.locator('.v13-section-wall .module-card').count()
+                    assert count==54+report['new_modules'],('section cards',count)
+                    for sid in report['approved']:
+                      assert await page.locator('.v13-section-wall .module-card img[src*="/screenshots/modules/'+sid+'-hero.webp"]').count()==1,(sid,'missing section')
+                  assert await page.evaluate('[...document.images].every(x=>x.naturalWidth>0)'),(mode,typ,'broken image')
+                  await page.screenshot(path=str(root/'screenshots/research-v19'/f'{typ}-{mode}.png'),full_page=(mode=='desktop'))
+                  print('QA_PASS',typ,mode,'images',await page.locator('img').count(),flush=True)
+                await page.close()
+              await browser.close()
+          asyncio.run(check())
+          PY
+      - name: Build source and preserve authentic screenshots
+        run: |
+          cp -a "$RUNNER_TEMP/atlas-v19/screenshots/." screenshots/
+          tar -czf atlas-source-v19.tar.gz \
+            --exclude='./screenshots' --exclude='./data' \
+            --exclude='__pycache__' --exclude='.pytest_cache' \
+            -C "$RUNNER_TEMP/atlas-v19" .
+          sed -i 's/atlas-source-v18.tar.gz/atlas-source-v19.tar.gz/g' Dockerfile
+          python - <<'PY'
+          import json
+          r=json.load(open('screenshots/research-v19/audit.json'))
+          with open('RESEARCH-V19.md','w') as f:
+            f.write('# V1.9 real B2B reference expansion\n\n')
+            f.write('Only source-attributed websites captured by real Chromium without bot bypass are published.\n\n')
+            f.write(f"Accepted {r['accepted']} of {r['attempted']} candidates; new section studies: {r['new_modules']}.\n\n")
+            for a in r['results']:
+              if a.get('kind')=='website':f.write('- '+a['id']+': '+a['url']+' — captured, official source\n')
+            f.write('\nRejected candidate details: screenshots/research-v19/audit.json.\n')
+            f.write('\nScreenshots remain copyright of their original owners.\n')
+          PY
+      - name: Commit verified new sources, screenshots and QA
+        run: |
+          git config user.name "B2B Atlas Curator"
+          git config user.email "actions@users.noreply.github.com"
+          git add atlas-source-v19.tar.gz Dockerfile RESEARCH-V19.md screenshots/sites screenshots/notes screenshots/modules screenshots/research-v19
+          if ! git diff --cached --quiet; then
+            git commit -m "Add verified B2B company screenshots and section studies"
+            git restore .
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
