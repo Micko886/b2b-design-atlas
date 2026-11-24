@@ -1,9 +1,0 @@
-(()=>{"use strict";
-const content=document.querySelector('#content');if(!content)return;
-function enhance(){const root=content.firstElementChild;if(!root)return;
-if(root.matches('.v31-library')){const refine=root.querySelector('.atlas-refine');if(refine&&!refine.querySelector('.v32-filter-toggle')){const row=refine.querySelector('.atlas-refine-row'),form=refine.querySelector('.atlas-discover'),topics=refine.querySelector('.atlas-topics');const detail=document.createElement('details');detail.className='v32-filter-details';const summary=document.createElement('summary');summary.className='v32-filter-toggle';summary.innerHTML='<span>Advanced filters</span><small>Style · Color · Density · Design brief</small><b aria-hidden="true">+</b>';detail.append(summary);const inner=document.createElement('div');inner.className='v32-filter-inner';for(const n of [row,form,topics])if(n)inner.append(n);detail.append(inner);refine.append(detail);const active=[...inner.querySelectorAll('select[data-refine]')].some(e=>e.dataset.refine==='density'?e.value!=='standard':!!e.value)||!!inner.querySelector('#atlas-intent')?.value;detail.open=active;}}
-if(root.matches('.v31-detail')&&!root.querySelector('.v32-detail-ready')){root.classList.add('v32-detail-ready');const old=root.querySelector('.research-insight');const note=old?.querySelector('.research-note');const summary=root.querySelector('.detail-heading p');if(note&&summary&&note.innerText.includes(summary.innerText.trim()))note.hidden=true;}
-if(root.matches('.v31-pattern-detail')&&!root.classList.contains('v32-pattern-ready')){root.classList.add('v32-pattern-ready');const guide=root.querySelector('.atlas-pattern-guide'),grid=root.querySelector('.related-grid');if(guide&&grid&&guide.nextElementSibling===grid){grid.after(guide);}}
-}
-new MutationObserver(enhance).observe(content,{childList:true,subtree:true});enhance();
-})();

@@ -1,11 +1,14 @@
 FROM python:3.12-slim
 WORKDIR /srv/atlas
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 ATLAS_DB_PATH=/srv/atlas/data/atlas.sqlite3 ATLAS_REMOTE_CAPTURE_FALLBACK=0
-# Preserve the original backend, source catalog and real captured assets.
+# Backend and real captured assets stay intact.
 COPY atlas-source-v23.tar.gz /tmp/atlas-source.tar.gz
 RUN tar -xzf /tmp/atlas-source.tar.gz -C /srv/atlas && rm /tmp/atlas-source.tar.gz
 COPY screenshots/ /srv/atlas/screenshots/
-# One frontend entry and one design system. No V24-V36 layering.
+# Remove legacy frontend assets so no old cascade can accidentally load.
+RUN find /srv/atlas/static/assets -maxdepth 1 -type f -name "atlas-*.js" -delete \
+ && find /srv/atlas/static/assets -maxdepth 1 -type f -name "atlas-*.css" -delete
+# One HTML entry, one stylesheet, one app script and two immutable research datasets.
 COPY frontend/index.html /srv/atlas/static/index.html
 COPY frontend/app.css /srv/atlas/static/assets/app.css
 COPY frontend/app.js /srv/atlas/static/assets/app.js
