@@ -1,0 +1,86 @@
+name: Verify and publish Patterns V2.2
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/patterns-v22.yml']
+permissions:
+  contents: write
+concurrency:
+  group: atlas-patterns-v22
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply scoped Patterns redesign
+        run: |
+          mkdir -p /tmp/atlas-v22
+          tar -xzf atlas-source-v21.tar.gz -C /tmp/atlas-v22
+          cp -a screenshots /tmp/atlas-v22/screenshots
+          python scripts/redesign-patterns-v22.py /tmp/atlas-v22
+          node --check /tmp/atlas-v22/static/assets/atlas-v10.js
+          python -m pip install -q -r /tmp/atlas-v22/requirements.txt playwright
+          google-chrome --version
+      - name: Start real preview
+        run: |
+          cd /tmp/atlas-v22
+          ATLAS_DB_PATH=/tmp/atlas-v22.sqlite3 PORT=8792 python run.py >/tmp/atlas-v22.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8792/api/health && break || sleep 1; done
+      - name: Verify gallery presentation and actual filtering interactions
+        run: |
+          mkdir -p screenshots/qa-v22
+          python - <<'PY'
+          import asyncio
+          from playwright.async_api import async_playwright
+          async def main():
+            async with async_playwright() as p:
+              browser=await p.chromium.launch(channel='chrome',headless=True,args=['--no-sandbox','--disable-dev-shm-usage'])
+              for name,w in [('desktop',1440),('tablet',820),('mobile',390)]:
+                page=await browser.new_page(viewport={'width':w,'height':900})
+                errors=[]
+                page.on('pageerror',lambda e:errors.append(str(e)))
+                await page.goto('http://127.0.0.1:8792/patterns',wait_until='networkidle')
+                assert await page.locator('.pt-card:visible').count()==20
+                assert await page.locator('.pt-example').count()==40
+                await page.evaluate("""async()=>{for(const i of document.images)i.loading='eager';await Promise.race([Promise.all([...document.images].map(i=>i.decode().catch(()=>null))),new Promise(r=>setTimeout(r,7000))])}""")
+                assert await page.evaluate('[...document.querySelectorAll(".pt-image img")].every(i=>i.naturalWidth>0&&getComputedStyle(i).objectFit==="contain")')
+                assert await page.evaluate('document.documentElement.scrollWidth<=innerWidth+2')
+                await page.screenshot(path=f'screenshots/qa-v22/patterns-{name}.png')
+                await page.locator('[data-pt-filter="2"]').click()
+                assert await page.locator('.pt-card:visible').count()==4
+                assert await page.locator('[data-pt-count]').inner_text()=='4 patterns'
+                assert await page.locator('[data-pt-filter="2"]').get_attribute('aria-pressed')=='true'
+                await page.locator('.pt-card:visible .pt-notes summary').first.click()
+                assert await page.locator('.pt-card:visible details[open]').count()==1
+                await page.screenshot(path=f'screenshots/qa-v22/filtered-{name}.png')
+                await page.locator('[data-pt-filter="0"]').click()
+                assert await page.locator('.pt-card:visible').count()==20
+                await page.locator('.pt-example').first.click()
+                await page.wait_for_url('**/sections/**')
+                assert not errors,errors
+                print('PATTERNS_V22_PASS',name,flush=True)
+                await page.close()
+              page=await browser.new_page(viewport={'width':1440,'height':900})
+              for route,cls,n in [('websites','.site-card',83),('sections','.module-card',175)]:
+                await page.goto('http://127.0.0.1:8792/'+route,wait_until='networkidle')
+                assert await page.locator(cls).count()==n
+                print('UNCHANGED',route,n,flush=True)
+              await browser.close()
+          asyncio.run(main())
+          PY
+      - name: Package and publish verified source
+        run: |
+          tar -czf atlas-source-v22.tar.gz --exclude='./screenshots' --exclude='./data' --exclude='__pycache__' --exclude='.pytest_cache' -C /tmp/atlas-v22 .
+          sed -i 's/atlas-source-v21.tar.gz/atlas-source-v22.tar.gz/g' Dockerfile
+          git config user.name "B2B Atlas UI QA"
+          git config user.email "actions@users.noreply.github.com"
+          git add atlas-source-v22.tar.gz Dockerfile screenshots/qa-v22
+          git commit -m "Publish compact Patterns gallery with intact reference screenshots and category filtering"
+          git pull --rebase origin main
+          git push origin HEAD:main
