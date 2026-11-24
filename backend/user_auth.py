@@ -1,6 +1,7 @@
 """User accounts and private collections for B2B Atlas."""
 from __future__ import annotations
-import os, re, sqlite3, secrets, hashlib, hmac, threading, uuid
+import os, re, sqlite3, secrets, hashlib, hmac, threading, uuid, smtplib
+from email.message import EmailMessage
 from datetime import datetime, timezone, timedelta
 from contextlib import contextmanager
 from urllib.parse import urlparse
@@ -13,6 +14,12 @@ TTL=30*24*3600
 PG_URL=os.getenv("ATLAS_USERS_DATABASE_URL","").strip()
 SQLITE_DEMO=os.getenv("ATLAS_ALLOW_EPHEMERAL_AUTH","0")=="1"
 SQLITE_FILE=os.getenv("ATLAS_USERS_DB_PATH","/srv/atlas/data/users-demo.sqlite3")
+SMTP_HOST=os.getenv("ATLAS_SMTP_HOST","").strip()
+SMTP_USER=os.getenv("ATLAS_SMTP_USER","").strip()
+SMTP_PASS=os.getenv("ATLAS_SMTP_PASSWORD","")
+SMTP_FROM=os.getenv("ATLAS_SMTP_FROM","").strip()
+SMTP_PORT=int(os.getenv("ATLAS_SMTP_PORT","587"))
+RESET_EMAIL_ENABLED=bool(SMTP_HOST and SMTP_USER and SMTP_PASS and SMTP_FROM)
 EMAIL=re.compile(r"^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,40}$")
 KEY=re.compile(r"^(site|module|pattern|article):([a-z0-9][a-z0-9-]{0,110})$")
 FOLDER_ID=re.compile(r"^[0-9a-f-]{36}$")
@@ -171,6 +178,30 @@ def grant(conn,response,user_id):
     response.headers["Cache-Control"]="no-store"
     return csrf
 
+class ResetRequest(BaseModel):
+    email:str=Field(min_length=5,max_length=254)
+    @field_validator("email")
+    @classmethod
+    def clean_email(cls,v):
+        v=v.strip().casefold()
+        if not EMAIL.fullmatch(v):raise ValueError("邮箱格式不正确")
+        return v
+class ResetComplete(BaseModel):
+    token:str=Field(min_length=40,max_length=160)
+    new_password:str=Field(min_length=10,max_length=128)
+
+def send_reset_email(to,token):
+    msg=EmailMessage()
+    msg["Subject"]="B2B Atlas · 重置账户密码"
+    msg["From"]=SMTP_FROM
+    msg["To"]=to
+    url=os.getenv("ATLAS_PUBLIC_ORIGIN","https://b2b-design-atlas-preview.onrender.com").rstrip("/")+"/reset-password?token="+token
+    msg.set_content("你正在重置 B2B Atlas 的登录密码。\n\n请在 20 分钟内打开以下链接：\n"+url+"\n\n如果不是你发起的操作，请忽略这封邮件。")
+    with smtplib.SMTP(SMTP_HOST,SMTP_PORT,timeout=12) as server:
+        server.starttls()
+        server.login(SMTP_USER,SMTP_PASS)
+        server.send_message(msg)
+
 class Register(BaseModel):
     email:str=Field(min_length=5,max_length=254)
     display_name:str=Field(min_length=2,max_length=48)
@@ -268,7 +299,7 @@ def register_auth_routes(app:FastAPI):
         try:
             ensure_ready()
             return {"available":True,"mode":"postgres" if PG_URL else "demo",
-                    "message":"" if PG_URL else "演示存储：重新部署或服务重启后账号和收藏可能丢失。"}
+                    "message":"" if PG_URL else "演示存储：重新部署或服务重启后账号和收藏可能丢失。","password_reset_available":RESET_EMAIL_ENABLED}
         except HTTPException:
             return {"available":False,"mode":"unavailable","message":"账号数据库暂时不可用。"}
     @router.get("/auth/me")
@@ -449,4 +480,35 @@ def register_auth_routes(app:FastAPI):
         response.headers["Content-Disposition"]='attachment; filename="b2b-atlas-personal-export.json"'
         return {"version":1,"exported_at":now(),"user":public_user(s),"library":library_data(s["user_id"]),
                 "notice":"仅包含该账户的公开资料字段和私人收藏内容，不包含密码、登录令牌或其他用户资料。"}
+    @router.post("/auth/request-password-reset")
+    def request_password_reset(data:ResetRequest,request:Request):
+        origin(request);ensure_ready()
+        if not RESET_EMAIL_ENABLED:
+            error(503,"邮箱服务尚未配置，请联系网站管理员处理密码重置。")
+        limit(request,"password-reset",5,3600)
+        with db() as conn:
+            account=conn.one("SELECT id,email FROM atlas_users WHERE email=?",(data.email,))
+        if account:
+            token=secrets.token_urlsafe(48)
+            with db() as conn:
+                conn.execute("DELETE FROM atlas_password_resets WHERE user_id=?",(account["id"],))
+                expiry=(datetime.now(timezone.utc)+timedelta(minutes=20)).isoformat(timespec="seconds")
+                conn.execute("INSERT INTO atlas_password_resets(token_hash,user_id,expires_at,created_at) VALUES(?,?,?,?)",
+                             (sha(token),account["id"],expiry,now()))
+            try:send_reset_email(account["email"],token)
+            except Exception:error(503,"邮件发送暂时失败，请稍后再试。")
+        return {"ok":True,"message":"如果邮箱已注册，重置邮件将在稍后发送。"}
+    @router.post("/auth/reset-password")
+    def reset_password(data:ResetComplete,request:Request):
+        origin(request);ensure_ready()
+        limit(request,"reset-complete",12,900)
+        with db() as conn:
+            row=conn.one("SELECT user_id,expires_at FROM atlas_password_resets WHERE token_hash=?",(sha(data.token),))
+            if not row or row["expires_at"]<=now():
+                error(400,"链接无效或已经过期。")
+            conn.execute("UPDATE atlas_users SET password_hash=?,updated_at=? WHERE id=?",
+                         (hash_password(data.new_password),now(),row["user_id"]))
+            conn.execute("DELETE FROM atlas_sessions WHERE user_id=?",(row["user_id"],))
+            conn.execute("DELETE FROM atlas_password_resets WHERE user_id=?",(row["user_id"],))
+        return {"ok":True}
     app.include_router(router)
