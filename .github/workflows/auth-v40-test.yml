@@ -17,3 +17,7 @@ jobs:
         run: python -m py_compile backend/user_auth.py backend/install_auth.py backend/seo_routes.py
       - name: Exercise real account API with temporary isolated DB
         run: PYTHONPATH=backend python backend/test_auth.py
+      - name: Test SEO paths and HTTP statuses
+        run: PYTHONPATH=backend python backend/test_seo.py
+      - name: Check frontend JavaScript syntax
+        run: node --check frontend/app.js
