@@ -115,7 +115,7 @@ def seo_document(full_path):
               "description":desc,"datePublished":record.get("published"),
               "author":{"@type":"Organization","name":record.get("author","B2B Atlas")},
               "publisher":{"@type":"Organization","name":"B2B Atlas"},"mainEntityOfPage":canonical,"image":image}
-        extras+='<script type="application/ld+json">'+json.dumps(data,ensure_ascii=False).replace("<","\\u003c")+'</script>'
+        extras+='<script id="atlas-seo-schema" type="application/ld+json">'+json.dumps(data,ensure_ascii=False).replace("<","\\u003c")+'</script>'
     template=template.replace("</head>",extras+"</head>",1)
     headers={"Cache-Control":"no-cache","X-Robots-Tag":"noindex" if not record["indexed"] else "index, follow"}
     return HTMLResponse(template,status_code=200 if found else 404,headers=headers)
@@ -123,7 +123,7 @@ def seo_document(full_path):
 def register_seo_routes(app:FastAPI):
     @app.get("/robots.txt",include_in_schema=False)
     def robots():
-        return PlainTextResponse("User-agent: *\nDisallow: /account\nDisallow: /collections\nDisallow: /board\nDisallow: /login\nDisallow: /register\nSitemap: "+ORIGIN+"/sitemap.xml\n",headers={"Cache-Control":"public, max-age=3600"})
+        return PlainTextResponse("User-agent: *\nDisallow: /account\nDisallow: /collections\nDisallow: /board\nDisallow: /login\nDisallow: /register\nDisallow: /forgot-password\nDisallow: /reset-password\nSitemap: "+ORIGIN+"/sitemap.xml\n",headers={"Cache-Control":"public, max-age=3600"})
     @app.get("/sitemap.xml",include_in_schema=False)
     def sitemap():
         c=catalog()
