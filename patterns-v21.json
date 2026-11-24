@@ -34,7 +34,7 @@
       "modules": [
         "intrepid-automation-hero",
         "machina-labs-hero",
-        "oneprom-hero"
+        "cfs-energy-hero"
       ]
     },
     {
@@ -90,7 +90,7 @@
       "modules": [
         "arburg-product-family",
         "stratasys-detail",
-        "vention-detail"
+        "tekna-machines-cnc-range"
       ]
     },
     {
@@ -132,7 +132,7 @@
       "modules": [
         "xometry-rfq-first",
         "oshcut-hero",
-        "quickparts-hero"
+        "xometry-3d-printing-service"
       ]
     },
     {
@@ -230,7 +230,7 @@
       "modules": [
         "cly-del-detail",
         "hexagon-capability",
-        "sick-detail"
+        "aixtron-deposition-products"
       ]
     },
     {
@@ -258,7 +258,7 @@
       "modules": [
         "flex-manufacturing-detail",
         "terminal-industries-detail",
-        "materialise-detail"
+        "prima-power-automation-robotics"
       ]
     },
     {
@@ -272,7 +272,7 @@
       "modules": [
         "biomason-detail",
         "oneprom-detail",
-        "oshcut-detail"
+        "prima-power-production-lines"
       ]
     },
     {
