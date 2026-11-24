@@ -3,12 +3,12 @@
 (function(){
 const $=q=>document.querySelector(q), $$=q=>Array.from(document.querySelectorAll(q));
 const app=$('#app'), overlay=$('#overlay'), toast=$('#toast');
-const state={sites:[],notes:[],modules:[],patterns:[],articles:[],articleCategories:[],articleEditorialNotice:'',profiles:{},palettes:{},q:'',sector:'',category:'',style:'',color:'',sort:'curated',density:'standard',saved:read('saved',[]),board:read('board',[]),notesByKey:read('atlas-board-notes',{}),compare:[],imageIndex:0};
+const state={sites:[],notes:[],modules:[],patterns:[],articles:[],articleCategories:[],articleEditorialNotice:'',profiles:{},palettes:{},q:'',sector:'',category:'',style:'',color:'',sort:'curated',density:'standard',saved:[],board:[],notesByKey:{},legacySaved:read('saved',[]),legacyBoard:read('board',[]),legacyNotes:read('atlas-board-notes',{}),auth:{authenticated:false,user:null,csrf_token:''},authStatus:{available:false,mode:'unconfigured',message:''},pendingFavorite:null,authReady:false,compare:[],imageIndex:0};
 const FILTER_STYLE=['Minimal','Cinematic','Product-led','Technical','Editorial','Photography','3D / Illustration','Motion'];
 const FILTER_COLOR=['Black','White','Gray','Red','Orange','Yellow','Green','Blue','Purple','Pink'];
 const styleRules={'Minimal':/minimal|restrained|simple|clean/,'Cinematic':/cinematic|immersive|footage|film/,'Product-led':/product|hardware|object|machine/,'Technical':/technical|engineering|specification|data/,'Editorial':/editorial|typography|narrative/,'Photography':/photograph|imagery|real images/,'3D / Illustration':/illustration|render|3d/,'Motion':/motion|animation|video/};
 const curated=['vast','figure-robotics','fictiv','skydio','lumafield','helion','saronic','cfs-energy'];
-let currentScreens=[], currentScreen=0, toastTimer=0, searchTimer=0;
+let currentScreens=[], currentScreen=0, toastTimer=0, searchTimer=0, noteTimer=0;
 function read(k,v){try{let r=JSON.parse(localStorage.getItem(k));return r===null?v:r}catch{return v}}
 function store(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
 function h(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -234,10 +234,134 @@ function detailView(s,m){
   <section class="detail-sources"><strong>资料来源</strong><span>${reviewed?'部分属性来自已检查的官网与样式声明。其他资源仍以截图观察为主。':'当前资料为收录时的编辑性描述，部分设计属性尚未独立核实。'}</span><div class="sources">${(p?.sources?.length&&!m?p.sources:[[s.name,s.url]]).map(([title,url])=>`<a href="${h(url)}" target="_blank" rel="noopener noreferrer">${h(title)} ↗</a>`).join('')}</div></section>
  </div>`;
 }
-function collectionsView(){let a=state.saved.map(byKey).filter(Boolean);return '<div class="shell utility-page">'+topHeading('PERSONAL LIBRARY','Saved References','Your saved website and section inspirations are stored locally in this browser.')+countTop(a.length,'saved references')+(a.length?'<div class="masonry">'+a.map((x,i)=>card(x,i,'saved')).join('')+'</div>':'<div class="empty"><h2>Nothing saved yet</h2><p>Save references from any website, section or pattern study.</p><a href="/websites" data-link="/websites" class="primary-button">Explore Websites ↗</a></div>')+'</div>'}
-function boardView(){let items=state.board.map(byKey).filter(Boolean);return '<div class="shell utility-page">'+topHeading('WORKSPACE','My Design Board','Collect references for a project, add observations and export a research brief.')+'<div class="board-tools"><span>'+items.length+' references</span><button data-action="export-board" class="primary-button" '+(!items.length?'disabled':'')+'>Export Markdown ↗</button></div>'+(items.length?'<div class="board-grid">'+items.map(x=>'<article class="board-item"><div class="board-image"><a href="'+cardInfo(x).url+'" data-link="'+cardInfo(x).url+'"><img loading="lazy" src="'+img(x.screenshot_url)+'" alt="'+h(cardInfo(x).name)+'"></a></div><div class="board-heading"><a href="'+cardInfo(x).url+'" data-link="'+cardInfo(x).url+'">'+h(cardInfo(x).name)+'</a><button data-action="board" data-key="'+h(key(x))+'" aria-label="Remove from board">×</button></div><p>'+h(cardInfo(x).sub)+'</p><label>Research note<textarea data-note="'+h(key(x))+'" placeholder="What makes this reference useful for your project?">'+h(state.notesByKey[key(x)]||'')+'</textarea></label></article>').join('')+'</div>':'<div class="empty"><h2>Start collecting inspiration</h2><p>Add references from the gallery or detail pages to build your project brief.</p><a href="/websites" data-link="/websites" class="primary-button">Explore Websites ↗</a></div>')+'</div>'}
+
+/* Account and identity: all personal data is fetched from the authenticated API.
+   Never treat localStorage entries as authenticated saves. */
+function loggedIn(){return !!state.auth?.authenticated}
+function normalizeNext(v){
+ try{if(!v||v.startsWith('//'))return '/account';const u=new URL(v,location.origin);return u.origin===location.origin&&u.pathname.startsWith('/')?u.pathname+u.search:'/account'}catch{return '/account'}
+}
+function authDestination(){return normalizeNext(new URLSearchParams(location.search).get('next')||'/account')}
+async function api(url,options={}){
+ const headers={'Content-Type':'application/json',...options.headers};
+ if(state.auth?.csrf_token)headers['X-CSRF-Token']=state.auth.csrf_token;
+ const response=await fetch(url,{...options,credentials:'same-origin',headers,cache:'no-store'});
+ let body={};try{body=await response.json()}catch{}
+ if(!response.ok){let message=typeof body.detail==='string'?body.detail:response.status===401?'会话已过期，请重新登录。':response.status===503?'账号服务暂时不可用，请稍后重试。':'操作失败，请重试。';const e=new Error(message);e.status=response.status;throw e}
+ return body;
+}
+async function loadLibrary(){
+ if(!loggedIn()){state.saved=[];state.board=[];state.notesByKey={};return}
+ const d=await api('/api/me/library');
+ state.saved=d.saved||[];state.board=d.board||[];state.notesByKey=d.notes||{};
+}
+async function syncAuth(){
+ try{
+  const status=await api('/api/auth/status');
+  state.authStatus=status;
+  if(!status.available){state.auth={authenticated:false,user:null,csrf_token:''};state.authReady=true;return}
+  const me=await api('/api/auth/me');
+  state.auth=me.authenticated?me:{authenticated:false,user:null,csrf_token:''};
+  if(me.authenticated)await loadLibrary();
+ }catch(e){
+  console.warn('Account bootstrap unavailable',e.message);
+  state.auth={authenticated:false,user:null,csrf_token:''};
+  state.authStatus={available:false,mode:'unavailable',message:'账号服务暂时不可用。'};
+ }finally{state.authReady=true}
+}
+function accountPrompt(message='登录后即可收藏与建立研究板。'){
+ const next=location.pathname+location.search;
+ return '<div class="account-gate"><div class="account-gate-icon">♧</div><h2>个人资料需要登录</h2><p>'+h(message)+'</p><div class="account-gate-actions"><a class="primary-button" href="/login?next='+encodeURIComponent(next)+'" data-link="/login?next='+encodeURIComponent(next)+'">登录账户 ↗</a><a class="quiet-button" href="/register?next='+encodeURIComponent(next)+'" data-link="/register?next='+encodeURIComponent(next)+'">创建账户</a></div></div>'
+}
+function authView(register=false){
+ const label=register?'注册账户':'登录账户';
+ const next=authDestination();
+ const status=state.authStatus;
+ if(loggedIn())return '<div class="shell auth-page"><div class="account-gate"><h1>你已经登录</h1><p>继续进入用户中心查看个人收藏与资料。</p><a href="/account" data-link="/account" class="primary-button">进入用户中心 ↗</a></div></div>';
+ return '<div class="shell auth-page"><div class="auth-aside"><span class="eyebrow">YOUR B2B ATLAS</span><h1>把优秀设计，<br>变成你的灵感资产。</h1><p>创建专属账号，在不同设备间查看个人收藏、研究板和项目笔记。研究不用从头开始。</p><div class="auth-perks"><div><b>01</b><span>保存网站与 Section 参考</span></div><div><b>02</b><span>建立自己的设计研究板</span></div><div><b>03</b><span>跨会话访问个人资料</span></div></div></div><section class="auth-card"><div class="auth-card-title"><span class="eyebrow">ACCOUNT / '+(register?'REGISTER':'SIGN IN')+'</span><h2>'+label+'</h2><p>'+(register?'创建一个账号，开始收藏你喜欢的设计案例。':'欢迎回来，继续整理你的 B2B 设计参考。')+'</p></div>'
+ +(status.mode==='demo'?'<p class="auth-alert">演示存储：重新部署后账号数据可能丢失，请勿用于正式资料。</p>':'')
+ +(!status.available?'<div class="auth-alert">'+h(status.message||'账号服务暂不可用。')+'</div>':'<form id="auth-form" data-mode="'+(register?'register':'login')+'"><label>邮箱地址<input name="email" type="email" autocomplete="email" placeholder="you@example.com" required maxlength="254"></label>'+(register?'<label>昵称<input name="display_name" autocomplete="nickname" placeholder="你的显示名称" required minlength="2" maxlength="48"></label>':'')+'<label>密码<input name="password" type="password" autocomplete="'+(register?'new-password':'current-password')+'" placeholder="'+(register?'至少 10 位字符':'输入密码')+'" required minlength="'+(register?'10':'1')+'" maxlength="128"></label><p id="auth-form-error" class="auth-error" role="alert" hidden></p><button class="primary-button auth-submit" type="submit">'+(register?'创建账户':'登录')+' ↗</button></form>')
+ +'<p class="auth-switch">'+(register?'已有账户？':'还没有账户？')+' <a href="'+(register?'/login':'/register')+'?next='+encodeURIComponent(next)+'" data-link="'+(register?'/login':'/register')+'?next='+encodeURIComponent(next)+'">'+(register?'前往登录':'免费创建账户')+'</a></p><p class="auth-smallprint">使用邮箱和密码登录。当前不支持邮件验证及密码找回，请妥善保管密码。</p></section></div>';
+}
+function accountView(){
+ if(!loggedIn())return '<div class="shell utility-page">'+accountPrompt('用户中心仅对登录用户开放，你的收藏和研究板会按账户隔离。')+'</div>';
+ const u=state.auth.user||{},savedCount=state.saved.length,boardCount=state.board.length;
+ const tab=new URLSearchParams(location.search).get('tab')||'saved',items=(tab==='board'?state.board:state.saved).map(byKey).filter(Boolean);
+ const legacyCount=(state.legacySaved?.length||0)+(state.legacyBoard?.length||0);
+ const joined=u.created_at?u.created_at.slice(0,10):'';
+ return '<div class="shell account-page"><div class="account-head"><div><span class="eyebrow">MY ACCOUNT / USER CENTER</span><h1>个人中心</h1><p>管理个人资料、收藏和设计研究板。</p></div><button class="quiet-button" data-action="logout">退出登录 ↗</button></div>'
+ +'<div class="account-overview"><div class="account-person"><div class="account-avatar">'+h((u.display_name||'A').slice(0,1).toUpperCase())+'</div><div><strong>'+h(u.display_name)+'</strong><span>'+h(u.email)+'</span><small>加入于 '+h(joined)+'</small></div></div><div class="account-metrics"><div><strong>'+savedCount+'</strong><span>已收藏</span></div><div><strong>'+boardCount+'</strong><span>研究板案例</span></div></div></div>'
+ +(legacyCount?'<div class="account-import"><div><b>发现此浏览器的旧版本地收藏</b><p>有 '+legacyCount+' 条旧数据。仅在你确认后导入当前账号，避免把共用设备的资料误关联到你。</p></div><button data-action="import-legacy" class="quiet-button">导入到当前账号 ↗</button></div>':'')
+ +'<div class="account-layout"><section class="account-library"><div class="account-library-head"><div><span class="eyebrow">YOUR REFERENCE LIBRARY</span><h2>我的资料库</h2></div><a href="/websites" data-link="/websites">发现更多 ↗</a></div><nav class="account-tabs" aria-label="个人资料分类"><a href="/account?tab=saved" data-link="/account?tab=saved" class="'+(tab!=='board'?'active':'')+'">我的收藏 <small>'+savedCount+'</small></a><a href="/account?tab=board" data-link="/account?tab=board" class="'+(tab==='board'?'active':'')+'">研究板 <small>'+boardCount+'</small></a></nav>'
+ +(items.length?'<div class="account-gallery">'+items.map((x,i)=>card(x,i,'account')).join('')+'</div>':'<div class="account-empty"><span>♡</span><h3>'+(tab==='board'?'研究板还没有内容':'还没有收藏的参考')+'</h3><p>在网站或 Section 上点击收藏，即可把优质案例保存到你的账号。</p><a href="/websites" data-link="/websites" class="primary-button">探索 Websites ↗</a></div>')+'</section>'
+ +'<aside class="account-settings"><section><h2>个人资料</h2><p>更新在站内显示的名字。</p><form id="profile-form"><label>昵称<input name="display_name" maxlength="48" minlength="2" required value="'+h(u.display_name)+'"></label><label>账户邮箱<input value="'+h(u.email)+'" disabled></label><button class="quiet-button" type="submit">保存资料</button><p class="account-inline-message" id="profile-message" hidden></p></form></section>'
+ +'<section><h2>账户安全</h2><p>修改密码后，其他设备的登录会话将失效。</p><form id="password-form"><label>当前密码<input name="current_password" type="password" autocomplete="current-password" required></label><label>新密码<input name="new_password" type="password" autocomplete="new-password" minlength="10" maxlength="128" required placeholder="至少 10 位字符"></label><button class="quiet-button" type="submit">更新密码</button><p class="account-inline-message" id="password-message" hidden></p></form></section><div class="account-security-note">账户收藏保存在服务器，并与当前登录身份关联。你的密码不会以明文保存。</div></aside></div></div>';
+}
+async function submitAuth(form){
+ const data=new FormData(form),register=form.dataset.mode==='register';
+ const payload={email:String(data.get('email')||''),password:String(data.get('password')||'')};
+ if(register)payload.display_name=String(data.get('display_name')||'');
+ const err=$('#auth-form-error'),button=form.querySelector('button[type=submit]');
+ if(err)err.hidden=true;if(button)button.disabled=true;
+ try{
+  const me=await api('/api/auth/'+(register?'register':'login'),{method:'POST',body:JSON.stringify(payload)});
+  state.auth=me;await loadLibrary();
+  notify(register?'注册成功，已登录':'登录成功');
+  const pending=state.pendingFavorite;state.pendingFavorite=null;
+  const next=authDestination();
+  go(next);
+  if(pending)await toggleIn(pending.key,pending.collection);
+ }catch(e){if(err){err.textContent=e.message;err.hidden=false}else notify(e.message)}
+ finally{if(button)button.disabled=false}
+}
+async function submitProfile(form){
+ const value=String(new FormData(form).get('display_name')||'').trim(),el=$('#profile-message');
+ try{
+  const d=await api('/api/auth/profile',{method:'PATCH',body:JSON.stringify({display_name:value})});
+  state.auth.user=d.user;notify('个人资料已更新');render();
+ }catch(e){if(el){el.textContent=e.message;el.hidden=false}}
+}
+async function submitPassword(form){
+ const data=new FormData(form),el=$('#password-message');
+ try{
+  await api('/api/auth/change-password',{method:'POST',body:JSON.stringify({current_password:String(data.get('current_password')||''),new_password:String(data.get('new_password')||'')})});
+  form.reset();notify('密码已更新，其他设备已退出');
+ }catch(e){if(el){el.textContent=e.message;el.hidden=false}}
+}
+async function logOut(){
+ try{await api('/api/auth/logout',{method:'POST',body:'{}'})}catch(e){notify(e.message);return}
+ state.auth={authenticated:false,user:null,csrf_token:''};
+ state.saved=[];state.board=[];state.notesByKey={};state.pendingFavorite=null;
+ notify('已安全退出登录');go('/');
+}
+async function importLegacy(){
+ if(!loggedIn())return;
+ const saved=Array.from(new Set(state.legacySaved||[])).filter(x=>/^(site|module):[a-z0-9][a-z0-9-]{0,110}$/.test(x)).slice(0,250);
+ const board=Array.from(new Set(state.legacyBoard||[])).filter(x=>/^(site|module):[a-z0-9][a-z0-9-]{0,110}$/.test(x)).slice(0,250);
+ let count=0;
+ try{
+  for(const [collection,keys] of [['saved',saved],['board',board]])for(const key of keys){
+   await api('/api/me/library',{method:'POST',body:JSON.stringify({collection,key})});count++;
+   if(collection==='board'&&state.legacyNotes?.[key])await api('/api/me/library/note',{method:'PATCH',body:JSON.stringify({key,note:String(state.legacyNotes[key]).slice(0,3000)})});
+  }
+  await loadLibrary();state.legacySaved=[];state.legacyBoard=[];state.legacyNotes={};
+  try{localStorage.removeItem('saved');localStorage.removeItem('board');localStorage.removeItem('atlas-board-notes')}catch{}
+  notify('成功导入 '+count+' 条旧版资料');render();
+ }catch(e){notify('部分资料可能已导入：'+e.message);await loadLibrary();render()}
+}
+
+function collectionsView(){
+ const a=state.saved.map(byKey).filter(Boolean);
+ if(!loggedIn())return '<div class="shell utility-page">'+accountPrompt('登录后可查看并管理你的个人收藏，收藏内容不会公开。')+'</div>';
+ return '<div class="shell utility-page">'+topHeading('MY COLLECTION','我的收藏','专属于你的 B2B 网站与页面参考，已同步到当前账号。')+countTop(a.length,'个收藏案例')+(a.length?'<div class="masonry">'+a.map((x,i)=>card(x,i,'saved')).join('')+'</div>':'<div class="account-empty"><h2>还没有收藏内容</h2><p>在网站或 Sections 页面点击书签图标开始收藏。</p><a href="/websites" data-link="/websites" class="primary-button">探索网站 ↗</a></div>')+'</div>';
+}
+function boardView(){
+ if(!loggedIn())return '<div class="shell utility-page">'+accountPrompt('研究板是账户专属空间。登录后可以整理案例、填写笔记并导出。')+'</div>';
+ const items=state.board.map(byKey).filter(Boolean);
+ return '<div class="shell utility-page">'+topHeading('WORKSPACE','我的研究板','将设计参考整理为项目研究资料，笔记会保存到你的账号。')+'<div class="board-tools"><span>'+items.length+' 个研究参考</span><button data-action="export-board" class="primary-button" '+(!items.length?'disabled':'')+'>导出 Markdown ↗</button></div>'+(items.length?'<div class="board-grid">'+items.map(x=>'<article class="board-item"><div class="board-image"><a href="'+cardInfo(x).url+'" data-link="'+cardInfo(x).url+'"><img loading="lazy" src="'+img(x.screenshot_url)+'" alt="'+h(cardInfo(x).name)+'"></a></div><div class="board-heading"><a href="'+cardInfo(x).url+'" data-link="'+cardInfo(x).url+'">'+h(cardInfo(x).name)+'</a><button data-action="board" data-key="'+h(key(x))+'" aria-label="从研究板移除">×</button></div><p>'+h(cardInfo(x).sub)+'</p><label>研究笔记<textarea data-note="'+h(key(x))+'" placeholder="这条参考对项目有什么价值？">'+h(state.notesByKey[key(x)]||'')+'</textarea></label></article>').join('')+'</div>':'<div class="account-empty"><h2>研究板还是空的</h2><p>打开案例详情，选择“研究工作台”即可加入。</p><a href="/websites" data-link="/websites" class="primary-button">探索网站 ↗</a></div>')+'</div>';
+}
 function notFound(){return '<div class="shell empty standalone"><h1>Reference not found</h1><p>Try browsing the current library.</p><a class="primary-button" href="/websites" data-link="/websites">Browse websites ↗</a></div>'}
-function render(){decodeFilters();const parts=location.pathname.split('/').filter(Boolean),section=parts[0]||'home';let html;if(section==='home')html=homeView();else if(section==='websites'&&!parts[1])html=listView('websites');else if(section==='sections'&&!parts[1])html=listView('sections');else if(section==='patterns'&&!parts[1])html=patternsView();else if(section==='insights'&&!parts[1])html=insightsIndex();else if(section==='insights'){let a=articleBy(parts[1]);html=a?insightArticle(a):notFound();}else if(section==='websites'){let s=site(parts[1]);html=s?detailView(s):notFound()}else if(section==='sections'){let m=moduleBy(parts[1]);html=m&&site(m.site_id)?detailView(site(m.site_id),m):notFound()}else if(section==='patterns'){let p=pattern(parts[1]);html=p?patternDetail(p):notFound()}else if(section==='board')html=boardView();else if(section==='collections'||section==='discover')html=collectionsView();else html=notFound();app.innerHTML=html;document.title=section==='insights'&&parts[1]?(articleBy(parts[1])?.title||'文章')+' · B2B Atlas':(section==='insights'?'资讯与研究':section==='home'?'Discover':titleCase(section))+' · B2B Atlas';const desc=$('meta[name="description"]');if(desc)desc.content=section==='insights'&&parts[1]?(articleBy(parts[1])?.subtitle||'B2B Atlas 设计研究'):section==='insights'?'B2B Atlas 资讯与研究：B2B 网站案例、设计方法、视觉系统与转化策略。':'A visual research library of B2B websites, sections and design patterns.';$$('.desktop-nav a').forEach(x=>x.classList.toggle('active',x.dataset.nav===section));$('#saved-count').hidden=!state.saved.length;$('#saved-count').textContent=state.saved.length;$('#mobile-menu').hidden=true;if(section==='websites'&&!parts[1]||section==='sections'&&!parts[1])renderResults();if(section==='insights'&&!parts[1])renderInsightResults()}
+function render(){decodeFilters();const parts=location.pathname.split('/').filter(Boolean),section=parts[0]||'home';let html;if(section==='home')html=homeView();else if(section==='websites'&&!parts[1])html=listView('websites');else if(section==='sections'&&!parts[1])html=listView('sections');else if(section==='patterns'&&!parts[1])html=patternsView();else if(section==='insights'&&!parts[1])html=insightsIndex();else if(section==='insights'){let a=articleBy(parts[1]);html=a?insightArticle(a):notFound();}else if(section==='websites'){let s=site(parts[1]);html=s?detailView(s):notFound()}else if(section==='sections'){let m=moduleBy(parts[1]);html=m&&site(m.site_id)?detailView(site(m.site_id),m):notFound()}else if(section==='patterns'){let p=pattern(parts[1]);html=p?patternDetail(p):notFound()}else if(section==='account')html=accountView();else if(section==='login')html=authView(false);else if(section==='register')html=authView(true);else if(section==='board')html=boardView();else if(section==='collections'||section==='discover')html=collectionsView();else html=notFound();app.innerHTML=html;document.title=section==='account'?'个人中心 · B2B Atlas':section==='login'?'登录 · B2B Atlas':section==='register'?'注册 · B2B Atlas':section==='insights'&&parts[1]?(articleBy(parts[1])?.title||'文章')+' · B2B Atlas':(section==='insights'?'资讯与研究':section==='home'?'Discover':titleCase(section))+' · B2B Atlas';const desc=$('meta[name="description"]');if(desc)desc.content=section==='insights'&&parts[1]?(articleBy(parts[1])?.subtitle||'B2B Atlas 设计研究'):section==='insights'?'B2B Atlas 资讯与研究：B2B 网站案例、设计方法、视觉系统与转化策略。':'A visual research library of B2B websites, sections and design patterns.';$$('.desktop-nav a').forEach(x=>x.classList.toggle('active',x.dataset.nav===section));$('#saved-count').hidden=!loggedIn()||!state.saved.length;$('#saved-count').textContent=state.saved.length;const acc=$('.account-nav');if(acc){acc.classList.toggle('is-logged-in',loggedIn());acc.title=loggedIn()?'个人中心 · '+state.auth.user.display_name:'登录 / 注册';}$('#mobile-menu').hidden=true;if(section==='websites'&&!parts[1]||section==='sections'&&!parts[1])renderResults();if(section==='insights'&&!parts[1])renderInsightResults()}
 function updateListing(k,v){if(k==='q'){state.q=v;setQuery('q',v)}else{state[k]=v;setQuery(k,v)}if(k==='category'||k==='sector'){const target=k==='category'?'category':'sector';$$('.category-nav [data-action="category"]').forEach(x=>x.classList.toggle('active',x.dataset.value===v));let sel=$('.listing-controls [data-field="'+target+'"]');if(sel)sel.value=v}if(k==='density')$$('[data-action=density]').forEach(b=>b.classList.toggle('active',b.dataset.value===v));renderResults()}
 function showOverlay(markup){overlay.hidden=false;overlay.innerHTML='<div class="overlay-backdrop" data-action="close-overlay"></div><div class="overlay-body" role="dialog" aria-modal="true">'+markup+'<button class="modal-close" data-action="close-overlay" aria-label="Close">×</button></div>';document.body.classList.add('modal-open')}
 function closeOverlay(){overlay.hidden=true;overlay.innerHTML='';document.body.classList.remove('modal-open')}
@@ -245,14 +369,33 @@ function quickPreview(k){let x=byKey(k);if(!x)return;let info=cardInfo(x);showOv
 function expandImage(){let x=currentScreens[currentScreen];if(!x)return;showOverlay('<div class="image-modal"><img src="'+img(x.url)+'" alt="'+h(x.label)+' screenshot"><div><strong>'+h(x.label)+'</strong><span>'+(currentScreen+1)+' / '+currentScreens.length+'</span><a href="'+h(x.source)+'" target="_blank" rel="noopener noreferrer">Original source ↗</a></div></div>')}
 function globalSearch(){showOverlay('<div class="search-modal"><h2>Search the library</h2><input id="global-search" type="search" placeholder="Company, industry, pattern, section…" aria-label="Search all references" autofocus><div id="global-matches"></div></div>');setTimeout(()=>$('#global-search')?.focus(),50)}
 function renderGlobalMatches(q){const target=$('#global-matches');if(!target)return;q=(q||'').toLowerCase().trim();if(!q){target.innerHTML='<p>Try “aerospace”, “manufacturing” or “product hero”.</p>';return}let a=state.sites.filter(s=>[s.name,s.sector,s.focus,s.summary].join(' ').toLowerCase().includes(q)).slice(0,5).map(s=>({label:s.name,sub:s.sector,url:pathSite(s)}));let b=state.modules.filter(m=>[m.title,m.category,m.lesson].join(' ').toLowerCase().includes(q)).slice(0,3).map(m=>({label:m.title,sub:'Section',url:pathModule(m)}));let c=state.patterns.filter(p=>[p.title,p.family,p.question].join(' ').toLowerCase().includes(q)).slice(0,3).map(p=>({label:p.title,sub:'Pattern',url:'/patterns/'+p.id}));let d=state.articles.filter(a=>[a.title,a.subtitle,...a.tags].join(' ').toLowerCase().includes(q)).slice(0,3).map(a=>({label:a.title,sub:'资讯文章',url:articleLink(a)}));target.innerHTML=[...a,...b,...c,...d].map(x=>'<a href="'+x.url+'" data-link="'+x.url+'"><strong>'+h(x.label)+'</strong><small>'+h(x.sub)+'</small></a>').join('')||'<p>No matches. Try another keyword.</p>'}
-function toggleIn(k,kind){let arr=state[kind],on=arr.includes(k);state[kind]=on?arr.filter(x=>x!==k):arr.concat(k);store(kind==='saved'?'saved':'board',state[kind]);notify(kind==='saved'?(on?'Removed from collection':'Saved to collection'):(on?'Removed from board':'Added to board'));render()}
+async function toggleIn(k,collection){
+ if(!loggedIn()){
+  state.pendingFavorite={key:k,collection};
+  notify('请登录后使用收藏或研究板');
+  go('/login?next='+encodeURIComponent(location.pathname+location.search));return;
+ }
+ const arr=state[collection],on=arr.includes(k);
+ if(!/^(site|module):[a-z0-9][a-z0-9-]{0,110}$/.test(k))return;
+ const [kind,slug]=k.split(':');
+ try{
+  if(on)await api('/api/me/library/'+collection+'/'+kind+'/'+slug,{method:'DELETE'});
+  else await api('/api/me/library',{method:'POST',body:JSON.stringify({collection,key:k})});
+  state[collection]=on?arr.filter(x=>x!==k):arr.concat(k);
+  if(on&&collection==='board')delete state.notesByKey[k];
+  notify(on?'已移除':'已保存到个人账号');render();
+ }catch(e){
+  if(e.status===401){state.auth={authenticated:false,user:null,csrf_token:''};state.pendingFavorite={key:k,collection};go('/login?next='+encodeURIComponent(location.pathname+location.search))}
+  else notify(e.message);
+ }
+}
 function exportBoard(){if(!state.board.length)return;let lines=['# B2B Atlas — Project reference brief','','Generated from your local design board.','','## References',''];state.board.forEach((k,i)=>{let x=byKey(k);if(!x)return;lines.push('### '+(i+1)+'. '+cardInfo(x).name,'','- Source: '+x.url,'- Reference: '+cardInfo(x).sub,'- Observation: '+(x.lesson||x.takeaway||site(x.site_id)?.takeaway||''),'- Project note: '+(state.notesByKey[k]||''),'')});let a=document.createElement('a'),u=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/markdown'}));a.href=u;a.download='b2b-atlas-research.md';a.click();setTimeout(()=>URL.revokeObjectURL(u),2000);notify('Research brief exported')}
-document.addEventListener('click',ev=>{let link=ev.target.closest('a[data-link]');if(link){ev.preventDefault();closeOverlay();go(link.dataset.link);return}let target=ev.target.closest('[data-action]');if(!target)return;let a=target.dataset.action,k=target.dataset.key,v=target.dataset.value;if(a==='save')toggleIn(k,'saved');else if(a==='board')toggleIn(k,'board');else if(a==='preview')quickPreview(k);else if(a==='image')expandImage();else if(a==='global-search')globalSearch();else if(a==='close-overlay')closeOverlay();else if(a==='mobile-menu'){const n=$('#mobile-menu');n.hidden=!n.hidden;target.setAttribute('aria-expanded',String(!n.hidden))}else if(a==='copy'){navigator.clipboard?.writeText(v).then(()=>notify(v+' copied'),()=>notify('Copy unavailable'))}else if(a==='density')updateListing('density',v);else if(a==='category')updateListing(location.pathname.startsWith('/sections')?'category':'sector',v);else if(a==='reset-filters'){go(location.pathname)}else if(a==='thumb'){let n=Number(target.dataset.index);currentScreen=n;let x=currentScreens[n];if(!x)return;$('#detail-image').src=x.url;$('#detail-image').alt=x.label;$('#detail-hero').dataset.index=n;$('#capture-label').textContent=x.label;$('#capture-source').href=x.source;$$('.capture-thumbs button').forEach((b,i)=>{b.classList.toggle('selected',i===n);b.setAttribute('aria-pressed',String(i===n))})}else if(a==='anchor'){ev.preventDefault();document.getElementById(target.dataset.target)?.scrollIntoView({behavior:'smooth',block:'start'})}else if(a==='share-article'){const u=location.href;if(navigator.clipboard?.writeText){navigator.clipboard.writeText(u).then(()=>notify('文章链接已复制'),()=>notify('复制失败，请从地址栏复制'))}else notify('请从地址栏复制文章链接')}else if(a==='export-board')exportBoard()});
+document.addEventListener('click',ev=>{let link=ev.target.closest('a[data-link]');if(link){ev.preventDefault();closeOverlay();go(link.dataset.link);return}let target=ev.target.closest('[data-action]');if(!target)return;let a=target.dataset.action,k=target.dataset.key,v=target.dataset.value;if(a==='save')toggleIn(k,'saved');else if(a==='board')toggleIn(k,'board');else if(a==='preview')quickPreview(k);else if(a==='image')expandImage();else if(a==='global-search')globalSearch();else if(a==='close-overlay')closeOverlay();else if(a==='mobile-menu'){const n=$('#mobile-menu');n.hidden=!n.hidden;target.setAttribute('aria-expanded',String(!n.hidden))}else if(a==='copy'){navigator.clipboard?.writeText(v).then(()=>notify(v+' copied'),()=>notify('Copy unavailable'))}else if(a==='density')updateListing('density',v);else if(a==='category')updateListing(location.pathname.startsWith('/sections')?'category':'sector',v);else if(a==='reset-filters'){go(location.pathname)}else if(a==='thumb'){let n=Number(target.dataset.index);currentScreen=n;let x=currentScreens[n];if(!x)return;$('#detail-image').src=x.url;$('#detail-image').alt=x.label;$('#detail-hero').dataset.index=n;$('#capture-label').textContent=x.label;$('#capture-source').href=x.source;$$('.capture-thumbs button').forEach((b,i)=>{b.classList.toggle('selected',i===n);b.setAttribute('aria-pressed',String(i===n))})}else if(a==='anchor'){ev.preventDefault();document.getElementById(target.dataset.target)?.scrollIntoView({behavior:'smooth',block:'start'})}else if(a==='share-article'){const u=location.href;if(navigator.clipboard?.writeText){navigator.clipboard.writeText(u).then(()=>notify('文章链接已复制'),()=>notify('复制失败，请从地址栏复制'))}else notify('请从地址栏复制文章链接')}else if(a==='logout')logOut();else if(a==='import-legacy')importLegacy();else if(a==='export-board')exportBoard()});
 document.addEventListener('change',ev=>{let t=ev.target;if(t.dataset.field)updateListing(t.dataset.field,t.value);if(t.id==='insights-sort'){setQuery('sort',t.value==='latest'?'':t.value);renderInsightResults()}});
-document.addEventListener('input',ev=>{let t=ev.target;if(t.id==='library-search'){clearTimeout(searchTimer);searchTimer=setTimeout(()=>updateListing('q',t.value),120)}else if(t.id==='global-search')renderGlobalMatches(t.value);else if(t.id==='insights-search'){setQuery('q',t.value);renderInsightResults()}else if(t.dataset.note){state.notesByKey[t.dataset.note]=t.value;store('atlas-board-notes',state.notesByKey)}});
-document.addEventListener('submit',ev=>{if(ev.target.id==='home-search'){ev.preventDefault();go('/websites?q='+encodeURIComponent(ev.target.elements.q.value.trim()))}});
+document.addEventListener('input',ev=>{let t=ev.target;if(t.id==='library-search'){clearTimeout(searchTimer);searchTimer=setTimeout(()=>updateListing('q',t.value),120)}else if(t.id==='global-search')renderGlobalMatches(t.value);else if(t.id==='insights-search'){setQuery('q',t.value);renderInsightResults()}else if(t.dataset.note){state.notesByKey[t.dataset.note]=t.value;clearTimeout(noteTimer);noteTimer=setTimeout(async()=>{if(!loggedIn())return;try{await api('/api/me/library/note',{method:'PATCH',body:JSON.stringify({key:t.dataset.note,note:t.value})})}catch(e){notify('笔记未保存：'+e.message)}},650)}});
+document.addEventListener('submit',ev=>{if(ev.target.id==='home-search'){ev.preventDefault();go('/websites?q='+encodeURIComponent(ev.target.elements.q.value.trim()))}else if(ev.target.id==='auth-form'){ev.preventDefault();submitAuth(ev.target)}else if(ev.target.id==='profile-form'){ev.preventDefault();submitProfile(ev.target)}else if(ev.target.id==='password-form'){ev.preventDefault();submitPassword(ev.target)}});
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape'){closeOverlay();$('#mobile-menu').hidden=true}else if((ev.ctrlKey||ev.metaKey)&&ev.key.toLowerCase()==='k'){ev.preventDefault();globalSearch()}else if(ev.key==='/'&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)&&$('#library-search')){ev.preventDefault();$('#library-search').focus()}});
 window.addEventListener('popstate',()=>{render();window.scrollTo(0,0)});
-async function load(){try{let urls=['/api/source-library','/api/module-library','/assets/research.json','/assets/patterns.json','/assets/screenshot-palettes.json','/assets/articles.json?v=39'];let results=await Promise.all(urls.map(async(u,i)=>{let r=await fetch(u);if(!r.ok&&i<4)throw Error(u+' returned '+r.status);return r.ok?r.json():{}}));state.sites=results[0].sites||[];state.notes=results[0].notes||[];state.modules=results[1].modules||[];state.profiles=results[2]||{};state.patterns=results[3]||[];state.palettes=results[4]||{};state.articles=results[5]?.articles||[];state.articleCategories=results[5]?.categories||[];state.articleEditorialNotice=results[5]?.editorial_notice||'';render()}catch(err){console.error('B2B Atlas bootstrap',err);app.innerHTML='<div class="shell empty standalone"><h1>Library unavailable</h1><p>Unable to load the curated data right now. Refresh to retry.</p><button class="primary-button" onclick="location.reload()">Try again</button></div>'}}
+async function load(){try{let urls=['/api/source-library','/api/module-library','/assets/research.json','/assets/patterns.json','/assets/screenshot-palettes.json','/assets/articles.json?v=39'];let results=await Promise.all(urls.map(async(u,i)=>{let r=await fetch(u);if(!r.ok&&i<4)throw Error(u+' returned '+r.status);return r.ok?r.json():{}}));state.sites=results[0].sites||[];state.notes=results[0].notes||[];state.modules=results[1].modules||[];state.profiles=results[2]||{};state.patterns=results[3]||[];state.palettes=results[4]||{};state.articles=results[5]?.articles||[];state.articleCategories=results[5]?.categories||[];state.articleEditorialNotice=results[5]?.editorial_notice||'';await syncAuth();render()}catch(err){console.error('B2B Atlas bootstrap',err);app.innerHTML='<div class="shell empty standalone"><h1>Library unavailable</h1><p>Unable to load the curated data right now. Refresh to retry.</p><button class="primary-button" onclick="location.reload()">Try again</button></div>'}}
 load();
 })();
