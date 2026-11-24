@@ -1,0 +1,121 @@
+name: Finalize clean filterable Patterns gallery V2.3
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/finalize-patterns-v23.yml']
+permissions:
+  contents: write
+concurrency:
+  group: atlas-patterns-v23-release
+  cancel-in-progress: false
+jobs:
+  qa-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 13
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Restore already reviewed compact filterable Patterns build
+        run: |
+          git cat-file -e e3cb4fe150cf25d00116eae19c4c4ac0c57d4ea1:atlas-source-v22.tar.gz
+          git show e3cb4fe150cf25d00116eae19c4c4ac0c57d4ea1:atlas-source-v22.tar.gz > atlas-source-v23.tar.gz
+          mkdir -p "$RUNNER_TEMP/atlas-v23"
+          tar -xzf atlas-source-v23.tar.gz -C "$RUNNER_TEMP/atlas-v23"
+          cp -a screenshots "$RUNNER_TEMP/atlas-v23/screenshots"
+          node --check "$RUNNER_TEMP/atlas-v23/static/assets/atlas-v10.js"
+          python -m pip install -q playwright -r "$RUNNER_TEMP/atlas-v23/requirements.txt"
+          google-chrome --version
+          python - <<'PY'
+          from pathlib import Path
+          p=Path(__import__('os').environ['RUNNER_TEMP'])/'atlas-v23/static/assets/atlas-v10.js'
+          s=p.read_text()
+          assert 'class="pt-grid"' in s
+          assert 'data-pt-filter' in s
+          assert 'function patterns(){' in s
+          assert s.count('const PATTERN_STUDIES_V21=')==1
+          print('RESTORED_APPROVED_FILTERABLE_GALLERY',len(s))
+          PY
+      - name: Start local QA preview
+        run: |
+          cd "$RUNNER_TEMP/atlas-v23"
+          ATLAS_DB_PATH=/tmp/atlas-v23-quality.sqlite3 PORT=8791 python run.py >/tmp/v23-preview.log 2>&1 &
+          for i in $(seq 1 40); do curl -fsS http://127.0.0.1:8791/api/health && break || sleep 1; done
+      - name: Test real category filters, source images, design analysis and responsive layout
+        run: |
+          python - <<'PY'
+          import asyncio
+          from pathlib import Path
+          from playwright.async_api import async_playwright
+          out=Path('screenshots/qa-v23');out.mkdir(parents=True,exist_ok=True)
+          async def check():
+            async with async_playwright() as p:
+              browser=await p.chromium.launch(channel='chrome',headless=True,args=['--no-sandbox','--disable-dev-shm-usage'])
+              for name,w in [('desktop',1440),('tablet',1024),('mobile',390)]:
+                page=await browser.new_page(viewport={'width':w,'height':920},device_scale_factor=1)
+                errors=[]
+                page.on('pageerror',lambda e:errors.append(str(e)))
+                response=await page.goto('http://127.0.0.1:8791/patterns',wait_until='networkidle',timeout=60000)
+                assert response.status==200
+                await page.evaluate("""async()=>{
+                  const imgs=[...document.images];for(const i of imgs)i.loading='eager';
+                  await Promise.race([Promise.all(imgs.map(i=>i.decode().catch(()=>null))),new Promise(r=>setTimeout(r,9000))])
+                }""")
+                assert await page.locator('.pt-card').count()==20
+                assert await page.locator('.pt-filter').count()==6
+                assert await page.locator('.pt-example').count()==40
+                assert await page.evaluate('[...document.images].every(i=>i.naturalWidth>0)'),(name,'broken source image')
+                assert await page.evaluate('document.documentElement.scrollWidth<=innerWidth+2'),(name,'overflow')
+                assert not errors,(name,errors)
+                cols=await page.locator('.pt-grid').evaluate("(e)=>getComputedStyle(e).gridTemplateColumns.split(' ').length")
+                assert cols==(1 if w<=950 else 2),(name,'unexpected column count',cols)
+                shot=await page.locator('.pt-image').first.bounding_box()
+                assert shot and shot['y']<780,(name,'source image too far below screen',shot)
+                await page.screenshot(path=str(out/f'patterns-{name}.png'))
+                # Real filter: does not merely jump the browser to a heading.
+                await page.locator('[data-pt-filter="1"]').click()
+                assert await page.locator('.pt-card:visible').count()==4,(name,'category filter failed')
+                assert await page.locator('[data-pt-count]').inner_text()=='4 patterns'
+                assert await page.locator('[data-pt-filter="1"]').get_attribute('aria-pressed')=='true'
+                await page.screenshot(path=str(out/f'filtered-{name}.png'))
+                await page.locator('[data-pt-filter="0"]').click()
+                assert await page.locator('.pt-card:visible').count()==20,(name,'reset filter failed')
+                details=page.locator('.pt-notes').first
+                assert not await details.evaluate('(e)=>e.open')
+                await details.locator('summary').click()
+                assert await details.evaluate('(e)=>e.open')
+                assert await details.locator('text=What to compare').count()==1
+                assert await page.locator('.pt-example').first.get_attribute('href')!="#"
+                print('PATTERNS_V23_PASS',name,'columns',cols,'cards',20,'sources',40,'filter',4,flush=True)
+                await page.close()
+              await browser.close()
+          asyncio.run(check())
+          PY
+      - name: Commit verified version as production and clean up UX confusion
+        run: |
+          sed -i 's/atlas-source-v22.tar.gz/atlas-source-v23.tar.gz/g' Dockerfile
+          cat > PATTERNS-V23.md <<'MD'
+          # Patterns V2.3 — image-first, filterable reference gallery
+
+          Restores the preferred, previously reviewed compact screenshot-grid version.
+          - 20 source-attributed design patterns and 40 clickable real section examples
+          - 5 working category filters plus reset to all
+          - 2-column desktop and tablet, single-column mobile
+          - Uncropped screenshots, compact hero, and collapsible analysis
+          - Original Sections and Websites catalogs remain unchanged
+
+          Desktop, tablet, and mobile functional and visual browser acceptance screenshots are in screenshots/qa-v23.
+          MD
+          git config user.name "B2B Atlas UI QA"
+          git config user.email "actions@users.noreply.github.com"
+          git add atlas-source-v23.tar.gz Dockerfile PATTERNS-V23.md screenshots/qa-v23
+          if ! git diff --cached --quiet; then
+            git commit -m "Finalize compact filterable Patterns gallery with 20 real design comparisons"
+            git restore .
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
