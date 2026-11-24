@@ -475,6 +475,7 @@ function compareCellText(value){return value?`<p>${h(value)}</p>`:'<span class="
 function compareList(items){return items&&items.length?`<ul class="compare-bullets">${items.map(x=>`<li>${h(x)}</li>`).join('')}</ul>`:'<span class="compare-unrecorded">尚未记录</span>'}
 function compareView(){
  const params=new URLSearchParams(location.search),savedId=params.get('saved'),savedItem=state.comparisons.find(x=>x.id===savedId),ids=compareSelection(),items=ids.map(site).filter(Boolean);
+ if(savedId&&!savedItem&&!loggedIn())return accountPrompt('登录后可查看你保存的网站对比。');
  if(items.length<2)return `<div class="shell compare-page"><div class="compare-intro"><span class="eyebrow">WEBSITE COMPARISON / RESEARCH</span><h1>把好设计，<br>放在一起研究。</h1><p>从真实网站出发，比较品牌定位、视觉语言、信息架构、信任背书和转化路径。选择 2–4 个网站即可开始。</p><a href="/websites" data-link="/websites" class="primary-button">选择网站开始对比 ↗</a></div><div class="compare-empty-state"><strong>02—04</strong><span>WEBSITES SIDE BY SIDE</span><p>在 Websites 卡片或网站详情中点击 ⇄，把案例加入对比清单。</p><a href="/websites" data-link="/websites">浏览全部网站案例 ↗</a></div></div>`;
  const modulesFor=s=>state.modules.filter(m=>m.site_id===s.id),profile=s=>state.profiles[s.id]||null;
  const breakdown=(s,pattern)=>{const p=profile(s);return (p?.breakdown||[]).find(x=>pattern.test(x[0]||''))};
