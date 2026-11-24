@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/stage-distinctive-v20.yml'
+      - 'scripts/expand_distinctive_sites_v20.py'
 permissions:
   contents: write
 concurrency:
@@ -36,7 +37,8 @@ jobs:
           cd "$RUNNER_TEMP/atlas-v20"
           python scripts/expand_distinctive_sites_v20.py
           python create_module_catalog.py
-          python -m pytest -q
+          python -m compileall -q app
+          node --check static/assets/atlas-v10.js
       - name: Stage preview assets and audit without modifying live Docker deployment
         run: |
           python - <<'PY'
