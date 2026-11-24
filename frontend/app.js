@@ -3,7 +3,7 @@
 (function(){
 const $=q=>document.querySelector(q), $$=q=>Array.from(document.querySelectorAll(q));
 const app=$('#app'), overlay=$('#overlay'), toast=$('#toast');
-const state={sites:[],notes:[],modules:[],patterns:[],articles:[],articleCategories:[],articleEditorialNotice:'',profiles:{},palettes:{},q:'',sector:'',category:'',style:'',color:'',sort:'curated',density:'standard',saved:[],board:[],notesByKey:{},legacySaved:read('saved',[]),legacyBoard:read('board',[]),legacyNotes:read('atlas-board-notes',{}),auth:{authenticated:false,user:null,csrf_token:''},authStatus:{available:false,mode:'unconfigured',message:''},pendingFavorite:null,authReady:false,compare:[],imageIndex:0};
+const state={sites:[],notes:[],modules:[],patterns:[],articles:[],articleCategories:[],articleEditorialNotice:'',profiles:{},palettes:{},q:'',sector:'',category:'',style:'',color:'',sort:'curated',density:'standard',saved:[],board:[],notesByKey:{},folders:[],folderItems:{},annotations:{},legacySaved:read('saved',[]),legacyBoard:read('board',[]),legacyNotes:read('atlas-board-notes',{}),auth:{authenticated:false,user:null,csrf_token:''},authStatus:{available:false,mode:'unconfigured',message:''},pendingFavorite:null,authReady:false,compare:[],imageIndex:0};
 const FILTER_STYLE=['Minimal','Cinematic','Product-led','Technical','Editorial','Photography','3D / Illustration','Motion'];
 const FILTER_COLOR=['Black','White','Gray','Red','Orange','Yellow','Green','Blue','Purple','Pink'];
 const styleRules={'Minimal':/minimal|restrained|simple|clean/,'Cinematic':/cinematic|immersive|footage|film/,'Product-led':/product|hardware|object|machine/,'Technical':/technical|engineering|specification|data/,'Editorial':/editorial|typography|narrative/,'Photography':/photograph|imagery|real images/,'3D / Illustration':/illustration|render|3d/,'Motion':/motion|animation|video/};
@@ -20,9 +20,22 @@ function pattern(id){return state.patterns.find(x=>x.id===id)}
 function pathSite(s){return '/websites/'+encodeURIComponent(s.id)}
 function pathModule(m){return '/sections/'+encodeURIComponent(m.id)}
 function pal(x){return state.palettes[x&&x.screenshot_url]||[]}
-function key(x){return (x.site_id?'module:':'site:')+x.id}
-function byKey(k){const a=String(k).split(':');return a[0]==='site'?site(a[1]):moduleBy(a[1])}
-function cardInfo(x){return x.site_id?{name:x.title,sub:(site(x.site_id)?.name||'')+' · '+x.category,url:pathModule(x)}:{name:x.name,sub:x.sector,url:pathSite(x)}}
+function entityKind(x){return x.site_id?'module':x.family?'pattern':x.reading_minutes?'article':'site'}
+function entityImage(x){
+ const kind=entityKind(x);
+ if(kind==='article')return articleImage(x);
+ if(kind==='pattern')return (x.modules||[]).map(moduleBy).find(Boolean)?.screenshot_url || site('vast')?.screenshot_url;
+ return x.screenshot_url;
+}
+function key(x){return entityKind(x)+':'+x.id}
+function byKey(k){const [kind,id]=String(k||'').split(':');return kind==='site'?site(id):kind==='module'?moduleBy(id):kind==='pattern'?pattern(id):kind==='article'?articleBy(id):null}
+function cardInfo(x){
+ const kind=entityKind(x);
+ if(kind==='module')return {name:x.title,sub:(site(x.site_id)?.name||'')+' · '+x.category,url:pathModule(x)};
+ if(kind==='pattern')return {name:x.title,sub:'设计模式 · '+x.family,url:'/patterns/'+encodeURIComponent(x.id)};
+ if(kind==='article')return {name:x.title,sub:'资讯研究 · '+(articleCat(x.category)?.name||''),url:articleLink(x)};
+ return {name:x.name,sub:x.sector,url:pathSite(x)};
+}
 function saved(k){return state.saved.includes(k)}
 function bookmarkIcon(on){return '<svg class="bookmark-svg" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="'+(on?'currentColor':'none')+'" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M6.5 4.5h11v15l-5.5-3.7-5.5 3.7z"/></svg>'}
 function inBoard(k){return state.board.includes(k)}
@@ -39,12 +52,10 @@ src=src.filter(x=>{let s=isSite?x:site(x.site_id);if(!s)return false;if(isSite&&
 if(state.sort==='az')src.sort((a,b)=>cardInfo(a).name.localeCompare(cardInfo(b).name));return src}
 function paletteCircles(x){return '<span class="palette-dots" aria-label="Representative screenshot colors">'+pal(x).slice(0,3).map(c=>'<button type="button" class="color-dot" style="--swatch:'+safeHex(c)+'" title="Copy '+safeHex(c)+'" data-action="copy" data-value="'+safeHex(c)+'" aria-label="Copy '+safeHex(c)+'"></button>').join('')+'</span>'}
 function card(x,index,type){
- const info=cardInfo(x),k=key(x);
- return `<article class="reference-card ${x.site_id?'is-section':'is-website'}">
-  <div class="reference-media"><a href="${info.url}" data-link="${info.url}" aria-label="研究 ${h(info.name)}"><img src="${img(x.screenshot_url)}" alt="${h(info.name)} 页面截图" ${index<5?'loading="eager"':'loading="lazy"'} decoding="async"></a>
-  <div class="card-actions"><button title="${saved(k)?'取消收藏':'收藏案例'}" data-action="save" data-key="${h(k)}" aria-label="${saved(k)?'取消收藏':'收藏'} ${h(info.name)}" aria-pressed="${saved(k)}">${bookmarkIcon(saved(k))}</button><button title="快速预览" aria-label="预览 ${h(info.name)}" data-action="preview" data-key="${h(k)}">⤢</button></div></div>
-  <div class="reference-meta"><a class="reference-name" href="${info.url}" data-link="${info.url}">${h(info.name)}</a>${paletteCircles(x)}<span class="reference-category">${h(info.sub)}</span></div>
- </article>`;
+ const info=cardInfo(x),k=key(x),kind=entityKind(x);
+ return `<article class="reference-card ${kind==='module'?'is-section':'is-'+kind}"><div class="reference-media"><a href="${info.url}" data-link="${info.url}" aria-label="研究 ${h(info.name)}"><img src="${img(entityImage(x))}" alt="${h(info.name)} 视觉预览" ${index<5?'loading="eager"':'loading="lazy"'} decoding="async"></a>
+ <div class="card-actions"><button title="${saved(k)?'取消收藏':'收藏案例'}" data-action="save" data-key="${h(k)}" aria-label="${saved(k)?'取消收藏':'收藏'} ${h(info.name)}" aria-pressed="${saved(k)}">${bookmarkIcon(saved(k))}</button><button title="快速预览" aria-label="预览 ${h(info.name)}" data-action="preview" data-key="${h(k)}">⤢</button></div></div>
+ <div class="reference-meta"><a class="reference-name" href="${info.url}" data-link="${info.url}">${h(info.name)}</a>${kind==='site'||kind==='module'?paletteCircles(x):''}<span class="reference-category">${h(info.sub)}</span></div></article>`;
 }
 function selection(opts,selected,all,field){return '<label class="filter-select"><span class="sr-only">'+h(field)+'</span><select data-field="'+field+'" aria-label="'+h(field)+'"><option value="">'+h(all)+'</option>'+opts.map(x=>'<option value="'+h(x)+'" '+(x===selected?'selected':'')+'>'+h(x)+'</option>').join('')+'</select></label>'}
 function topHeading(eyebrow,heading,description){return '<div class="page-heading"><span class="eyebrow">'+eyebrow+'</span><h1>'+heading+'</h1><p>'+description+'</p></div>'}
@@ -118,8 +129,10 @@ function articleLink(a){return '/insights/'+encodeURIComponent(a.id)}
 function articleImage(a){return site(a.cover_site)?.screenshot_url||'/screenshots/sites/vast.webp'}
 function articleDate(a){return (a.published_at||'').replace(/-/g,'.')}
 function articleCard(a,index,small=false){
- const cat=articleCat(a.category),url=articleLink(a);
- return `<article class="insight-card ${small?'insight-card-small':''}"><a class="insight-card-media" href="${url}" data-link="${url}" aria-label="阅读：${h(a.title)}"><img loading="${index<3?'eager':'lazy'}" src="${img(articleImage(a))}" alt="${h(site(a.cover_site)?.name||'B2B')} 网站截图"></a><div class="insight-card-copy"><div class="insight-card-meta"><a href="/insights?category=${h(a.category)}" data-link="/insights?category=${h(a.category)}" class="insight-category">${h(cat?.name||a.category)}</a><span>${h(articleDate(a))}</span></div><h3><a href="${url}" data-link="${url}">${h(a.title)}</a></h3><p>${h(a.subtitle)}</p><div class="insight-card-end"><span>阅读约 ${a.reading_minutes} 分钟</span><a href="${url}" data-link="${url}" aria-label="阅读文章 ${h(a.title)}">阅读全文 <span aria-hidden="true">↗</span></a></div></div></article>`;
+ const cat=articleCat(a.category),url=articleLink(a),k=key(a);
+ return `<article class="insight-card ${small?'insight-card-small':''}"><a class="insight-card-media" href="${url}" data-link="${url}" aria-label="阅读：${h(a.title)}"><img loading="${index<3?'eager':'lazy'}" src="${img(articleImage(a))}" alt="${h(site(a.cover_site)?.name||'B2B')} 网站截图"></a>
+ <div class="insight-card-copy"><div class="insight-card-meta"><a href="/insights?category=${h(a.category)}" data-link="/insights?category=${h(a.category)}" class="insight-category">${h(cat?.name||a.category)}</a><span>${h(articleDate(a))}</span><button type="button" class="article-save" data-action="save" data-key="${h(k)}" aria-label="${saved(k)?'取消收藏':'收藏'} ${h(a.title)}" aria-pressed="${saved(k)}">${bookmarkIcon(saved(k))}</button></div>
+ <h3><a href="${url}" data-link="${url}">${h(a.title)}</a></h3><p>${h(a.subtitle)}</p><div class="insight-card-end"><span>阅读约 ${a.reading_minutes} 分钟</span><a href="${url}" data-link="${url}" aria-label="阅读文章 ${h(a.title)}">阅读全文 <span aria-hidden="true">↗</span></a></div></div></article>`;
 }
 function insightFeature(a){
  if(!a)return '';
@@ -176,9 +189,10 @@ function insightArticle(a){
  </div>`;
 }
 function patternCard(p){
- const examples=(p.modules||[]).map(moduleBy).filter(Boolean).slice(0,2);
- return `<a class="pattern-card" href="/patterns/${encodeURIComponent(p.id)}" data-link="/patterns/${encodeURIComponent(p.id)}"><div class="pattern-media">${examples.length?examples.map(m=>`<img src="${img(m.screenshot_url)}" loading="lazy" alt="${h(m.title)}">`).join(''):`<div class="pattern-placeholder">${h(p.family)}</div>`}</div>
- <div class="pattern-meta"><span>${h(p.family)}</span><h2>${h(p.title)}</h2><p>${h(p.question)}</p><b>查看设计方法 ↗</b></div></a>`;
+ const examples=(p.modules||[]).map(moduleBy).filter(Boolean).slice(0,2),url='/patterns/'+encodeURIComponent(p.id),k=key(p);
+ return `<article class="pattern-card"><a class="pattern-card-main" href="${url}" data-link="${url}"><div class="pattern-media">${examples.length?examples.map(m=>`<img src="${img(m.screenshot_url)}" loading="lazy" alt="${h(m.title)}">`).join(''):`<div class="pattern-placeholder">${h(p.family)}</div>`}</div>
+ <div class="pattern-meta"><span>${h(p.family)}</span><h2>${h(p.title)}</h2><p>${h(p.question)}</p><b>查看设计方法 ↗</b></div></a>
+ <button type="button" class="pattern-save" data-action="save" data-key="${h(k)}" aria-pressed="${saved(k)}" title="${saved(k)?'取消收藏':'收藏设计模式'}" aria-label="${saved(k)?'取消收藏':'收藏'} ${h(p.title)}">${bookmarkIcon(saved(k))}</button></article>`;
 }
 function patternsView(){
  const families=Array.from(new Set(state.patterns.map(x=>x.family))),select=new URLSearchParams(location.search).get('family')||'';
