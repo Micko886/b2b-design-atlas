@@ -1,0 +1,223 @@
+{
+  "batch": "v20",
+  "review_method": "Human inspection of authentic Chromium screenshots; reject blank/loaders/cookie-obscured and visually generic previews",
+  "include": [
+    "cly-del",
+    "intrepid-automation",
+    "terminal-industries",
+    "lumafield",
+    "caracol-am",
+    "hadrian",
+    "vention",
+    "machina-labs",
+    "carbon3d",
+    "biomason",
+    "zahner",
+    "novanta-photonics",
+    "oneprom",
+    "sopo",
+    "kovo-haken",
+    "magon-sistemi",
+    "kvadrat",
+    "snohetta",
+    "layer-design",
+    "mercury",
+    "ramp",
+    "retool"
+  ],
+  "home_features": [
+    "intrepid-automation",
+    "cly-del",
+    "lumafield",
+    "zahner",
+    "kvadrat",
+    "terminal-industries"
+  ],
+  "notes": {
+    "cly-del": {
+      "style": "Technical illustration minimalism",
+      "strengths": [
+        "oversized typography",
+        "precision engineering illustrations",
+        "warm neutral canvas"
+      ]
+    },
+    "intrepid-automation": {
+      "style": "Cinematic industrial identity",
+      "strengths": [
+        "machine photography",
+        "dark visual rhythm",
+        "red production lighting"
+      ]
+    },
+    "terminal-industries": {
+      "style": "Full-bleed operational storytelling",
+      "strengths": [
+        "logistics imagery",
+        "system-level narrative",
+        "high contrast"
+      ]
+    },
+    "lumafield": {
+      "style": "Data as brand visualization",
+      "strengths": [
+        "CT inspection software",
+        "bold type",
+        "product imagery"
+      ]
+    },
+    "caracol-am": {
+      "style": "Bold industrial editorial",
+      "strengths": [
+        "massive typography",
+        "dark manufacturing photography",
+        "strong typography"
+      ]
+    },
+    "hadrian": {
+      "style": "Engineered minimalism",
+      "strengths": [
+        "navy product system",
+        "industrial geometry",
+        "restrained layout"
+      ]
+    },
+    "vention": {
+      "style": "Robot software-hardware product",
+      "strengths": [
+        "product UI demonstration",
+        "machine configurator framing",
+        "blue industrial color"
+      ]
+    },
+    "machina-labs": {
+      "style": "Robotics process storytelling",
+      "strengths": [
+        "factory footage",
+        "robot imagery",
+        "bold typography"
+      ]
+    },
+    "carbon3d": {
+      "style": "Materials innovation with color",
+      "strengths": [
+        "3D printed outcomes",
+        "gradient accents",
+        "product demonstrations"
+      ]
+    },
+    "biomason": {
+      "style": "Tactile biomaterial identity",
+      "strengths": [
+        "monochrome materials photography",
+        "scientific process",
+        "environmental framing"
+      ]
+    },
+    "zahner": {
+      "style": "Architectural fabrication editorial",
+      "strengths": [
+        "building photography",
+        "dramatic scale",
+        "project-led proof"
+      ]
+    },
+    "novanta-photonics": {
+      "style": "Precision technology hero",
+      "strengths": [
+        "macro circuit photography",
+        "high-contrast colored components",
+        "clear CTA"
+      ]
+    },
+    "oneprom": {
+      "style": "Industrial engineering motion",
+      "strengths": [
+        "giant typography",
+        "technical rendering",
+        "industrial composition"
+      ]
+    },
+    "sopo": {
+      "style": "Macro component-driven graphic identity",
+      "strengths": [
+        "electromagnetic coil photography",
+        "red-black branding",
+        "strong hero typography"
+      ]
+    },
+    "kovo-haken": {
+      "style": "Graphic dark industrial",
+      "strengths": [
+        "bold sans typography",
+        "blue accent",
+        "technical imagery"
+      ]
+    },
+    "magon-sistemi": {
+      "style": "Architecture-led fabrication",
+      "strengths": [
+        "built-environment photography",
+        "large overlaid type",
+        "project documentation"
+      ]
+    },
+    "kvadrat": {
+      "style": "Material photography and color",
+      "strengths": [
+        "textile texture",
+        "creative object direction",
+        "editorial crop"
+      ]
+    },
+    "snohetta": {
+      "style": "Asymmetric architecture portfolio",
+      "strengths": [
+        "project-led grid",
+        "large whitespace",
+        "editorial layout"
+      ]
+    },
+    "layer-design": {
+      "style": "Object-focused product portfolio",
+      "strengths": [
+        "premium product photography",
+        "art direction",
+        "inventive product arrangement"
+      ]
+    },
+    "mercury": {
+      "style": "Editorial business fintech",
+      "strengths": [
+        "atmospheric photography",
+        "soft product UI",
+        "refined hierarchy"
+      ]
+    },
+    "ramp": {
+      "style": "Polished finance product interface",
+      "strengths": [
+        "clean app previews",
+        "tight typography",
+        "focused CTAs"
+      ]
+    },
+    "retool": {
+      "style": "Developer product in motion",
+      "strengths": [
+        "interface hero",
+        "dark software environment",
+        "technical product story"
+      ]
+    }
+  },
+  "excluded_reasons": {
+    "q-industrial": "Browser capture scrolled to footer and retained consent panel; not publishable screenshot",
+    "carbo-tech": "Only loading animation captured",
+    "primeasia-leather": "Poor screenshot contrast and largely blank composition, even after recapture",
+    "attio": "Screenshot retained privacy panel; missing distinct visual story",
+    "clay": "Distinctive but cookie panel obscures hero; excluded pending better capture",
+    "big-architects": "Very sparse archive crop, weak thumbnail-level design evidence",
+    "rockfon": "Functional design but lacks distinctive art direction relative to this visual batch"
+  }
+}
