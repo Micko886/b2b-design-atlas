@@ -12,7 +12,7 @@ This is the only actively loaded UI. No historical atlas-vXX CSS or JavaScript i
 ## Data contracts
 Live backend: \`/api/source-library\` and \`/api/module-library\`.
 Generated screenshot color index: \`/assets/screenshot-palettes.json\`.
-Local saved references and project notes remain browser-local in localStorage.
+Authenticated saved references, folders, notes and comparison snapshots are stored per account in PostgreSQL. The browser stores only the temporary comparison selection so it can be shared as a URL before saving.
 
 ## Design contract
 - Home: brand overview, three real website captures, search, featured discovery.
