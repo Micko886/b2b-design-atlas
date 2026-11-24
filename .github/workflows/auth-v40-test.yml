@@ -1,7 +1,7 @@
 name: V40 Authentication QA
 on:
   push:
-    branches: [account-auth-v40, p0-v42-v43-security-collections, v44-website-comparison]
+    branches: [account-auth-v40, p0-v42-v43-security-collections, v44-website-comparison, v45-advanced-discovery]
   workflow_dispatch:
 jobs:
   tests:
