@@ -58,7 +58,7 @@ CANDIDATES=[
 
 CHALLENGE=re.compile(r'access denied|just a moment|checking your browser|robot check|verify you are human|enable javascript|captcha|forbidden|please enable cookies',re.I)
 COOKIE=[
-  re.compile(r'^(reject (all|optional)|decline (all|optional)|necessary only|only necessary|essential only|use necessary cookies only|allow necessary only|reject all cookies)
+  re.compile(r'^(reject (all|optional)|decline (all|optional)|necessary only|only necessary|essential only|use necessary cookies only|allow necessary only|reject all cookies)$',re.I),
   re.compile(r'^(accept all|allow all|accept cookies|accept all cookies|accept|agree|got it|ok)$',re.I)
 ]
 def rms(image):
