@@ -1,0 +1,91 @@
+name: Stage new Websites and real Sections V2.1
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/stage-triple-v21.yml']
+permissions:
+  contents: write
+concurrency:
+  group: atlas-v21-stage
+  cancel-in-progress: false
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 27
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install real Chromium and image processing
+        run: |
+          python -m pip install -q playwright pillow
+          python -m playwright install --with-deps chromium
+      - name: Prepare clean source with approved historic screenshots
+        run: |
+          mkdir -p "$RUNNER_TEMP/atlas-v21"
+          tar -xzf atlas-source-v20.tar.gz -C "$RUNNER_TEMP/atlas-v21"
+          cp -a screenshots "$RUNNER_TEMP/atlas-v21/screenshots"
+          mkdir -p "$RUNNER_TEMP/atlas-v21/scripts"
+          cp scripts/capture-expand-v21.py "$RUNNER_TEMP/atlas-v21/scripts/"
+          cp research-v21-candidates.json "$RUNNER_TEMP/atlas-v21/"
+          python -m py_compile scripts/capture-expand-v21.py
+          python -m pip install -q -r "$RUNNER_TEMP/atlas-v21/requirements.txt"
+      - name: Capture vetted official pages and true product subpages
+        run: |
+          cd "$RUNNER_TEMP/atlas-v21"
+          python scripts/capture-expand-v21.py
+          python create_module_catalog.py
+          python -m compileall -q app
+          node --check static/assets/atlas-v10.js
+      - name: Integrity audit of source URLs and real screenshot crops
+        run: |
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          from PIL import Image
+          root=Path(os.environ['RUNNER_TEMP'])/'atlas-v21'
+          audit=json.loads((root/'screenshots/research-v21/audit.json').read_text())
+          assert audit['sites_captured']>=7,audit
+          assert audit['inner_captured']>=9,audit
+          modules=json.loads((root/'app/module_catalog.json').read_text())
+          ids={m['id'] for m in modules}
+          for mid in audit['accepted_module_ids']:
+            assert mid in ids,mid
+            m=next(x for x in modules if x['id']==mid)
+            assert m['url'].startswith('https://')
+            assert (root/'screenshots/notes'/f"{mid}.webp").exists()
+            p=root/'screenshots/modules'/f"{mid}.webp"
+            assert p.exists(),mid
+            with Image.open(p) as im:
+              assert im.width==1440 and im.height>=300,(mid,im.size)
+          print('VERIFIED_V21_STAGE',audit['sites_captured'],audit['inner_captured'],audit['modules_added'])
+          PY
+      - name: Stage screenshots for review without production changes
+        run: |
+          cp -a "$RUNNER_TEMP/atlas-v21/screenshots/." screenshots/
+          tar -czf atlas-staged-v21.tar.gz \
+            --exclude='./screenshots' --exclude='./data' \
+            --exclude='__pycache__' --exclude='.pytest_cache' \
+            -C "$RUNNER_TEMP/atlas-v21" .
+          python - <<'PY'
+          import json
+          d=json.load(open('screenshots/research-v21/audit.json'))
+          with open('REVIEW-V21.md','w') as out:
+            out.write('# V2.1 visual references awaiting design QA\n\n')
+            out.write(f"Browser-captured {d['sites_captured']} of {d['sites_attempted']} companies and {d['inner_captured']} of {d['inner_attempted']} real subpages, creating {d['modules_added']} sections.\n\n")
+            out.write('Review images: screenshots/research-v21/new-site-contact-sheet.jpg and screenshots/research-v21/new-section-contact-sheet.jpg\n\n')
+            out.write('The production bundle has NOT been updated in this staging workflow.\n')
+          PY
+      - name: Commit staged screenshots and audit
+        run: |
+          git config user.name "B2B Atlas Visual Research"
+          git config user.email "actions@users.noreply.github.com"
+          git add atlas-staged-v21.tar.gz REVIEW-V21.md screenshots/sites screenshots/notes screenshots/modules screenshots/research-v21
+          if ! git diff --cached --quiet; then
+            git commit -m "Stage real V2.1 industrial references and inner-page sections for visual curation"
+            git restore .
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
