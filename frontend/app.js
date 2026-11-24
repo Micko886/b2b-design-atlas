@@ -465,6 +465,13 @@ async function personalExport(){
  if(!loggedIn())return;
  try{const d=await api('/api/me/export');const url=URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='b2b-atlas-personal-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);notify('个人数据已导出')}catch(e){notify(e.message)}
 }
+function compareSelection(){const p=new URLSearchParams(location.search),savedId=p.get('saved');if(savedId){const item=state.comparisons.find(x=>x.id===savedId);return item?(item.site_ids||[]).filter(id=>site(id)).slice(0,4):[]}const raw=p.get('sites'),ids=raw?raw.split(','):state.compare;return Array.from(new Set((ids||[]).filter(id=>/^[a-z0-9][a-z0-9-]{0,110}$/.test(id)&&site(id)))).slice(0,4)}
+function compareHref(ids){return '/compare?sites='+ids.map(encodeURIComponent).join(',')}
+function toggleCompare(id){if(!site(id))return;const current=location.pathname==='/compare'?compareSelection():state.compare.filter(x=>site(x));let next=current.slice();if(next.includes(id))next=next.filter(x=>x!==id);else if(next.length>=4){notify('一次最多对比 4 个网站');return}else next.push(id);state.compare=next;store('atlas-compare',next);if(location.pathname==='/compare')go(compareHref(next));else render()}
+function clearCompare(){state.compare=[];store('atlas-compare',[]);if(location.pathname==='/compare')go('/websites');else render()}
+function renderCompareTray(){const root=$('#compare-tray-root');if(!root)return;const ids=(state.compare||[]).filter(id=>site(id)).slice(0,4);root.innerHTML=ids.length?`<aside class="compare-tray" aria-label="网站对比清单"><div><strong>网站对比</strong><span>${ids.length} / 4 已选择 · ${ids.map(id=>h(site(id).name)).join('、')}</span></div><button data-action="compare-clear" class="compare-tray-clear">清空</button><a class="compare-tray-go" href="${compareHref(ids)}" data-link="${compareHref(ids)}" ${ids.length<2?'aria-disabled="true"':''}>${ids.length<2?'再选 1 个':'开始对比'} ↗</a></aside>`:'';const link=root.querySelector('.compare-tray-go');if(link&&ids.length<2){link.removeAttribute('data-link');link.href='#';link.addEventListener('click',ev=>{ev.preventDefault();notify('至少选择 2 个网站，最多 4 个')})}}
+function compareCellText(value){return value?`<p>${h(value)}</p>`:'<span class="compare-unrecorded">尚未记录</span>'}
+function compareList(items){return items&&items.length?`<ul class="compare-bullets">${items.map(x=>`<li>${h(x)}</li>`).join('')}</ul>`:'<span class="compare-unrecorded">尚未记录</span>'}
 function boardView(){
  if(!loggedIn())return accountPrompt('研究板是账户专属空间。登录后可以整理案例、填写笔记并导出。');
  const items=state.board.map(byKey).filter(Boolean);
