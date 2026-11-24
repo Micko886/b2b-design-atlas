@@ -1,0 +1,565 @@
+{
+  "created_at": "2026-11-24T02:29:38.066012+00:00",
+  "attempted": 35,
+  "accepted": 29,
+  "rejected": 6,
+  "new_notes": 57,
+  "new_modules": 57,
+  "total_sites": 82,
+  "total_modules": 154,
+  "approved": [
+    "q-industrial",
+    "cly-del",
+    "intrepid-automation",
+    "terminal-industries",
+    "lumafield",
+    "caracol-am",
+    "carbo-tech",
+    "hadrian",
+    "vention",
+    "machina-labs",
+    "carbon3d",
+    "biomason",
+    "zahner",
+    "primeasia-leather",
+    "novanta-photonics",
+    "oneprom",
+    "sopo",
+    "kovo-haken",
+    "magon-sistemi",
+    "kvadrat",
+    "snohetta",
+    "big-architects",
+    "layer-design",
+    "rockfon",
+    "attio",
+    "clay",
+    "mercury",
+    "ramp",
+    "retool"
+  ],
+  "results": [
+    {
+      "id": "q-industrial",
+      "kind": "website",
+      "url": "https://www.q-industrial.com/en-de",
+      "resolved_url": "https://www.q-industrial.com/en-de",
+      "title": "Q-Industrial",
+      "status": "captured",
+      "image_file": "screenshots/sites/q-industrial.webp",
+      "contrast": 36.3
+    },
+    {
+      "id": "q-industrial-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 20.7
+    },
+    {
+      "id": "cly-del",
+      "kind": "website",
+      "url": "https://cly-del.com/",
+      "resolved_url": "https://cly-del.com/",
+      "title": "The Cly-Del Manufacturing Company - Welcome",
+      "status": "captured",
+      "image_file": "screenshots/sites/cly-del.webp",
+      "contrast": 34.1
+    },
+    {
+      "id": "cly-del-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 167.6
+    },
+    {
+      "id": "intrepid-automation",
+      "kind": "website",
+      "url": "https://www.intrepidautomation.com/",
+      "resolved_url": "https://www.intrepidautomation.com/",
+      "title": "Intrepid Automation",
+      "status": "captured",
+      "image_file": "screenshots/sites/intrepid-automation.webp",
+      "contrast": 34.5
+    },
+    {
+      "id": "intrepid-automation-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 25.2
+    },
+    {
+      "id": "terminal-industries",
+      "kind": "website",
+      "url": "https://terminal-industries.com/",
+      "resolved_url": "https://terminal-industries.com/",
+      "title": "Terminal Yard Operating System | The New Industry Standard in Yard Operations",
+      "status": "captured",
+      "image_file": "screenshots/sites/terminal-industries.webp",
+      "contrast": 94.4
+    },
+    {
+      "id": "terminal-industries-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 85.9
+    },
+    {
+      "id": "lumafield",
+      "kind": "website",
+      "url": "https://www.lumafield.com/",
+      "resolved_url": "https://www.lumafield.com/",
+      "title": "Lumafield",
+      "status": "captured",
+      "image_file": "screenshots/sites/lumafield.webp",
+      "contrast": 39.7
+    },
+    {
+      "id": "lumafield-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 44.1
+    },
+    {
+      "id": "caracol-am",
+      "kind": "website",
+      "url": "https://www.caracol-am.com/",
+      "resolved_url": "https://www.caracol-am.com/",
+      "title": "Robotic Advanced Manufacturing Technologies | Caracol AM",
+      "status": "captured",
+      "image_file": "screenshots/sites/caracol-am.webp",
+      "contrast": 72.2
+    },
+    {
+      "id": "caracol-am-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 107.3
+    },
+    {
+      "id": "sevenloop",
+      "status": "rejected",
+      "url": "https://www.sevenloop.org/",
+      "reason": "Page.goto: net::ERR_NAME_NOT_RESOLVED at https://www.sevenloop.org/\nCall log:\n  - navigating to \"https://www.sevenloop.org/\", waiting until \"domcontentloaded\"\n"
+    },
+    {
+      "id": "carbo-tech",
+      "kind": "website",
+      "url": "https://carbo.tech/",
+      "resolved_url": "https://carbo.tech/",
+      "title": "CARBO | Advanced Proppant Technologies and Industry Solutions",
+      "status": "captured",
+      "image_file": "screenshots/sites/carbo-tech.webp",
+      "contrast": 16.5
+    },
+    {
+      "id": "hadrian",
+      "kind": "website",
+      "url": "https://www.hadrian.co/",
+      "resolved_url": "https://www.hadrian.co/",
+      "title": "The Future of American Production | Hadrian",
+      "status": "captured",
+      "image_file": "screenshots/sites/hadrian.webp",
+      "contrast": 19.7
+    },
+    {
+      "id": "hadrian-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 49.7
+    },
+    {
+      "id": "vention",
+      "kind": "website",
+      "url": "https://vention.com/",
+      "resolved_url": "https://vention.com/",
+      "title": "Manufacturing Automation, Simplified | Vention",
+      "status": "captured",
+      "image_file": "screenshots/sites/vention.webp",
+      "contrast": 67.7
+    },
+    {
+      "id": "vention-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 49.2
+    },
+    {
+      "id": "machina-labs",
+      "kind": "website",
+      "url": "https://machinalabs.ai/",
+      "resolved_url": "https://machinalabs.ai/",
+      "title": "Home | Machina",
+      "status": "captured",
+      "image_file": "screenshots/sites/machina-labs.webp",
+      "contrast": 32.7
+    },
+    {
+      "id": "machina-labs-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 87.9
+    },
+    {
+      "id": "bright-machines",
+      "status": "rejected",
+      "url": "https://www.brightmachines.com/",
+      "reason": "HTTP 403"
+    },
+    {
+      "id": "carbon3d",
+      "kind": "website",
+      "url": "https://www.carbon3d.com/",
+      "resolved_url": "https://www.carbon3d.com/",
+      "title": "Top 3D Printing Service and Additive Manufacturing | Carbon",
+      "status": "captured",
+      "image_file": "screenshots/sites/carbon3d.webp",
+      "contrast": 55.1
+    },
+    {
+      "id": "carbon3d-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 52.5
+    },
+    {
+      "id": "biomason",
+      "kind": "website",
+      "url": "https://biomason.com/",
+      "resolved_url": "https://biomason.com/",
+      "title": "Biomason: Revolutionizing Cement with Biotechnology",
+      "status": "captured",
+      "image_file": "screenshots/sites/biomason.webp",
+      "contrast": 66.1
+    },
+    {
+      "id": "biomason-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 123.7
+    },
+    {
+      "id": "zahner",
+      "kind": "website",
+      "url": "https://azahner.com/",
+      "resolved_url": "https://azahner.com/",
+      "title": "Architectural Metal Engineering & Fabrication | Zahner",
+      "status": "captured",
+      "image_file": "screenshots/sites/zahner.webp",
+      "contrast": 56.3
+    },
+    {
+      "id": "zahner-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 44.7
+    },
+    {
+      "id": "primeasia-leather",
+      "kind": "website",
+      "url": "https://www.primeasialeather.com/",
+      "resolved_url": "https://www.primeasialeather.com/",
+      "title": "PrimeAsia",
+      "status": "captured",
+      "image_file": "screenshots/sites/primeasia-leather.webp",
+      "contrast": 35.5
+    },
+    {
+      "id": "primeasia-leather-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 19.7
+    },
+    {
+      "id": "iem",
+      "status": "rejected",
+      "url": "https://www.iemfg.com/",
+      "reason": "Too little visible text for a quality design reference"
+    },
+    {
+      "id": "novanta-photonics",
+      "kind": "website",
+      "url": "https://novantaphotonics.com/",
+      "resolved_url": "https://novanta.com/precision-manufacturing/",
+      "title": "Integrated Laser Processing Solutions | Novanta",
+      "status": "captured",
+      "image_file": "screenshots/sites/novanta-photonics.webp",
+      "contrast": 94.1
+    },
+    {
+      "id": "novanta-photonics-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 51.4
+    },
+    {
+      "id": "boxo",
+      "status": "rejected",
+      "url": "https://boxo.com.ua/",
+      "reason": "HTTP 403"
+    },
+    {
+      "id": "oneprom",
+      "kind": "website",
+      "url": "https://oneprom.ru/",
+      "resolved_url": "https://oneprom.ru/",
+      "title": "Компенсаторы труб и оборудование для резервуаров | OnePROM",
+      "status": "captured",
+      "image_file": "screenshots/sites/oneprom.webp",
+      "contrast": 54.5
+    },
+    {
+      "id": "oneprom-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 42.3
+    },
+    {
+      "id": "sopo",
+      "kind": "website",
+      "url": "https://www.sopous.com/",
+      "resolved_url": "https://www.sopous.com/",
+      "title": "SOPO US, Inc. | Wound Components Manufacturing – Stators, Rotors, Coils",
+      "status": "captured",
+      "image_file": "screenshots/sites/sopo.webp",
+      "contrast": 43.7
+    },
+    {
+      "id": "sopo-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 37.9
+    },
+    {
+      "id": "kovo-haken",
+      "kind": "website",
+      "url": "https://kovohaken.cz/",
+      "resolved_url": "https://kovohaken.cz/",
+      "title": "Kovo Haken | CNC obrábění pro vás byznys",
+      "status": "captured",
+      "image_file": "screenshots/sites/kovo-haken.webp",
+      "contrast": 39.5
+    },
+    {
+      "id": "kovo-haken-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 24.7
+    },
+    {
+      "id": "magon-sistemi",
+      "kind": "website",
+      "url": "https://magonsistemi.it/",
+      "resolved_url": "https://magonsistemi.it/",
+      "title": "Metalcostruzioni e Costruzioni Metalliche // Magon Sistemi",
+      "status": "captured",
+      "image_file": "screenshots/sites/magon-sistemi.webp",
+      "contrast": 82.8
+    },
+    {
+      "id": "magon-sistemi-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 79.5
+    },
+    {
+      "id": "kvadrat",
+      "kind": "website",
+      "url": "https://www.kvadrat.dk/en/",
+      "resolved_url": "https://www.kvadrat.dk/en/",
+      "title": "Kvadrat - The global design textile company",
+      "status": "captured",
+      "image_file": "screenshots/sites/kvadrat.webp",
+      "contrast": 103.8
+    },
+    {
+      "id": "kvadrat-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 170.8
+    },
+    {
+      "id": "snohetta",
+      "kind": "website",
+      "url": "https://www.snohetta.com/",
+      "resolved_url": "https://www.snohetta.com/",
+      "title": "Snøhetta",
+      "status": "captured",
+      "image_file": "screenshots/sites/snohetta.webp",
+      "contrast": 71.7
+    },
+    {
+      "id": "snohetta-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 72.6
+    },
+    {
+      "id": "big-architects",
+      "kind": "website",
+      "url": "https://big.dk/",
+      "resolved_url": "https://big.dk/",
+      "title": "BIG | Bjarke Ingels Group",
+      "status": "captured",
+      "image_file": "screenshots/sites/big-architects.webp",
+      "contrast": 67.2
+    },
+    {
+      "id": "big-architects-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 34.3
+    },
+    {
+      "id": "layer-design",
+      "kind": "website",
+      "url": "https://layerdesign.com/",
+      "resolved_url": "https://layerdesign.com/",
+      "title": "LAYER - Industrial Design | Branding | Engineering | London",
+      "status": "captured",
+      "image_file": "screenshots/sites/layer-design.webp",
+      "contrast": 80.0
+    },
+    {
+      "id": "layer-design-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 96.4
+    },
+    {
+      "id": "form-us-with-love",
+      "status": "rejected",
+      "url": "https://www.formuswithlove.se/",
+      "reason": "Blank or low-information opening screenshot"
+    },
+    {
+      "id": "vola",
+      "status": "rejected",
+      "url": "https://en.vola.com/",
+      "reason": "HTTP 403"
+    },
+    {
+      "id": "rockfon",
+      "kind": "website",
+      "url": "https://www.rockfon.com/en-us/",
+      "resolved_url": "https://www.rockfon.com/en-us/",
+      "title": "Acoustic & Suspended Ceiling Tiles | Rockfon",
+      "status": "captured",
+      "image_file": "screenshots/sites/rockfon.webp",
+      "contrast": 78.6
+    },
+    {
+      "id": "rockfon-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 80.1
+    },
+    {
+      "id": "attio",
+      "kind": "website",
+      "url": "https://attio.com/",
+      "resolved_url": "https://attio.com/",
+      "title": "Attio: The CRM for agentic revenue",
+      "status": "captured",
+      "image_file": "screenshots/sites/attio.webp",
+      "contrast": 57.3
+    },
+    {
+      "id": "attio-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 25.9
+    },
+    {
+      "id": "clay",
+      "kind": "website",
+      "url": "https://www.clay.com/",
+      "resolved_url": "https://www.clay.com/",
+      "title": "Clay | Build systems to grow revenue",
+      "status": "captured",
+      "image_file": "screenshots/sites/clay.webp",
+      "contrast": 84.2
+    },
+    {
+      "id": "clay-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 136.2
+    },
+    {
+      "id": "mercury",
+      "kind": "website",
+      "url": "https://mercury.com/",
+      "resolved_url": "https://mercury.com/",
+      "title": "Online Business Banking For Startups, Small Businesses & Scaling Companies",
+      "status": "captured",
+      "image_file": "screenshots/sites/mercury.webp",
+      "contrast": 49.8
+    },
+    {
+      "id": "mercury-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 65.7
+    },
+    {
+      "id": "ramp",
+      "kind": "website",
+      "url": "https://ramp.com/",
+      "resolved_url": "https://ramp.com/",
+      "title": "Spend Management, Corporate Cards & Accounts Payable Solutions | Ramp",
+      "status": "captured",
+      "image_file": "screenshots/sites/ramp.webp",
+      "contrast": 63.8
+    },
+    {
+      "id": "ramp-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 38.3
+    },
+    {
+      "id": "retool",
+      "kind": "website",
+      "url": "https://retool.com/",
+      "resolved_url": "https://retool.com/",
+      "title": "Build internal software better, with AI. | Retool",
+      "status": "captured",
+      "image_file": "screenshots/sites/retool.webp",
+      "contrast": 61.4
+    },
+    {
+      "id": "retool-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 54.6
+    }
+  ]
+}
