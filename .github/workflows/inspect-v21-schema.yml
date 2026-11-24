@@ -1,0 +1,34 @@
+name: Inspect Atlas Sections and Patterns data model V2.1
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/inspect-v21-schema.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect extracted real data and existing patterns renderer
+        run: |
+          mkdir -p /tmp/v21
+          tar -xzf atlas-source-v20.tar.gz -C /tmp/v21
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          root=Path('/tmp/v21')
+          sources=json.loads((root/'app/source_index.json').read_text())
+          modules=json.loads((root/'app/module_catalog.json').read_text())
+          print('META',json.dumps({'siteCount':len(sources['sites']),'notesCount':len(sources['notes']),'moduleCount':len(modules),'sourceFields':sources['sites'][0],'moduleFields':modules[0]},ensure_ascii=False))
+          print('MODULE_INDEX',json.dumps([{'id':m['id'],'category':m.get('category'),'site_id':m.get('site_id'),'title':m.get('title'),'url':m.get('url')} for m in modules],ensure_ascii=False))
+          js=(root/'static/assets/atlas-v10.js').read_text()
+          for startmark,endmark in [('function patterns(){','function board('),('function moduleCard(','function websiteCard('),('function library(mode){','function detail(')]:
+            start=js.find(startmark)
+            end=js.find(endmark,start+5)
+            if end==-1:end=start+6000
+            print('JS_SECTION',startmark,'START',start,'LEN',end-start,'CODE',js[start:min(end,start+6500)])
+          print('JS_HAS', [(x,x in js) for x in ['route()','function route()','moduleHref','data-link','function patterns(){','pattern-card-v15','state.modules']])
+          print('CSS_PATTERN', (root/'static/assets/atlas-v10.css').read_text()[-5000:])
+          PY
