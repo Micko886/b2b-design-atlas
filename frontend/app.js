@@ -3,7 +3,7 @@
 (function(){
 const $=q=>document.querySelector(q), $$=q=>Array.from(document.querySelectorAll(q));
 const app=$('#app'), overlay=$('#overlay'), toast=$('#toast');
-const state={sites:[],notes:[],modules:[],patterns:[],articles:[],articleCategories:[],articleEditorialNotice:'',profiles:{},palettes:{},q:'',sector:'',category:'',style:'',color:'',sort:'curated',density:'standard',saved:[],board:[],notesByKey:{},folders:[],folderItems:{},annotations:{},legacySaved:read('saved',[]),legacyBoard:read('board',[]),legacyNotes:read('atlas-board-notes',{}),auth:{authenticated:false,user:null,csrf_token:''},authStatus:{available:false,mode:'unconfigured',message:''},pendingFavorite:null,authReady:false,compare:[],imageIndex:0};
+const state={sites:[],notes:[],modules:[],patterns:[],articles:[],articleCategories:[],articleEditorialNotice:'',profiles:{},palettes:{},q:'',sector:'',category:'',style:'',color:'',sort:'curated',density:'standard',saved:[],board:[],notesByKey:{},folders:[],folderItems:{},annotations:{},comparisons:[],legacySaved:read('saved',[]),legacyBoard:read('board',[]),legacyNotes:read('atlas-board-notes',{}),auth:{authenticated:false,user:null,csrf_token:''},authStatus:{available:false,mode:'unconfigured',message:''},pendingFavorite:null,authReady:false,compare:read('atlas-compare',[]),imageIndex:0};
 const FILTER_STYLE=['Minimal','Cinematic','Product-led','Technical','Editorial','Photography','3D / Illustration','Motion'];
 const FILTER_COLOR=['Black','White','Gray','Red','Orange','Yellow','Green','Blue','Purple','Pink'];
 const styleRules={'Minimal':/minimal|restrained|simple|clean/,'Cinematic':/cinematic|immersive|footage|film/,'Product-led':/product|hardware|object|machine/,'Technical':/technical|engineering|specification|data/,'Editorial':/editorial|typography|narrative/,'Photography':/photograph|imagery|real images/,'3D / Illustration':/illustration|render|3d/,'Motion':/motion|animation|video/};
@@ -265,10 +265,10 @@ async function api(url,options={}){
  return body;
 }
 async function loadLibrary(){
- if(!loggedIn()){state.saved=[];state.board=[];state.notesByKey={};state.folders=[];state.folderItems={};state.annotations={};return}
+ if(!loggedIn()){state.saved=[];state.board=[];state.notesByKey={};state.folders=[];state.folderItems={};state.annotations={};state.comparisons=[];return}
  const d=await api('/api/me/library');
  state.saved=d.saved||[];state.board=d.board||[];state.notesByKey=d.notes||{};
- state.folders=d.folders||[];state.folderItems=d.folderItems||{};state.annotations=d.annotations||{};
+ state.folders=d.folders||[];state.folderItems=d.folderItems||{};state.annotations=d.annotations||{};state.comparisons=d.comparisons||[];
 }
 async function syncAuth(){
  try{
