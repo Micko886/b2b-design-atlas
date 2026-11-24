@@ -19,7 +19,7 @@ with tempfile.TemporaryDirectory() as directory:
         ("/",200,"B2B Atlas"),("/websites",200,"Websites"),("/websites/vast",200,"Space station"),
         ("/sections/vast-hero",200,"Orbital Hero"),("/patterns/object-first-hero",200,"Object first"),
         ("/insights/good-study",200,"Article"),("/account",200,"noindex"),
-        ("/forgot-password",200,"noindex"),("/websites/unknown",404,"noindex"),
+        ("/forgot-password",200,"noindex"),("/compare",200,"noindex"),("/websites/unknown",404,"noindex"),
         ("/insights/unknown",404,"404"),("/account/invalid",404,"noindex"),("/missing",404,"404")]:
         response=seo.seo_document(path.lstrip("/"))
         assert response.status_code==status,(path,response.status_code)
