@@ -28,15 +28,30 @@ async def capture(browser,row):
     if not resp or resp.status>=400:raise ValueError('HTTP '+str(resp.status if resp else 'none'))
     await page.wait_for_timeout(2600)
     clicked=None
-    for wanted in labels:
-      for frame in page.frames:
-        try:
-          el=frame.get_by_role('button',name=wanted,exact=True).first
-          if await el.count() and await el.is_visible(timeout=650):
-            await el.click(timeout=2500);clicked=wanted;break
-        except Exception:pass
-      if clicked:break
-    if labels and not clicked:raise ValueError('Cannot close expected consent using its visible controls')
+    for round_idx in range(4):
+      for wanted in labels:
+        for frame in page.frames:
+          choices=[
+            frame.get_by_role('button',name=re.compile(re.escape(wanted),re.I)).first,
+            frame.get_by_text(wanted,exact=True).first,
+            frame.locator('button,a,[role=button]').filter(has_text=re.compile(re.escape(wanted),re.I)).first,
+          ]
+          for el in choices:
+            try:
+              if await el.count() and await el.is_visible(timeout=700):
+                await el.click(timeout=2500,force=False)
+                clicked=wanted
+                break
+            except Exception:pass
+          if clicked:break
+        if clicked:break
+      if clicked or not labels:break
+      await page.wait_for_timeout(1100)
+    if labels and not clicked:
+      visible=await page.locator('button').all_text_contents()
+      print('CONSENT_BUTTONS',sid,[x.strip()[:60] for x in visible[-18:]],flush=True)
+      raise ValueError('Cannot close expected consent using visible controls')
+    if clicked: await page.wait_for_timeout(800)
     await page.keyboard.press('Escape')
     await page.mouse.move(1405,885)
     await page.evaluate('(y)=>scrollTo({top:y,behavior:"instant"})',scroll1)
