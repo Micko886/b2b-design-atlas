@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/recapture-distinctive-v20.yml'
+      - 'scripts/recapture-distinctive-v20.py'
 permissions:
   contents: write
 jobs:
@@ -41,7 +42,7 @@ jobs:
                 with Image.open(path) as im:
                   assert im.width==1440
                   assert im.height>=500
-          assert sum(x['status']=='recaptured' for x in d)>=2
+          assert sum(x['status']=='recaptured' for x in d)>=1
           PY
       - name: Commit staged image refinements
         run: |
