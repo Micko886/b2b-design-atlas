@@ -38,6 +38,7 @@ with tempfile.TemporaryDirectory() as directory:
     assert "/account" not in sitemap.text
     robots=client.get("/robots.txt")
     assert "Disallow: /account" in robots.text
+    assert "Disallow: /compare" in robots.text
     assert robots.headers["x-content-type-options"]=="nosniff"
     assert robots.headers["x-frame-options"]=="DENY"
 print("SEO_V42_QA_PASS: exact HTTP 404, dynamic SEO, canonical, sitemap, robots, secure headers")
