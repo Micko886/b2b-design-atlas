@@ -1090,3 +1090,29 @@ body{color:var(--ink);background:#fff;font-family:Inter,"Noto Sans CJK SC",ui-sa
 
 .compare-cell-site-label{display:none;font-size:10px;color:#3158c7;font-weight:820;letter-spacing:.04em;margin-bottom:8px}
 @media(max-width:680px){.compare-cell-site-label{display:block}}
+
+
+/* V45 · evidence-based discovery filters: layered under existing gallery without changing card layout */
+.discovery-advanced{margin:13px 0 19px;border:1px solid #e5eaf4;border-radius:11px;background:#fbfcff;overflow:hidden}
+.discovery-advanced>summary{list-style:none;display:flex;align-items:center;gap:15px;cursor:pointer;padding:14px 17px;color:#243652}
+.discovery-advanced>summary::-webkit-details-marker{display:none}
+.discovery-advanced>summary span{font-size:12px;font-weight:800;white-space:nowrap}
+.discovery-advanced>summary small{font-size:11px;color:#8794a9;line-height:1.5}
+.discovery-advanced>summary b{margin-left:auto;display:grid;place-items:center;min-width:26px;height:26px;background:#edf3ff;border-radius:7px;color:#2b5fe1;font-size:12px}
+.discovery-advanced[open]>summary{border-bottom:1px solid #e4ebf6;background:#f7faff}
+.discovery-advanced-inner{padding:19px}
+.discovery-advanced-fields{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.discovery-advanced-fields .filter-select{min-width:0;display:block}
+.discovery-advanced-fields .filter-select select{width:100%;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;padding:10px 22px 10px 11px;border-radius:8px;background:#fff}
+.discovery-advanced-note{font-size:11px;color:#8c9aac;line-height:1.85;margin:15px 1px 0;max-width:1050px}
+.discovery-active{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:16px 0 9px}
+.discovery-active>span{font-size:11px;font-weight:760;color:#687c9a;margin-right:5px}
+.discovery-active>button{border:1px solid #dbe5fb;background:#f2f6ff;color:#31539e;border-radius:7px;cursor:pointer;padding:8px 11px;display:inline-flex;align-items:center;gap:6px;font-size:11px;max-width:300px;text-align:left}
+.discovery-active>button>span{font-weight:800;color:#6786c6}
+.discovery-active>button>b{font-size:14px;color:#7190c8}
+.discovery-active>button:hover{background:#e4edff;border-color:#bdd0f9}
+.discovery-active>button.discovery-clear{background:transparent;border-color:transparent;color:#7e8fa8;font-weight:730}
+.discovery-active>button.discovery-clear:hover{color:#1a50e8}
+@media(max-width:1120px){.discovery-advanced-fields{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:790px){.discovery-advanced-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.discovery-advanced>summary small{display:none}}
+@media(max-width:480px){.discovery-advanced-inner{padding:12px}.discovery-advanced-fields{grid-template-columns:1fr}.discovery-advanced-fields select{width:100%}.discovery-active>button{max-width:100%}}
