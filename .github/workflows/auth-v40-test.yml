@@ -1,0 +1,19 @@
+name: V40 Authentication QA
+on:
+  push:
+    branches: [account-auth-v40]
+  workflow_dispatch:
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: pip install "fastapi>=0.115,<1" "pydantic>=2,<3" "httpx>=0.27,<1" "python-multipart>=0.0.18,<1"
+      - name: Compile account backend
+        run: python -m py_compile backend/user_auth.py backend/install_auth.py
+      - name: Exercise real account API with temporary isolated DB
+        run: PYTHONPATH=backend python backend/test_auth.py
