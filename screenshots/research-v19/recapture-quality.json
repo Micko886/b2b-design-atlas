@@ -1,0 +1,32 @@
+{
+  "date": "2026-11-24T02:06:19.614021+00:00",
+  "items": [
+    {
+      "id": "universal-robots",
+      "status": "recaptured",
+      "url": "https://www.universal-robots.com/",
+      "consent_clicked": true,
+      "first_scroll": 0,
+      "second_scroll": 850,
+      "frame_change": 133.3
+    },
+    {
+      "id": "siemens-healthineers",
+      "status": "recaptured",
+      "url": "https://www.siemens-healthineers.com/",
+      "consent_clicked": true,
+      "first_scroll": 0,
+      "second_scroll": 850,
+      "frame_change": 60.5
+    },
+    {
+      "id": "boston-dynamics",
+      "status": "recaptured",
+      "url": "https://bostondynamics.com/",
+      "consent_clicked": false,
+      "first_scroll": 850,
+      "second_scroll": 1650,
+      "frame_change": 153.8
+    }
+  ]
+}
