@@ -218,6 +218,47 @@ class ChangePassword(BaseModel):
     current_password:str=Field(min_length=1,max_length=128)
     new_password:str=Field(min_length=10,max_length=128)
 
+class FolderPayload(BaseModel):
+    name:str=Field(min_length=1,max_length=50)
+    color:str="#315BE8"
+    @field_validator("name")
+    @classmethod
+    def clean_name(cls,v):
+        v=v.strip()
+        if not v or any(ord(x)<32 for x in v):raise ValueError("收藏夹名称无效。")
+        return v
+    @field_validator("color")
+    @classmethod
+    def clean_color(cls,v):
+        if not COLOR.fullmatch(v):raise ValueError("收藏夹配色无效。")
+        return v.upper()
+class FolderItem(BaseModel):
+    key:str=Field(max_length=125)
+    @field_validator("key")
+    @classmethod
+    def valid_key(cls,v):
+        if not KEY.fullmatch(v):raise ValueError("资源标识无效")
+        return v
+class Annotation(BaseModel):
+    key:str=Field(max_length=125)
+    note:str=Field(max_length=3000,default="")
+    tags:list[str]=Field(default_factory=list,max_length=10)
+    @field_validator("key")
+    @classmethod
+    def valid_key(cls,v):
+        if not KEY.fullmatch(v):raise ValueError("资源标识无效")
+        return v
+    @field_validator("tags")
+    @classmethod
+    def valid_tags(cls,v):
+        cleaned=[]
+        for x in v:
+            x=x.strip()
+            if not x or len(x)>24 or any(ord(c)<32 for c in x):raise ValueError("标签格式不正确")
+            if x.casefold() not in [a.casefold() for a in cleaned]:cleaned.append(x)
+        return cleaned
+
+
 def register_auth_routes(app:FastAPI):
     router=APIRouter(prefix="/api")
     @router.get("/auth/status")
@@ -339,46 +380,6 @@ def register_auth_routes(app:FastAPI):
             conn.execute("UPDATE "+table+" SET note=? WHERE user_id=? AND collection='board' AND kind=? AND slug=?",
                          (data.note,s["user_id"],kind,slug))
         return {"ok":True}
-
-    class FolderPayload(BaseModel):
-        name:str=Field(min_length=1,max_length=50)
-        color:str="#315BE8"
-        @field_validator("name")
-        @classmethod
-        def clean_name(cls,v):
-            v=v.strip()
-            if not v or any(ord(x)<32 for x in v):raise ValueError("收藏夹名称无效。")
-            return v
-        @field_validator("color")
-        @classmethod
-        def clean_color(cls,v):
-            if not COLOR.fullmatch(v):raise ValueError("收藏夹配色无效。")
-            return v.upper()
-    class FolderItem(BaseModel):
-        key:str=Field(max_length=125)
-        @field_validator("key")
-        @classmethod
-        def valid_key(cls,v):
-            if not KEY.fullmatch(v):raise ValueError("资源标识无效")
-            return v
-    class Annotation(BaseModel):
-        key:str=Field(max_length=125)
-        note:str=Field(max_length=3000,default="")
-        tags:list[str]=Field(default_factory=list,max_length=10)
-        @field_validator("key")
-        @classmethod
-        def valid_key(cls,v):
-            if not KEY.fullmatch(v):raise ValueError("资源标识无效")
-            return v
-        @field_validator("tags")
-        @classmethod
-        def valid_tags(cls,v):
-            cleaned=[]
-            for x in v:
-                x=x.strip()
-                if not x or len(x)>24 or any(ord(c)<32 for c in x):raise ValueError("标签格式不正确")
-                if x.casefold() not in [a.casefold() for a in cleaned]:cleaned.append(x)
-            return cleaned
 
     @router.post("/me/folders",status_code=201)
     def folder_create(data:FolderPayload,request:Request):
