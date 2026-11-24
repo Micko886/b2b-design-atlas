@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/expand-catalog-v19.yml'
+      - 'scripts/expand_real_catalog_v19.py'
 permissions:
   contents: write
 concurrency:
