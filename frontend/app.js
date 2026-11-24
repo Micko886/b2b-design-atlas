@@ -473,6 +473,50 @@ function clearCompare(){state.compare=[];store('atlas-compare',[]);if(location.p
 function renderCompareTray(){const root=$('#compare-tray-root');if(!root)return;const ids=(state.compare||[]).filter(id=>site(id)).slice(0,4);root.innerHTML=ids.length?`<aside class="compare-tray" aria-label="网站对比清单"><div><strong>网站对比</strong><span>${ids.length} / 4 已选择 · ${ids.map(id=>h(site(id).name)).join('、')}</span></div><button data-action="compare-clear" class="compare-tray-clear">清空</button><a class="compare-tray-go" href="${compareHref(ids)}" data-link="${compareHref(ids)}" ${ids.length<2?'aria-disabled="true"':''}>${ids.length<2?'再选 1 个':'开始对比'} ↗</a></aside>`:'';const link=root.querySelector('.compare-tray-go');if(link&&ids.length<2){link.removeAttribute('data-link');link.href='#';link.addEventListener('click',ev=>{ev.preventDefault();notify('至少选择 2 个网站，最多 4 个')})}}
 function compareCellText(value){return value?`<p>${h(value)}</p>`:'<span class="compare-unrecorded">尚未记录</span>'}
 function compareList(items){return items&&items.length?`<ul class="compare-bullets">${items.map(x=>`<li>${h(x)}</li>`).join('')}</ul>`:'<span class="compare-unrecorded">尚未记录</span>'}
+function compareView(){
+ const params=new URLSearchParams(location.search),savedId=params.get('saved'),savedItem=state.comparisons.find(x=>x.id===savedId),ids=compareSelection(),items=ids.map(site).filter(Boolean);
+ if(items.length<2)return `<div class="shell compare-page"><div class="compare-intro"><span class="eyebrow">WEBSITE COMPARISON / RESEARCH</span><h1>把好设计，<br>放在一起研究。</h1><p>从真实网站出发，比较品牌定位、视觉语言、信息架构、信任背书和转化路径。选择 2–4 个网站即可开始。</p><a href="/websites" data-link="/websites" class="primary-button">选择网站开始对比 ↗</a></div><div class="compare-empty-state"><strong>02—04</strong><span>WEBSITES SIDE BY SIDE</span><p>在 Websites 卡片或网站详情中点击 ⇄，把案例加入对比清单。</p><a href="/websites" data-link="/websites">浏览全部网站案例 ↗</a></div></div>`;
+ const modulesFor=s=>state.modules.filter(m=>m.site_id===s.id),profile=s=>state.profiles[s.id]||null;
+ const breakdown=(s,pattern)=>{const p=profile(s);return (p?.breakdown||[]).find(x=>pattern.test(x[0]||''))};
+ const palette=s=>{const p=profile(s),extracted=pal(s).slice(0,5),css=p?.colors||[];return `<div class="compare-palette-block"><span>截图提取色</span><div class="compare-swatches">${extracted.length?extracted.map(c=>`<span title="${safeHex(c)}" style="--swatch:${safeHex(c)}"></span>`).join(''):'<i>未生成</i>'}</div><small>来自当前截图，不代表官方品牌色</small>${css.length?`<span>页面 CSS 色值</span><div class="compare-css-colors">${css.map(([c,n])=>`<div><i style="--swatch:${safeHex(c)}"></i><span><b>${safeHex(c)}</b><small>${h(n)}</small></span></div>`).join('')}</div><small>来自已检查页面样式声明</small>`:''}</div>`};
+ const structure=s=>{const p=profile(s),mods=modulesFor(s);if(p?.structure?.length)return `<ol class="compare-structure">${p.structure.map(([a,b])=>`<li><b>${h(a)}</b><span>${h(b)}</span></li>`).join('')}</ol>`;return mods.length?`<ol class="compare-structure">${mods.map(m=>`<li><b>${h(m.category||m.title)}</b><span>${h(m.title)}</span></li>`).join('')}</ol>`:'<span class="compare-unrecorded">暂无已收录页面模块</span>'};
+ const evidence=s=>{const p=profile(s);return p?.sources?.length?`<div class="compare-sources">${p.sources.map(([name,url])=>`<a href="${h(url)}" target="_blank" rel="noopener noreferrer">${h(name)} ↗</a>`).join('')}</div><small>研究检查日期：${h(p.checked||'未记录')}</small>`:`<a href="${h(s.url)}" target="_blank" rel="noopener noreferrer">访问官网 ↗</a><small>当前为基础案例资料，尚无完整研究档案</small>`};
+ const rows=[
+  {n:'01',title:'业务定位',hint:'行业、产品与目标受众',value:s=>{const p=profile(s);return `<dl class="compare-facts"><dt>业务方向</dt><dd>${compareCellText(s.focus)}</dd><dt>产品 / 商业模式</dt><dd>${compareCellText(s.model)}</dd><dt>网站类型</dt><dd>${compareCellText(p?.type)}</dd><dt>目标受众</dt><dd>${compareCellText(p?.audience)}</dd><dt>地区</dt><dd>${compareCellText(p?.country)}</dd></dl>`}},
+  {n:'02',title:'视觉语言',hint:'风格、画面与视觉重点',value:s=>{const p=profile(s);return `<strong class="compare-style">${h(s.visual_style||'未记录')}</strong>${p?.style?.length?compareList(p.style):''}${compareList(s.design_strengths||[])}`}},
+  {n:'03',title:'色彩系统',hint:'区分截图取色与已观察 CSS 色值',value:palette},
+  {n:'04',title:'信息架构',hint:'首页叙事顺序与已收录模块',value:structure},
+  {n:'05',title:'信任背书',hint:'案例、数据、客户与技术证据',value:s=>{const b=breakdown(s,/trust|credibility|信任/i);return b?`<b>${h(b[0])}</b><p>${h(b[1])}</p><small>${h(b[2]||'')}</small>`:'<span class="compare-unrecorded">尚无已核实的信任背书分析</span>'}},
+  {n:'06',title:'转化路径',hint:'CTA、询盘与自助入口',value:s=>{const b=breakdown(s,/conversion|转化/i);return b?`<b>${h(b[0])}</b><p>${h(b[1])}</p><small>${h(b[2]||'')}</small>`:'<span class="compare-unrecorded">尚无已核实的转化路径分析</span>'}},
+  {n:'07',title:'关联设计模式',hint:'从网站案例连接到可复用方法',value:s=>{const p=profile(s),patterns=(p?.patterns||[]).map(pattern).filter(Boolean);return patterns.length?`<div class="compare-related-patterns">${patterns.map(x=>`<a href="/patterns/${h(x.id)}" data-link="/patterns/${h(x.id)}">${h(x.title)} ↗</a>`).join('')}</div>`:'<span class="compare-unrecorded">暂无已关联的深度研究模式</span>'}},
+  {n:'08',title:'研究证据',hint:'原始来源与资料完整度',value:evidence}
+ ];
+ const title=savedItem?.name||items.map(x=>x.name).join(' × ');
+ return `<div class="shell compare-page"><header class="compare-page-head"><div><span class="eyebrow">WEBSITE COMPARISON / RESEARCH MATRIX</span><h1>网站横向对比<span>.</span></h1><p>对比的是已收录的证据，不是未经验证的评分。缺少资料的维度会明确标注。</p></div><div class="compare-head-count"><strong>${items.length}</strong><span>个网站 · 2–4 个为一组</span></div></header>
+ <div class="compare-toolbar"><a href="/websites" data-link="/websites">← 继续选择网站</a><div><button class="quiet-button" data-action="comparison-export">导出对比报告 ↓</button><button class="quiet-button" data-action="compare-clear">清空本次选择</button></div></div>
+ <div class="compare-matrix" style="--compare-count:${items.length}"><div class="compare-site-head"><div class="compare-axis-label"><span>COMPARE</span><b>比较维度</b><small>横向观察，不做主观排名</small></div>${items.map((s,i)=>`<article class="compare-site-heading"><a href="${pathSite(s)}" data-link="${pathSite(s)}" class="compare-site-shot"><img src="${img(s.screenshot_url)}" alt="${h(s.name)} 网站截图"></a><div class="compare-site-title"><span>0${i+1} / ${h(s.sector)}</span><h2><a href="${pathSite(s)}" data-link="${pathSite(s)}">${h(s.name)}</a></h2><p>${h(s.summary||s.focus||'')}</p><div><a href="${h(s.url)}" target="_blank" rel="noopener noreferrer">官网 ↗</a><button data-action="compare-toggle" data-site-id="${h(s.id)}">移出对比 ×</button></div></div></article>`).join('')}</div>
+ ${rows.map(row=>`<section class="compare-row"><div class="compare-row-label"><span>${row.n}</span><b>${row.title}</b><small>${row.hint}</small></div><div class="compare-row-cells">${items.map(s=>`<article class="compare-cell">${row.value(s)}</article>`).join('')}</div></section>`).join('')}</div>
+ <section class="compare-save-panel"><div><span class="eyebrow">SAVE TO RESEARCH WORKSPACE</span><h2>${savedItem?'更新已保存的对比':'把这组对比留在研究工作台'}</h2><p>保存网站组合，之后可从研究工作台继续打开、修改和导出。</p></div><div class="compare-save-controls"><label>对比名称<input id="compare-name" maxlength="64" value="${h(title)}" placeholder="例如：工业自动化网站首屏对比"></label><button class="primary-button" data-action="${savedItem?'comparison-update':'comparison-save'}" ${savedItem?`data-id="${h(savedItem.id)}"`:''}>${savedItem?'更新对比':'保存到研究工作台'} ↗</button></div></section>
+ </div>`;
+}
+async function saveComparison(id=''){
+ const ids=compareSelection();if(ids.length<2){notify('至少选择 2 个网站才能保存对比');return}
+ if(!loggedIn()){go('/login?next='+encodeURIComponent(location.pathname+location.search));return}
+ const name=String($('#compare-name')?.value||ids.map(x=>site(x)?.name).filter(Boolean).join(' × ')).trim();
+ if(!name){notify('请填写对比名称');return}
+ try{const payload={name,site_ids:ids},savedId=id||new URLSearchParams(location.search).get('saved');const data=await api('/api/me/comparisons'+(savedId?'/'+savedId:''),{method:savedId?'PATCH':'POST',body:JSON.stringify(payload)});await loadLibrary();notify('对比组合已保存到研究工作台');go('/compare?saved='+encodeURIComponent(data.id))}
+ catch(e){notify(e.message)}
+}
+async function deleteComparison(id){
+ if(!id||!window.confirm('删除这组已保存的网站对比？不会删除原始网站收藏。'))return;
+ try{await api('/api/me/comparisons/'+id,{method:'DELETE'});await loadLibrary();notify('对比记录已删除');if(new URLSearchParams(location.search).get('saved')===id)go('/board');else render()}
+ catch(e){notify(e.message)}
+}
+function exportComparison(){
+ const ids=compareSelection(),items=ids.map(site).filter(Boolean);if(items.length<2){notify('至少选择 2 个网站');return}
+ const lines=['# B2B Atlas · 网站横向对比','',...items.map((s,i)=>{const p=state.profiles[s.id];return `## ${i+1}. ${s.name}\n\n- 官网：${s.url}\n- 行业：${s.sector||'未记录'}\n- 业务方向：${s.focus||'未记录'}\n- 视觉风格：${s.visual_style||'未记录'}\n- 深度研究：${p?.checked||'暂无完整研究档案'}\n\n### 视觉特点\n${(s.design_strengths||[]).map(x=>'- '+x).join('\n')||'- 未记录'}\n\n### 结构与转化\n${(p?.breakdown||[]).map(x=>`- ${x[0]}：${x[1]}`).join('\n')||'- 尚无完整研究资料'}`})];
+ const a=document.createElement('a'),u=URL.createObjectURL(new Blob([lines.join('\n\n')],{type:'text/markdown;charset=utf-8'}));a.href=u;a.download='b2b-atlas-website-comparison.md';a.click();setTimeout(()=>URL.revokeObjectURL(u),2000);notify('对比报告已导出');
+}
 function boardView(){
  if(!loggedIn())return accountPrompt('研究板是账户专属空间。登录后可以整理案例、填写笔记并导出。');
  const items=state.board.map(byKey).filter(Boolean);
