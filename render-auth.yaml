@@ -1,0 +1,25 @@
+# B2B Atlas V40 — proposed managed infrastructure link.
+# Review the Blueprint plan before approving adoption of existing resources.
+services:
+  - type: web
+    name: b2b-design-atlas-preview
+    runtime: docker
+    plan: free
+    region: oregon
+    branch: main
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: ATLAS_DB_PATH
+        value: /srv/atlas/data/atlas.sqlite3
+      - key: ATLAS_USERS_DATABASE_URL
+        fromDatabase:
+          name: b2b-atlas-users
+          property: connectionString
+
+databases:
+  - name: b2b-atlas-users
+    plan: free
+    region: oregon
+    databaseName: b2b_atlas_users
+    user: b2b_atlas_users_user
