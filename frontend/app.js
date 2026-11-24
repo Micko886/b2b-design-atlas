@@ -52,11 +52,10 @@ src=src.filter(x=>{let s=isSite?x:site(x.site_id);if(!s)return false;if(isSite&&
 if(state.sort==='az')src.sort((a,b)=>cardInfo(a).name.localeCompare(cardInfo(b).name));return src}
 function paletteCircles(x){return '<span class="palette-dots" aria-label="Representative screenshot colors">'+pal(x).slice(0,3).map(c=>'<button type="button" class="color-dot" style="--swatch:'+safeHex(c)+'" title="Copy '+safeHex(c)+'" data-action="copy" data-value="'+safeHex(c)+'" aria-label="Copy '+safeHex(c)+'"></button>').join('')+'</span>'}
 function card(x,index,type){
- const info=cardInfo(x),k=key(x),kind=entityKind(x);
- return `<article class="reference-card ${kind==='module'?'is-section':'is-'+kind}"><div class="reference-media"><a href="${info.url}" data-link="${info.url}" aria-label="研究 ${h(info.name)}"><img src="${img(entityImage(x))}" alt="${h(info.name)} 视觉预览" ${index<5?'loading="eager"':'loading="lazy"'} decoding="async"></a>
- <div class="card-actions"><button title="${saved(k)?'取消收藏':'收藏案例'}" data-action="save" data-key="${h(k)}" aria-label="${saved(k)?'取消收藏':'收藏'} ${h(info.name)}" aria-pressed="${saved(k)}">${bookmarkIcon(saved(k))}</button><button title="快速预览" aria-label="预览 ${h(info.name)}" data-action="preview" data-key="${h(k)}">⤢</button></div></div>
- <div class="reference-meta"><a class="reference-name" href="${info.url}" data-link="${info.url}">${h(info.name)}</a>${kind==='site'||kind==='module'?paletteCircles(x):''}<span class="reference-category">${h(info.sub)}</span></div></article>`;
+ const info=cardInfo(x),k=key(x),kind=entityKind(x),isSite=kind==='site',selected=isSite&&state.compare.includes(x.id);
+ return `<article class="reference-card ${kind==='module'?'is-section':'is-'+kind}"><div class="reference-media"><a href="${info.url}" data-link="${info.url}" aria-label="研究 ${h(info.name)}"><img src="${img(entityImage(x))}" alt="${h(info.name)} 视觉预览" ${index<5?'loading="eager"':'loading="lazy"'} decoding="async"></a><div class="card-actions"><button title="${saved(k)?'取消收藏':'收藏案例'}" data-action="save" data-key="${h(k)}" aria-label="${saved(k)?'取消收藏':'收藏'} ${h(info.name)}" aria-pressed="${saved(k)}">${bookmarkIcon(saved(k))}</button>${isSite?`<button class="compare-card-action ${selected?'is-selected':''}" data-action="compare-toggle" data-site-id="${h(x.id)}" aria-pressed="${selected}" title="${selected?'从对比中移除':'加入网站对比'}" aria-label="${selected?'从对比中移除':'加入对比'} ${h(info.name)}">⇄</button>`:''}<button title="快速预览" aria-label="预览 ${h(info.name)}" data-action="preview" data-key="${h(k)}">⤢</button></div></div><div class="reference-meta"><a class="reference-name" href="${info.url}" data-link="${info.url}">${h(info.name)}</a>${kind==='site'||kind==='module'?paletteCircles(x):''}<span class="reference-category">${h(info.sub)}</span></div></article>`;
 }
+
 function selection(opts,selected,all,field){return '<label class="filter-select"><span class="sr-only">'+h(field)+'</span><select data-field="'+field+'" aria-label="'+h(field)+'"><option value="">'+h(all)+'</option>'+opts.map(x=>'<option value="'+h(x)+'" '+(x===selected?'selected':'')+'>'+h(x)+'</option>').join('')+'</select></label>'}
 function topHeading(eyebrow,heading,description){return '<div class="page-heading"><span class="eyebrow">'+eyebrow+'</span><h1>'+heading+'</h1><p>'+description+'</p></div>'}
 function countTop(n,label){return '<div class="results-line"><strong>'+n+'</strong><span>'+label+'</span></div>'}
@@ -74,14 +73,16 @@ function listView(type){
   <div class="view-control"><button data-action="density" data-value="standard" class="${state.density==='standard'?'active':''}" title="自然瀑布流" aria-label="标准瀑布流">▦</button><button data-action="density" data-value="compact" class="${state.density==='compact'?'active':''}" title="紧凑瀑布流" aria-label="紧凑模式">▤</button></div></div>
   <div class="category-nav" role="navigation" aria-label="${isSite?'行业分类':'模块类型'}">${tabs.map(([name,value])=>`<button type="button" data-action="category" data-value="${h(value)}" class="${choice===value?'active':''}">${h(name)}</button>`).join('')}</div>
   ${spotlight?`<div class="section-spotlight"><a href="${pathModule(spotlight)}" data-link="${pathModule(spotlight)}" class="spotlight-image"><img src="${img(spotlight.screenshot_url)}" alt="${h(spotlight.title)} 模块预览"></a><div><span class="eyebrow">FEATURED SECTION</span><h2>${h(spotlight.title)}</h2><p>${h(spotlight.lesson||spotlight.summary||'从真实页面结构中学习如何突出关键信息。')}</p><a href="${pathModule(spotlight)}" data-link="${pathModule(spotlight)}" class="dark-button">研究这个模块 ↗</a></div></div>`:''}
-  <div class="listing-summary"><div><h2>${isSite?'精选网页':'页面模块参考'}</h2><p>${isSite?'不同风格、不同业务，从视觉出发自由探索。':'从真实 B2B 网站中拆解可借鉴的设计。'}</p></div></div><div id="library-results"></div>
+  <div class="listing-summary"><div><h2>${isSite?'精选网页':'页面模块参考'}</h2><p>${isSite?'不同风格、不同业务，从视觉出发自由探索。':'从真实 B2B 网站中拆解可借鉴的设计。'}</p></div></div><div id="library-results"></div><div id="compare-tray-root"></div>
  </div>`;
 }
 function renderResults(){
  const list=$('[data-listing]');if(!list)return;
  const type=list.dataset.listing,items=matchList(type),div=$('#library-results');
  div.innerHTML=`${countTop(items.length,type==='websites'?'个网站案例':'个页面模块')}${items.length?`<div class="masonry ${state.density==='compact'?'masonry-compact':''}">${items.map((x,i)=>card(x,i,type)).join('')}</div>`:`<div class="empty"><h2>没有找到匹配的资源</h2><p>试试其他关键词，或者清除筛选。</p><button class="primary-button" data-action="reset-filters">清除筛选</button></div>`}`;
+ renderCompareTray();
 }
+
 function featuredSites(){let x=curated.map(site).filter(Boolean);return x.concat(state.sites.filter(s=>!x.includes(s)).slice(0,Math.max(0,8-x.length)))}
 function homeView(){
  const featured=featuredSites(),vast=site('vast')||featured[0],study=state.profiles[vast?.id]||null;
@@ -223,7 +224,7 @@ function detailView(s,m){
  const intro=h(m?(m.summary||m.lesson||s.summary):(p?.about||s.summary||s.focus||''));
  const tags=(p&&!m?p.style:[s.visual_style,...(s.design_strengths||[])]).filter(Boolean);
  return `<div class="shell dossier dossier-v38">
-  <div class="detail-back-row"><a href="${target}" data-link="${target}">← 返回${m?'Sections':'Websites'}</a><div class="detail-utilities"><button data-action="save" data-key="${h(k)}" aria-label="收藏">${bookmarkIcon(saved(k))}</button><button data-action="board" data-key="${h(k)}" aria-label="添加到工作台">${inBoard(k)?'✓':'+'}</button><a href="${h(m?.url||s.url)}" target="_blank" rel="noopener noreferrer" aria-label="打开原始网站">↗</a></div></div>
+  <div class="detail-back-row"><a href="${target}" data-link="${target}">← 返回${m?'Sections':'Websites'}</a><div class="detail-utilities"><button data-action="save" data-key="${h(k)}" aria-label="收藏">${bookmarkIcon(saved(k))}</button><button data-action="board" data-key="${h(k)}" aria-label="添加到工作台">${inBoard(k)?'✓':'+'}</button>${!m?'<button data-action="compare-toggle" data-site-id="'+h(s.id)+'" aria-pressed="'+state.compare.includes(s.id)+'" title="加入网站对比">⇄ 对比</button>':''}<a href="${h(m?.url||s.url)}" target="_blank" rel="noopener noreferrer" aria-label="打开原始网站">↗</a></div></div>
   <div class="detail-top"><div class="detail-visual">
    <button class="detail-hero" id="detail-hero" data-action="image" data-index="0" aria-label="查看大图"><img id="detail-image" src="${img(data[0].url)}" alt="${h(data[0].label)} 网页截图" fetchpriority="high"><span>⤢ 放大查看</span></button>
    <div class="capture-note"><strong id="capture-label">${h(data[0].label)}</strong><a id="capture-source" href="${h(data[0].source)}" target="_blank" rel="noopener noreferrer">原始页面 ↗</a></div>
@@ -235,7 +236,7 @@ function detailView(s,m){
    <div class="detail-small-block"><h2>设计风格</h2><div class="tag-set">${tags.map(x=>`<span>${h(x)}</span>`).join('')||'<span>未审核</span>'}</div></div>
    <div class="detail-small-block"><h2>配色方案</h2>${colors}</div>
    <div class="detail-small-block"><h2>字体信息</h2>${p?.fonts?.length&&!m?`<div class="type-list">${p.fonts.map(([family,role])=>`<div><strong class="type-sample">Aa</strong><div><b>${h(family)}</b><small>${h(role)}</small></div></div>`).join('')}</div>`:'<p class="source-note">暂未取得可核实的字体信息。</p>'}</div>
-   <div class="dossier-actions"><button class="quiet-button" data-action="save" data-key="${h(k)}">${bookmarkIcon(saved(k))}${saved(k)?' 已收藏':' 收藏'}</button><button class="quiet-button" data-action="board" data-key="${h(k)}">${inBoard(k)?'✓ 已加入工作台':'+ 研究工作台'}</button><a class="primary-button" href="${h(m?.url||s.url)}" target="_blank" rel="noopener noreferrer">访问原网站 ↗</a></div>
+   <div class="dossier-actions"><button class="quiet-button" data-action="save" data-key="${h(k)}">${bookmarkIcon(saved(k))}${saved(k)?' 已收藏':' 收藏'}</button><button class="quiet-button" data-action="board" data-key="${h(k)}">${inBoard(k)?'✓ 已加入工作台':'+ 研究工作台'}</button>${!m?'<button class="quiet-button" data-action="compare-toggle" data-site-id="'+h(s.id)+'" aria-pressed="'+state.compare.includes(s.id)+'">⇄ '+(state.compare.includes(s.id)?'已加入对比':'加入对比')+'</button>':''}<a class="primary-button" href="${h(m?.url||s.url)}" target="_blank" rel="noopener noreferrer">访问原网站 ↗</a></div>
   </aside></div>
   <nav class="detail-jump" aria-label="研究内容导航"><a href="#design-analysis" data-action="anchor" data-target="design-analysis">设计分析</a><a href="#structure" data-action="anchor" data-target="structure">网站结构</a><a href="#key-sections" data-action="anchor" data-target="key-sections">关联 Sections</a><a href="#related-patterns" data-action="anchor" data-target="related-patterns">关联 Patterns</a></nav>
   <section class="detail-insight" id="design-analysis"><div class="detail-section-heading"><span class="eyebrow">DESIGN REVIEW</span><h2>先理解业务，<br>再研究设计。</h2><p>根据实际页面和企业信息，拆解视觉语言、信息层级和 B2B 转化方式。未核实内容不会被当作事实。</p></div>
