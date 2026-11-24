@@ -1,0 +1,293 @@
+{
+  "version": "2.1",
+  "source": "Curated pairs/triples of actual captured sections from existing 141-module library",
+  "families": [
+    "Visual Direction",
+    "Products & Navigation",
+    "Conversion & RFQ",
+    "Proof & Trust",
+    "Process & Storytelling"
+  ],
+  "patterns": [
+    {
+      "id": "object-first-hero",
+      "family": "Visual Direction",
+      "title": "The product is the hero",
+      "question": "How can a complex physical part become the strongest visual element?",
+      "principle": "Let real objects, proportions, texture and technical details carry the identity.",
+      "compare": "Compare the visual scale of a product against headline size, background and supporting copy.",
+      "when": "For engineered components, machines, and industrial design portfolios.",
+      "modules": [
+        "sopo-hero",
+        "cly-del-hero",
+        "layer-design-hero"
+      ]
+    },
+    {
+      "id": "cinematic-engineering",
+      "family": "Visual Direction",
+      "title": "Cinematic industrial photography",
+      "question": "How do industrial sites create a memorable first impression without losing credibility?",
+      "principle": "Use real machines and lighting with a simple message; avoid decorative mockups.",
+      "compare": "Compare contrast, product visibility and CTA hierarchy.",
+      "when": "For robotics, heavy equipment and advanced manufacturing.",
+      "modules": [
+        "intrepid-automation-hero",
+        "machina-labs-hero",
+        "oneprom-hero"
+      ]
+    },
+    {
+      "id": "material-as-brand",
+      "family": "Visual Direction",
+      "title": "Materials become the brand",
+      "question": "How can texture and finish become a differentiated B2B visual system?",
+      "principle": "Use the physical material's behavior, finish and context instead of abstract graphics.",
+      "compare": "Compare crop choices, palettes and product texture.",
+      "when": "For architectural materials, chemicals, textiles, and surfaces.",
+      "modules": [
+        "kvadrat-hero",
+        "biomason-hero",
+        "zahner-hero"
+      ]
+    },
+    {
+      "id": "real-interface-storytelling",
+      "family": "Visual Direction",
+      "title": "Real interface, not decoration",
+      "question": "How do software and technical platforms show their value without vague imagery?",
+      "principle": "Lead with an actual UI, scan or data experience, then explain what buyers can do with it.",
+      "compare": "Compare interface legibility, technical depth and visual storytelling.",
+      "when": "For engineering software, inspection platforms and technical SaaS.",
+      "modules": [
+        "retool-hero",
+        "onshape-hero",
+        "lumafield-hero"
+      ]
+    },
+    {
+      "id": "specification-first-navigation",
+      "family": "Products & Navigation",
+      "title": "Specification-first navigation",
+      "question": "How can engineering buyers locate exact parts across thousands of options?",
+      "principle": "Make categories and specifications primary and minimize promotional interference.",
+      "compare": "Compare information density, category hierarchy and product findability.",
+      "when": "For industrial components, tooling and technical distribution.",
+      "modules": [
+        "keyence-hero",
+        "beckhoff-hero",
+        "mcmaster-carr-hero"
+      ]
+    },
+    {
+      "id": "equipment-family-system",
+      "family": "Products & Navigation",
+      "title": "A complex equipment family",
+      "question": "How do you structure a catalogue of hardware variants?",
+      "principle": "Reveal product families before drilling down to model specifications.",
+      "compare": "Compare family labels, product-image consistency and detail paths.",
+      "when": "For machinery, robotics and equipment.",
+      "modules": [
+        "arburg-product-family",
+        "stratasys-detail",
+        "vention-detail"
+      ]
+    },
+    {
+      "id": "service-capability-navigation",
+      "family": "Products & Navigation",
+      "title": "Manufacturing capabilities as a menu",
+      "question": "How do buyers understand a multi-process factory without reading a long brochure?",
+      "principle": "Group capabilities by manufacturing job or process, with a distinct route to each service.",
+      "compare": "Compare use of real part imagery, process cards and action labels.",
+      "when": "For contract manufacturers and on-demand production.",
+      "modules": [
+        "protolabs-service-grid",
+        "weerg-detail",
+        "fathom-detail"
+      ]
+    },
+    {
+      "id": "applications-over-specs",
+      "family": "Products & Navigation",
+      "title": "Discover by real applications",
+      "question": "How should a technical site answer the customer's use case first?",
+      "principle": "Give industry and application routes equal prominence with product technology.",
+      "compare": "Compare application photography, audience framing and next actions.",
+      "when": "For equipment with broad cross-industry use.",
+      "modules": [
+        "formlabs-industry-usecases",
+        "caracol-am-detail",
+        "materialise-detail"
+      ]
+    },
+    {
+      "id": "quote-first",
+      "family": "Conversion & RFQ",
+      "title": "Immediate quotation paths",
+      "question": "When should a B2B website lead with instant pricing or a direct RFQ?",
+      "principle": "Make the first conversion step unmistakable, while providing supporting capability proof.",
+      "compare": "Compare CTAs, upload prompts, form complexity and trust placement.",
+      "when": "For configurable manufacturing or commodity services.",
+      "modules": [
+        "xometry-rfq-first",
+        "oshcut-hero",
+        "quickparts-hero"
+      ]
+    },
+    {
+      "id": "service-landing-cta",
+      "family": "Conversion & RFQ",
+      "title": "A single service, one buyer path",
+      "question": "How do service detail pages qualify the request and drive action?",
+      "principle": "Keep technical capability and the next step in the same visual hierarchy.",
+      "compare": "Compare proof close to CTAs and service-specific value proposition.",
+      "when": "For CNC, 3D printing and design engineering.",
+      "modules": [
+        "protolabs-service-intro",
+        "xometry-capabilities",
+        "design1st-hero"
+      ]
+    },
+    {
+      "id": "technical-software-conversion",
+      "family": "Conversion & RFQ",
+      "title": "Selling complex SaaS",
+      "question": "How can software teams present a demo and self-serve option without fighting each other?",
+      "principle": "Use actual product interfaces, differentiated action labels and role-based messaging.",
+      "compare": "Compare dual CTAs, product demonstrations and onboarding cues.",
+      "when": "For enterprise software products and business operations.",
+      "modules": [
+        "ramp-hero",
+        "retool-hero",
+        "mercury-hero"
+      ]
+    },
+    {
+      "id": "multi-audience-entry",
+      "family": "Conversion & RFQ",
+      "title": "One company, many buyers",
+      "question": "How do platforms serve industries and teams with different needs?",
+      "principle": "Segment by audience or goal early, while preserving a common service identity.",
+      "compare": "Compare first-screen paths, taxonomy and distinct conversion intents.",
+      "when": "For multi-industry suppliers and platform businesses.",
+      "modules": [
+        "materialise-hero",
+        "flexport-hero",
+        "sgw-designworks-hero"
+      ]
+    },
+    {
+      "id": "project-proof",
+      "family": "Proof & Trust",
+      "title": "Let projects do the talking",
+      "question": "When can real work replace generic credibility statements?",
+      "principle": "Give documented outcomes strong visual weight and clear source context.",
+      "compare": "Compare project photography, information summaries and depth of links.",
+      "when": "For architecture, engineering and custom projects.",
+      "modules": [
+        "gensler-project-gallery",
+        "zahner-hero",
+        "snohetta-hero"
+      ]
+    },
+    {
+      "id": "case-study-structure",
+      "family": "Proof & Trust",
+      "title": "Case-study storytelling",
+      "question": "How do case studies turn complex work into convincing proof?",
+      "principle": "Link the client's challenge, applied approach and final outcome.",
+      "compare": "Compare how projects are introduced before technical details.",
+      "when": "For engineering services, product design and industrial consulting.",
+      "modules": [
+        "studiored-detail",
+        "formlabs-application-story",
+        "hatch-detail"
+      ]
+    },
+    {
+      "id": "scale-and-numbers",
+      "family": "Proof & Trust",
+      "title": "Operational proof at scale",
+      "question": "Which proof points demonstrate actual capacity without empty claims?",
+      "principle": "Tie quantified outcomes or network scale to the buyer's use case.",
+      "compare": "Compare evidence hierarchy and placement within the page.",
+      "when": "For logistics, manufacturing and infrastructure.",
+      "modules": [
+        "fourkites-detail",
+        "shipbob-detail",
+        "jabil-detail"
+      ]
+    },
+    {
+      "id": "expert-credibility",
+      "family": "Proof & Trust",
+      "title": "Engineering credibility",
+      "question": "How do technically demanding buyers decide if a provider is real?",
+      "principle": "Show traceable capabilities, detailed applications and product-domain expertise.",
+      "compare": "Compare technical specificity rather than superficial badge counts.",
+      "when": "For precision engineering, electronics and sensors.",
+      "modules": [
+        "cly-del-detail",
+        "hexagon-capability",
+        "sick-detail"
+      ]
+    },
+    {
+      "id": "step-by-step-process",
+      "family": "Process & Storytelling",
+      "title": "Explain the delivery process",
+      "question": "How can a long operational process become a clear, scannable sequence?",
+      "principle": "Reveal steps, handoffs and output artifacts in a buyer-friendly order.",
+      "compare": "Compare timelines, arrows, progressive disclosure and evidence.",
+      "when": "For custom manufacturing and product development.",
+      "modules": [
+        "fictiv-process-stages",
+        "design1st-detail",
+        "sgw-designworks-detail"
+      ]
+    },
+    {
+      "id": "end-to-end-offer",
+      "family": "Process & Storytelling",
+      "title": "From design to delivery",
+      "question": "How do you present multidisciplinary work as one coherent engagement?",
+      "principle": "Connect design, engineering, production and delivery through a continuous narrative.",
+      "compare": "Compare service connections and process articulation.",
+      "when": "For integrated development, factory and supply-chain services.",
+      "modules": [
+        "flex-manufacturing-detail",
+        "terminal-industries-detail",
+        "materialise-detail"
+      ]
+    },
+    {
+      "id": "process-as-visual-story",
+      "family": "Process & Storytelling",
+      "title": "The process is the story",
+      "question": "When should the technical process itself become the visual narrative?",
+      "principle": "Use real production stages and industrial context as proof.",
+      "compare": "Compare production imagery, explanations and sequence framing.",
+      "when": "For new materials, automation and manufacturing innovation.",
+      "modules": [
+        "biomason-detail",
+        "oneprom-detail",
+        "oshcut-detail"
+      ]
+    },
+    {
+      "id": "point-of-view",
+      "family": "Process & Storytelling",
+      "title": "Beyond the generic company intro",
+      "question": "How can a B2B firm express a recognizable point of view?",
+      "principle": "Use an explicit idea or methodology and support it with actual work.",
+      "compare": "Compare narrative voice against concrete service information.",
+      "when": "For consultancies, studios and technical companies.",
+      "modules": [
+        "ideo-hero",
+        "snohetta-detail",
+        "ge-vernova-hero"
+      ]
+    }
+  ]
+}
