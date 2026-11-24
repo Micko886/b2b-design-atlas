@@ -11,7 +11,7 @@ RESULTS=[]
 TARGETS=[
   ('universal-robots','https://www.universal-robots.com/','Use necessary cookies only',0,850),
   ('siemens-healthineers','https://www.siemens-healthineers.com/','Allow necessary only',0,850),
-  ('boston-dynamics','https://bostondynamics.com/',None,850,1650),
+  ('boston-dynamics','https://bostondynamics.com/','Reject All',850,1650),
 ]
 def save(image,path):
     path.parent.mkdir(parents=True,exist_ok=True)
@@ -54,6 +54,10 @@ async def do_capture(browser,row):
               print('text try:',sid,type(exc).__name__,flush=True)
         if not clicked:raise RuntimeError('Consent button could not be used normally: '+consent)
         await page.wait_for_timeout(800)
+      # User-like mouse move / Escape clear transient accessibility and hover tooltips.
+      await page.keyboard.press('Escape')
+      await page.mouse.move(25,865)
+      await page.wait_for_timeout(450)
       await page.evaluate('(y)=>window.scrollTo({top:y,behavior:"instant"})',y1)
       await page.wait_for_timeout(1350)
       hero=await screen(page)
