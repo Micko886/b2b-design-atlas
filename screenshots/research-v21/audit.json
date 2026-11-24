@@ -1,0 +1,431 @@
+{
+  "batch": "v21",
+  "captured_at": "2026-11-24T03:02:45.416377+00:00",
+  "sites_attempted": 15,
+  "sites_captured": 13,
+  "inner_attempted": 24,
+  "inner_captured": 22,
+  "modules_added": 47,
+  "accepted_sites": [
+    "vast",
+    "figure-robotics",
+    "skydio",
+    "zipline",
+    "helion",
+    "form-energy",
+    "cfs-energy",
+    "saronic",
+    "prima-power",
+    "rosler",
+    "krones",
+    "tekna-machines",
+    "aixtron"
+  ],
+  "accepted_module_ids": [
+    "vast-hero",
+    "vast-detail",
+    "figure-robotics-hero",
+    "figure-robotics-detail",
+    "skydio-hero",
+    "skydio-detail",
+    "zipline-hero",
+    "zipline-detail",
+    "helion-hero",
+    "helion-detail",
+    "form-energy-hero",
+    "form-energy-detail",
+    "cfs-energy-hero",
+    "cfs-energy-detail",
+    "saronic-hero",
+    "saronic-detail",
+    "prima-power-hero",
+    "prima-power-detail",
+    "rosler-hero",
+    "krones-hero",
+    "krones-detail",
+    "tekna-machines-hero",
+    "tekna-machines-detail",
+    "aixtron-hero",
+    "aixtron-detail",
+    "vast-space-infrastructure",
+    "figure-robotics-figure-03",
+    "skydio-drone-products",
+    "zipline-delivery-technology",
+    "helion-fusion-technology",
+    "form-energy-iron-air",
+    "cfs-energy-fusion-system",
+    "saronic-autonomous-vessels",
+    "prima-power-automation-robotics",
+    "rosler-mass-finishing",
+    "krones-machine-catalog",
+    "tekna-machines-cnc-range",
+    "aixtron-deposition-products",
+    "formlabs-form4-product",
+    "protolabs-3d-printing-service",
+    "xometry-3d-printing-service",
+    "kvadrat-textile-products",
+    "snohetta-architecture-projects",
+    "snohetta-architecture-discipline",
+    "krones-machine-automation",
+    "prima-power-production-lines",
+    "helion-orion-project"
+  ],
+  "total_sites": 88,
+  "total_modules": 188,
+  "audits": [
+    {
+      "kind": "homepage",
+      "id": "vast",
+      "status": "captured",
+      "source_url": "https://www.vastspace.com/",
+      "title": "Vast – Building Next-Generation Space Infrastructure",
+      "sections": 2,
+      "cookie_clicked": false,
+      "visual_variation": 42.7
+    },
+    {
+      "kind": "homepage",
+      "id": "figure-robotics",
+      "status": "captured",
+      "source_url": "https://www.figure.ai/",
+      "title": "Figure",
+      "sections": 2,
+      "cookie_clicked": false,
+      "visual_variation": 45.6
+    },
+    {
+      "kind": "homepage",
+      "id": "skydio",
+      "status": "captured",
+      "source_url": "https://www.skydio.com/",
+      "title": "Skydio autonomous drones for DFR, inspection, national security | Skydio",
+      "sections": 2,
+      "cookie_clicked": true,
+      "visual_variation": 93.8
+    },
+    {
+      "kind": "homepage",
+      "id": "zipline",
+      "status": "captured",
+      "source_url": "https://www.zipline.com/",
+      "title": "Drone Delivery for Food, Groceries, and Medicine | Zipline",
+      "sections": 2,
+      "cookie_clicked": false,
+      "visual_variation": 75.1
+    },
+    {
+      "kind": "homepage",
+      "id": "anduril",
+      "status": "rejected",
+      "source_url": "https://www.anduril.com/",
+      "reason": "Not enough real visible page text"
+    },
+    {
+      "kind": "homepage",
+      "id": "helion",
+      "status": "captured",
+      "source_url": "https://www.helionenergy.com/",
+      "title": "Helion | Building the world's first fusion power plant",
+      "sections": 2,
+      "cookie_clicked": false,
+      "visual_variation": 45.8
+    },
+    {
+      "kind": "homepage",
+      "id": "form-energy",
+      "status": "captured",
+      "source_url": "https://formenergy.com/",
+      "title": "Form Energy: Energy Storage For a Better World",
+      "sections": 2,
+      "cookie_clicked": false,
+      "visual_variation": 52.5
+    },
+    {
+      "kind": "homepage",
+      "id": "cfs-energy",
+      "status": "captured",
+      "source_url": "https://www.cfs.energy/",
+      "title": "Home | Commonwealth Fusion Systems",
+      "sections": 2,
+      "cookie_clicked": false,
+      "visual_variation": 41.2
+    },
+    {
+      "kind": "homepage",
+      "id": "saronic",
+      "status": "captured",
+      "source_url": "https://www.saronic.com/",
+      "title": "Home | Saronic Technologies",
+      "sections": 2,
+      "cookie_clicked": false,
+      "visual_variation": 65.3
+    },
+    {
+      "kind": "homepage",
+      "id": "kern-microtechnik",
+      "status": "rejected",
+      "source_url": "https://www.kern-microtechnik.com/en",
+      "reason": "HTTP 429"
+    },
+    {
+      "kind": "homepage",
+      "id": "prima-power",
+      "status": "captured",
+      "source_url": "https://www.primapower.com/en",
+      "title": "Prima Power | Best sheet metal machines",
+      "sections": 2,
+      "cookie_clicked": true,
+      "visual_variation": 98.0
+    },
+    {
+      "kind": "homepage",
+      "id": "rosler",
+      "status": "captured",
+      "source_url": "https://www.rosler.com/en/",
+      "title": "Your one-stop supplier for surface finishing - Rösler Group",
+      "sections": 1,
+      "cookie_clicked": false,
+      "visual_variation": 25.6
+    },
+    {
+      "kind": "homepage",
+      "id": "krones",
+      "status": "captured",
+      "source_url": "https://www.krones.com/en/",
+      "title": "Krones – Solutions beyond tomorrow - Krones",
+      "sections": 2,
+      "cookie_clicked": true,
+      "visual_variation": 94.4
+    },
+    {
+      "kind": "homepage",
+      "id": "tekna-machines",
+      "status": "captured",
+      "source_url": "https://www.tekna.it/en/home",
+      "title": "tekna: CNC machining centers - Aluminum machining centers - Machines for aluminum - Machines for steel - Technologies for panels",
+      "sections": 2,
+      "cookie_clicked": false,
+      "visual_variation": 43.7
+    },
+    {
+      "kind": "homepage",
+      "id": "aixtron",
+      "status": "captured",
+      "source_url": "https://www.aixtron.com/en",
+      "title": "AIXTRON – System Production with Attention to Detail. :: AIXTRON",
+      "sections": 2,
+      "cookie_clicked": true,
+      "visual_variation": 41.4
+    },
+    {
+      "kind": "inner-page",
+      "id": "vast-space-infrastructure",
+      "status": "captured",
+      "source_url": "https://www.vastspace.com/",
+      "title": "Vast – Building Next-Generation Space Infrastructure",
+      "category": "Technology",
+      "cookie_clicked": true
+    },
+    {
+      "kind": "inner-page",
+      "id": "figure-robotics-figure-03",
+      "status": "captured",
+      "source_url": "https://www.figure.ai/figure",
+      "title": "Figure 03 | Figure",
+      "category": "Products",
+      "cookie_clicked": false
+    },
+    {
+      "kind": "inner-page",
+      "id": "skydio-drone-products",
+      "status": "captured",
+      "source_url": "https://www.skydio.com/products",
+      "title": "Skydio drones and integrated solutions | Skydio",
+      "category": "Products",
+      "cookie_clicked": true
+    },
+    {
+      "kind": "inner-page",
+      "id": "zipline-delivery-technology",
+      "status": "captured",
+      "source_url": "https://www.zipline.com/technology",
+      "title": "Autonomous Delivery Technology | Zipline",
+      "category": "Process",
+      "cookie_clicked": false
+    },
+    {
+      "kind": "inner-page",
+      "id": "anduril-company-mission",
+      "status": "skipped",
+      "reason": "Parent site not validated"
+    },
+    {
+      "kind": "inner-page",
+      "id": "helion-fusion-technology",
+      "status": "captured",
+      "source_url": "https://www.helionenergy.com/technology",
+      "title": "Helion | Technology",
+      "category": "Technology",
+      "cookie_clicked": false
+    },
+    {
+      "kind": "inner-page",
+      "id": "form-energy-iron-air",
+      "status": "captured",
+      "source_url": "https://formenergy.com/technology/",
+      "title": "Technology | Form Energy",
+      "category": "Technology",
+      "cookie_clicked": false
+    },
+    {
+      "kind": "inner-page",
+      "id": "cfs-energy-fusion-system",
+      "status": "captured",
+      "source_url": "https://www.cfs.energy/technology/",
+      "title": "Technology | Commonwealth Fusion Systems",
+      "category": "Technology",
+      "cookie_clicked": false
+    },
+    {
+      "kind": "inner-page",
+      "id": "saronic-autonomous-vessels",
+      "status": "captured",
+      "source_url": "https://www.saronic.com/vessels",
+      "title": "Vessels | Saronic Technologies",
+      "category": "Products",
+      "cookie_clicked": false
+    },
+    {
+      "kind": "inner-page",
+      "id": "kern-microtechnik-precision-machines",
+      "status": "skipped",
+      "reason": "Parent site not validated"
+    },
+    {
+      "kind": "inner-page",
+      "id": "prima-power-automation-robotics",
+      "status": "captured",
+      "source_url": "https://www.primapower.com/en/technologies/automation-and-robotics",
+      "title": "Automation, process automation solutions | Prima Power​",
+      "category": "Capabilities",
+      "cookie_clicked": true
+    },
+    {
+      "kind": "inner-page",
+      "id": "rosler-mass-finishing",
+      "status": "captured",
+      "source_url": "https://www.rosler.com/en/products/mass-finishing",
+      "title": "The all in one supplier for mass finishing solutions. - Rösler Group",
+      "category": "Products",
+      "cookie_clicked": false
+    },
+    {
+      "kind": "inner-page",
+      "id": "krones-machine-catalog",
+      "status": "captured",
+      "source_url": "https://www.krones.com/en/products/",
+      "title": "Products - Krones",
+      "category": "Products",
+      "cookie_clicked": true
+    },
+    {
+      "kind": "inner-page",
+      "id": "tekna-machines-cnc-range",
+      "status": "captured",
+      "source_url": "https://www.tekna.it/en/products-range",
+      "title": "tekna: Product categories",
+      "category": "Products",
+      "cookie_clicked": false
+    },
+    {
+      "kind": "inner-page",
+      "id": "aixtron-deposition-products",
+      "status": "captured",
+      "source_url": "https://www.aixtron.com/en/products",
+      "title": "Product overview: Compund Semiconductors & 2D-Nanomaterials :: AIXTRON",
+      "category": "Products",
+      "cookie_clicked": true
+    },
+    {
+      "kind": "inner-page",
+      "id": "formlabs-form4-product",
+      "status": "captured",
+      "source_url": "https://formlabs.com/3d-printers/form-4/",
+      "title": "Form 4: The Fastest Professional Resin 3D Printer | Formlabs",
+      "category": "Products",
+      "cookie_clicked": false
+    },
+    {
+      "kind": "inner-page",
+      "id": "protolabs-3d-printing-service",
+      "status": "captured",
+      "source_url": "https://www.protolabs.com/services/3d-printing/",
+      "title": "Online 3D Printing Service | Instant 3D Printing Quote",
+      "category": "Capabilities",
+      "cookie_clicked": false
+    },
+    {
+      "kind": "inner-page",
+      "id": "xometry-3d-printing-service",
+      "status": "captured",
+      "source_url": "https://www.xometry.com/capabilities/3d-printing-service/",
+      "title": "Custom Online 3D Printing Services - 3D Printing Quote",
+      "category": "RFQ",
+      "cookie_clicked": false
+    },
+    {
+      "kind": "inner-page",
+      "id": "kvadrat-textile-products",
+      "status": "captured",
+      "source_url": "https://www.kvadrat.dk/en/products",
+      "title": "Kvadrat Products | High-performance design textiles",
+      "category": "Products",
+      "cookie_clicked": true
+    },
+    {
+      "kind": "inner-page",
+      "id": "snohetta-architecture-projects",
+      "status": "captured",
+      "source_url": "https://www.snohetta.com/projects/",
+      "title": "Projects – Snøhetta",
+      "category": "Projects",
+      "cookie_clicked": false
+    },
+    {
+      "kind": "inner-page",
+      "id": "snohetta-architecture-discipline",
+      "status": "captured",
+      "source_url": "https://www.snohetta.com/disciplines/architecture",
+      "title": "Architecture – Snøhetta",
+      "category": "Approach",
+      "cookie_clicked": false
+    },
+    {
+      "kind": "inner-page",
+      "id": "krones-machine-automation",
+      "status": "captured",
+      "source_url": "https://www.krones.com/en/products/innovations/?utm_source=banner&utm_medium=paid&utm_campaign=embalagemmarca_innovation_0826",
+      "title": "Krones innovations: Solutions for the future - Krones",
+      "category": "Technology",
+      "cookie_clicked": true
+    },
+    {
+      "kind": "inner-page",
+      "id": "prima-power-production-lines",
+      "status": "captured",
+      "source_url": "https://www.primapower.com/en/technologies/systems/automated-manufacturing-lines",
+      "title": "Automated Manufacturing Lines | Prima Power​",
+      "category": "Process",
+      "cookie_clicked": true
+    },
+    {
+      "kind": "inner-page",
+      "id": "helion-orion-project",
+      "status": "captured",
+      "source_url": "https://www.helionenergy.com/orion",
+      "title": "Helion | Orion",
+      "category": "Projects",
+      "cookie_clicked": false
+    }
+  ]
+}
