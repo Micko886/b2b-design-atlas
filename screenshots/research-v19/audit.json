@@ -1,0 +1,499 @@
+{
+  "created_at": "2026-11-24T02:00:05.792891+00:00",
+  "attempted": 38,
+  "accepted": 22,
+  "rejected": 16,
+  "new_notes": 43,
+  "new_modules": 43,
+  "total_sites": 53,
+  "total_modules": 97,
+  "approved": [
+    "boston-dynamics",
+    "universal-robots",
+    "beckhoff",
+    "sick",
+    "ifm",
+    "jabil",
+    "flex-manufacturing",
+    "eastman",
+    "ge-healthcare",
+    "siemens-healthineers",
+    "medtronic",
+    "ge-vernova",
+    "schneider-electric",
+    "hitachi-energy",
+    "vestas",
+    "fluence-energy",
+    "onshape",
+    "celonis",
+    "datadog",
+    "hilti",
+    "mcmaster-carr",
+    "danfoss"
+  ],
+  "results": [
+    {
+      "id": "boston-dynamics",
+      "kind": "website",
+      "url": "https://bostondynamics.com/",
+      "resolved_url": "https://bostondynamics.com/",
+      "title": "The World’s Leading Robotics Company | Boston Dynamics",
+      "status": "captured",
+      "image_file": "screenshots/sites/boston-dynamics.webp",
+      "contrast": 100.1
+    },
+    {
+      "id": "boston-dynamics-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 65.2
+    },
+    {
+      "id": "universal-robots",
+      "kind": "website",
+      "url": "https://www.universal-robots.com/",
+      "resolved_url": "https://www.universal-robots.com/",
+      "title": "Collaborative Robots & Cobots | Universal Robots",
+      "status": "captured",
+      "image_file": "screenshots/sites/universal-robots.webp",
+      "contrast": 100.7
+    },
+    {
+      "id": "universal-robots-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 19.8
+    },
+    {
+      "id": "abb-robotics",
+      "status": "rejected",
+      "url": "https://www.abb.com/global/en/areas/robotics",
+      "reason": "Page.goto: net::ERR_HTTP2_PROTOCOL_ERROR at https://www.abb.com/global/en/areas/robotics\nCall log:\n  - navigating to \"https://www.abb.com/global/en/areas/robotics\", waiting until \""
+    },
+    {
+      "id": "beckhoff",
+      "kind": "website",
+      "url": "https://www.beckhoff.com/en-us/",
+      "resolved_url": "https://www.beckhoff.com/en-us/",
+      "title": "Beckhoff | New Automation Technology | Beckhoff USA",
+      "status": "captured",
+      "image_file": "screenshots/sites/beckhoff.webp",
+      "contrast": 64.0
+    },
+    {
+      "id": "beckhoff-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 26.7
+    },
+    {
+      "id": "omron-automation",
+      "status": "rejected",
+      "url": "https://automation.omron.com/en/us/",
+      "reason": "HTTP 403"
+    },
+    {
+      "id": "rockwell-automation",
+      "status": "rejected",
+      "url": "https://www.rockwellautomation.com/en-us.html",
+      "reason": "HTTP 403"
+    },
+    {
+      "id": "cognex",
+      "status": "rejected",
+      "url": "https://www.cognex.com/",
+      "reason": "HTTP 429"
+    },
+    {
+      "id": "sick",
+      "kind": "website",
+      "url": "https://www.sick.com/us/en/",
+      "resolved_url": "https://www.sick.com/us/en/",
+      "title": "SICK USA | SICK",
+      "status": "captured",
+      "image_file": "screenshots/sites/sick.webp",
+      "contrast": 98.1
+    },
+    {
+      "id": "sick-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 165.1
+    },
+    {
+      "id": "ifm",
+      "kind": "website",
+      "url": "https://www.ifm.com/us/en",
+      "resolved_url": "https://www.ifm.com/us/en",
+      "title": "ifm Efector, Inc. Homepage US - ifm",
+      "status": "captured",
+      "image_file": "screenshots/sites/ifm.webp",
+      "contrast": 81.9
+    },
+    {
+      "id": "ifm-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 90.1
+    },
+    {
+      "id": "te-connectivity",
+      "status": "rejected",
+      "url": "https://www.te.com/en/home.html",
+      "reason": "HTTP 403"
+    },
+    {
+      "id": "phoenix-contact",
+      "status": "rejected",
+      "url": "https://www.phoenixcontact.com/en-us/",
+      "reason": "HTTP 403"
+    },
+    {
+      "id": "harting",
+      "status": "rejected",
+      "url": "https://www.harting.com/US/en-us",
+      "reason": "HTTP 404"
+    },
+    {
+      "id": "analog-devices",
+      "status": "rejected",
+      "url": "https://www.analog.com/en/index.html",
+      "reason": "HTTP 403"
+    },
+    {
+      "id": "jabil",
+      "kind": "website",
+      "url": "https://www.jabil.com/",
+      "resolved_url": "https://www.jabil.com/",
+      "title": "Jabil | Engineering, Supply Chain & Manufacturing Solutions | Jabil",
+      "status": "captured",
+      "image_file": "screenshots/sites/jabil.webp",
+      "contrast": 71.8
+    },
+    {
+      "id": "jabil-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 111.6
+    },
+    {
+      "id": "flex-manufacturing",
+      "kind": "website",
+      "url": "https://flex.com/",
+      "resolved_url": "https://flex.com/",
+      "title": "Flex | Advanced Manufacturing with End-to-End Solutions",
+      "status": "captured",
+      "image_file": "screenshots/sites/flex-manufacturing.webp",
+      "contrast": 100.8
+    },
+    {
+      "id": "flex-manufacturing-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 86.9
+    },
+    {
+      "id": "wurth-elektronik",
+      "status": "rejected",
+      "url": "https://www.we-online.com/en/",
+      "reason": "HTTP 403"
+    },
+    {
+      "id": "covestro",
+      "status": "rejected",
+      "url": "https://www.covestro.com/en",
+      "reason": "HTTP 403"
+    },
+    {
+      "id": "eastman",
+      "kind": "website",
+      "url": "https://www.eastman.com/en",
+      "resolved_url": "https://www.eastman.com/en",
+      "title": "Eastman | Material Innovation Company",
+      "status": "captured",
+      "image_file": "screenshots/sites/eastman.webp",
+      "contrast": 56.8
+    },
+    {
+      "id": "eastman-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 147.2
+    },
+    {
+      "id": "corning",
+      "status": "rejected",
+      "url": "https://www.corning.com/worldwide/en.html",
+      "reason": "HTTP 403"
+    },
+    {
+      "id": "dupont",
+      "status": "rejected",
+      "url": "https://www.dupont.com/",
+      "reason": "Page.screenshot: Timeout 12000ms exceeded.\nCall log:\n  - taking page screenshot\n    - disabled all CSS animations\n  - waiting for fonts to load...\n"
+    },
+    {
+      "id": "saint-gobain",
+      "status": "rejected",
+      "url": "https://www.saint-gobain.com/en",
+      "reason": "HTTP 403"
+    },
+    {
+      "id": "ge-healthcare",
+      "kind": "website",
+      "url": "https://www.gehealthcare.com/",
+      "resolved_url": "https://www.gehealthcare.com/en-us",
+      "title": "GE HealthCare Technologies Inc | Home",
+      "status": "captured",
+      "image_file": "screenshots/sites/ge-healthcare.webp",
+      "contrast": 65.0
+    },
+    {
+      "id": "ge-healthcare-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 103.7
+    },
+    {
+      "id": "siemens-healthineers",
+      "kind": "website",
+      "url": "https://www.siemens-healthineers.com/",
+      "resolved_url": "https://www.siemens-healthineers.com/",
+      "title": "Siemens Healthineers | Corporate Home",
+      "status": "captured",
+      "image_file": "screenshots/sites/siemens-healthineers.webp",
+      "contrast": 106.5
+    },
+    {
+      "id": "siemens-healthineers-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 21.7
+    },
+    {
+      "id": "medtronic",
+      "kind": "website",
+      "url": "https://www.medtronic.com/us-en/index.html",
+      "resolved_url": "https://www.medtronic.com/en-us/index.html",
+      "title": "Health tech for the digital age | Medtronic",
+      "status": "captured",
+      "image_file": "screenshots/sites/medtronic.webp",
+      "contrast": 52.8
+    },
+    {
+      "id": "medtronic-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 76.9
+    },
+    {
+      "id": "agilent",
+      "status": "rejected",
+      "url": "https://www.agilent.com/",
+      "reason": "HTTP 403"
+    },
+    {
+      "id": "waters",
+      "status": "rejected",
+      "url": "https://www.waters.com/",
+      "reason": "Page.goto: net::ERR_HTTP2_PROTOCOL_ERROR at https://www.waters.com/\nCall log:\n  - navigating to \"https://www.waters.com/\", waiting until \"domcontentloaded\"\n"
+    },
+    {
+      "id": "ge-vernova",
+      "kind": "website",
+      "url": "https://www.gevernova.com/",
+      "resolved_url": "https://www.gevernova.com/",
+      "title": "GE Vernova | The Energy of Change",
+      "status": "captured",
+      "image_file": "screenshots/sites/ge-vernova.webp",
+      "contrast": 69.5
+    },
+    {
+      "id": "ge-vernova-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 129.1
+    },
+    {
+      "id": "schneider-electric",
+      "kind": "website",
+      "url": "https://www.se.com/us/en/",
+      "resolved_url": "https://www.se.com/us/en/",
+      "title": "Schneider Electric United States | Schneider Electric USA | Your Energy Technology Partner",
+      "status": "captured",
+      "image_file": "screenshots/sites/schneider-electric.webp",
+      "contrast": 79.8
+    },
+    {
+      "id": "schneider-electric-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 137.3
+    },
+    {
+      "id": "hitachi-energy",
+      "kind": "website",
+      "url": "https://www.hitachienergy.com/",
+      "resolved_url": "https://www.hitachienergy.com/",
+      "title": "Hitachi Energy - Powering the electricity era",
+      "status": "captured",
+      "image_file": "screenshots/sites/hitachi-energy.webp",
+      "contrast": 77.7
+    },
+    {
+      "id": "hitachi-energy-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 145.5
+    },
+    {
+      "id": "vestas",
+      "kind": "website",
+      "url": "https://www.vestas.com/en",
+      "resolved_url": "https://www.vestas.com/en",
+      "title": "Global Leader in Sustainable Energy | Vestas",
+      "status": "captured",
+      "image_file": "screenshots/sites/vestas.webp",
+      "contrast": 62.8
+    },
+    {
+      "id": "vestas-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 135.2
+    },
+    {
+      "id": "fluence-energy",
+      "kind": "website",
+      "url": "https://fluenceenergy.com/",
+      "resolved_url": "https://fluenceenergy.com/",
+      "title": "Fluence | A Siemens and AES Company",
+      "status": "captured",
+      "image_file": "screenshots/sites/fluence-energy.webp",
+      "contrast": 96.6
+    },
+    {
+      "id": "fluence-energy-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 126.8
+    },
+    {
+      "id": "onshape",
+      "kind": "website",
+      "url": "https://www.onshape.com/en/",
+      "resolved_url": "https://www.onshape.com/en/",
+      "title": "Onshape | Product Development Platform",
+      "status": "captured",
+      "image_file": "screenshots/sites/onshape.webp",
+      "contrast": 74.2
+    },
+    {
+      "id": "onshape-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 38.1
+    },
+    {
+      "id": "celonis",
+      "kind": "website",
+      "url": "https://www.celonis.com/",
+      "resolved_url": "https://www.celonis.com/",
+      "title": "Enterprise AI powered by Celonis",
+      "status": "captured",
+      "image_file": "screenshots/sites/celonis.webp",
+      "contrast": 51.4
+    },
+    {
+      "id": "celonis-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 29.3
+    },
+    {
+      "id": "datadog",
+      "kind": "website",
+      "url": "https://www.datadoghq.com/",
+      "resolved_url": "https://www.datadoghq.com/",
+      "title": "Cloud Monitoring as a Service | Datadog",
+      "status": "captured",
+      "image_file": "screenshots/sites/datadog.webp",
+      "contrast": 45.7
+    },
+    {
+      "id": "datadog-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 116.0
+    },
+    {
+      "id": "servicenow",
+      "status": "rejected",
+      "url": "https://www.servicenow.com/",
+      "reason": "HTTP 403"
+    },
+    {
+      "id": "hilti",
+      "kind": "website",
+      "url": "https://www.hilti.com/",
+      "resolved_url": "https://www.hilti.com/",
+      "title": "Power Tools, Fasteners & Software for Construction - Hilti USA",
+      "status": "captured",
+      "image_file": "screenshots/sites/hilti.webp",
+      "contrast": 90.4
+    },
+    {
+      "id": "hilti-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 113.2
+    },
+    {
+      "id": "mcmaster-carr",
+      "kind": "website",
+      "url": "https://www.mcmaster.com/",
+      "resolved_url": "https://www.mcmaster.com/",
+      "title": "McMaster-Carr",
+      "status": "captured",
+      "image_file": "screenshots/sites/mcmaster-carr.webp",
+      "contrast": 44.0
+    },
+    {
+      "id": "danfoss",
+      "kind": "website",
+      "url": "https://www.danfoss.com/en/",
+      "resolved_url": "https://www.danfoss.com/en/",
+      "title": "We engineer a better future | Danfoss",
+      "status": "captured",
+      "image_file": "screenshots/sites/danfoss.webp",
+      "contrast": 92.1
+    },
+    {
+      "id": "danfoss-detail",
+      "kind": "below-fold section",
+      "status": "captured",
+      "scroll": 850,
+      "pixel_difference": 68.7
+    }
+  ]
+}
