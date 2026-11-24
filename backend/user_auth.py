@@ -14,7 +14,9 @@ PG_URL=os.getenv("ATLAS_USERS_DATABASE_URL","").strip()
 SQLITE_DEMO=os.getenv("ATLAS_ALLOW_EPHEMERAL_AUTH","0")=="1"
 SQLITE_FILE=os.getenv("ATLAS_USERS_DB_PATH","/srv/atlas/data/users-demo.sqlite3")
 EMAIL=re.compile(r"^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,40}$")
-KEY=re.compile(r"^(site|module):([a-z0-9][a-z0-9-]{0,110})$")
+KEY=re.compile(r"^(site|module|pattern|article):([a-z0-9][a-z0-9-]{0,110})$")
+FOLDER_ID=re.compile(r"^[0-9a-f-]{36}$")
+COLOR=re.compile(r"^#[0-9a-fA-F]{6}$")
 LOCK=threading.Lock()
 READY=False
 def now(): return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -67,7 +69,31 @@ slug TEXT NOT NULL,note TEXT NOT NULL DEFAULT '',created_at TEXT NOT NULL,
 PRIMARY KEY(user_id,collection,kind,slug))""",
 """CREATE INDEX IF NOT EXISTS atlas_items_user ON atlas_user_items(user_id,collection)""",
 """CREATE TABLE IF NOT EXISTS atlas_auth_limits (
-fingerprint TEXT PRIMARY KEY,window_end TEXT NOT NULL,attempts INTEGER NOT NULL DEFAULT 0)"""
+fingerprint TEXT PRIMARY KEY,window_end TEXT NOT NULL,attempts INTEGER NOT NULL DEFAULT 0)""",
+"""CREATE TABLE IF NOT EXISTS atlas_user_entities (
+user_id TEXT NOT NULL REFERENCES atlas_users(id) ON DELETE CASCADE,
+collection TEXT NOT NULL CHECK(collection IN ('saved','board')),
+kind TEXT NOT NULL CHECK(kind IN ('pattern','article')),
+slug TEXT NOT NULL,note TEXT NOT NULL DEFAULT '',created_at TEXT NOT NULL,
+PRIMARY KEY(user_id,collection,kind,slug))""",
+"""CREATE TABLE IF NOT EXISTS atlas_user_folders (
+id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES atlas_users(id) ON DELETE CASCADE,
+name TEXT NOT NULL,name_key TEXT NOT NULL,color TEXT NOT NULL DEFAULT '#315BE8',
+created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(user_id,name_key))""",
+"""CREATE INDEX IF NOT EXISTS atlas_folders_user ON atlas_user_folders(user_id)""",
+"""CREATE TABLE IF NOT EXISTS atlas_user_folder_items (
+folder_id TEXT NOT NULL REFERENCES atlas_user_folders(id) ON DELETE CASCADE,
+kind TEXT NOT NULL CHECK(kind IN ('site','module','pattern','article')),
+slug TEXT NOT NULL,created_at TEXT NOT NULL,
+PRIMARY KEY(folder_id,kind,slug))""",
+"""CREATE TABLE IF NOT EXISTS atlas_item_annotations (
+user_id TEXT NOT NULL REFERENCES atlas_users(id) ON DELETE CASCADE,
+kind TEXT NOT NULL CHECK(kind IN ('site','module','pattern','article')),
+slug TEXT NOT NULL,note TEXT NOT NULL DEFAULT '',tags_json TEXT NOT NULL DEFAULT '[]',
+updated_at TEXT NOT NULL,PRIMARY KEY(user_id,kind,slug))""",
+"""CREATE TABLE IF NOT EXISTS atlas_password_resets (
+token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES atlas_users(id) ON DELETE CASCADE,
+expires_at TEXT NOT NULL,created_at TEXT NOT NULL)"""
 ]
 def ensure_ready():
     global READY
@@ -252,37 +278,174 @@ def register_auth_routes(app:FastAPI):
             conn.execute("UPDATE atlas_users SET password_hash=?,updated_at=? WHERE id=?",(hash_password(data.new_password),now(),s["user_id"]))
             conn.execute("DELETE FROM atlas_sessions WHERE user_id=? AND token_hash<>?",(s["user_id"],s["token_hash"]))
         return {"ok":True}
+    def library_data(user_id):
+        with db() as conn:
+            items=conn.all("SELECT collection,kind,slug,note,created_at FROM atlas_user_items WHERE user_id=?",(user_id,))
+            extra=conn.all("SELECT collection,kind,slug,note,created_at FROM atlas_user_entities WHERE user_id=?",(user_id,))
+            folders=conn.all("""SELECT f.id,f.name,f.color,f.created_at,
+                   (SELECT COUNT(*) FROM atlas_user_folder_items i WHERE i.folder_id=f.id) AS item_count
+                   FROM atlas_user_folders f WHERE user_id=? ORDER BY f.created_at""",(user_id,))
+            memberships=conn.all("""SELECT i.folder_id,i.kind,i.slug
+                    FROM atlas_user_folder_items i
+                    JOIN atlas_user_folders f ON f.id=i.folder_id WHERE f.user_id=?""",(user_id,))
+            metadata=conn.all("SELECT kind,slug,note,tags_json FROM atlas_item_annotations WHERE user_id=?",(user_id,))
+        combined=sorted(items+extra,key=lambda x:x["created_at"],reverse=True)
+        return {"saved":[x["kind"]+":"+x["slug"] for x in combined if x["collection"]=="saved"],
+                "board":[x["kind"]+":"+x["slug"] for x in combined if x["collection"]=="board"],
+                "notes":{x["kind"]+":"+x["slug"]:x["note"] for x in combined if x["collection"]=="board" and x["note"]},
+                "folders":folders,"folderItems":{f["id"]:[x["kind"]+":"+x["slug"] for x in memberships if x["folder_id"]==f["id"]] for f in folders},
+                "annotations":{x["kind"]+":"+x["slug"]:{"note":x["note"],"tags":__import__("json").loads(x["tags_json"])} for x in metadata}}
+    def saved_in_db(conn,user_id,kind,slug):
+        table="atlas_user_items" if kind in ("site","module") else "atlas_user_entities"
+        return conn.one("SELECT slug FROM "+table+" WHERE user_id=? AND collection='saved' AND kind=? AND slug=?",(user_id,kind,slug)) is not None
+    def folder_for_user(conn,user_id,folder_id):
+        if not FOLDER_ID.fullmatch(folder_id):error(404,"收藏夹不存在。")
+        folder=conn.one("SELECT id,name FROM atlas_user_folders WHERE id=? AND user_id=?",(folder_id,user_id))
+        if not folder:error(404,"收藏夹不存在。")
+        return folder
     @router.get("/me/library")
     def library(request:Request,response:Response):
         s=required(request);response.headers["Cache-Control"]="no-store"
-        with db() as conn:
-            items=conn.all("SELECT collection,kind,slug,note FROM atlas_user_items WHERE user_id=? ORDER BY created_at DESC",(s["user_id"],))
-        return {"saved":[x["kind"]+":"+x["slug"] for x in items if x["collection"]=="saved"],
-                "board":[x["kind"]+":"+x["slug"] for x in items if x["collection"]=="board"],
-                "notes":{x["kind"]+":"+x["slug"]:x["note"] for x in items if x["collection"]=="board" and x["note"]}}
+        return library_data(s["user_id"])
     @router.post("/me/library",status_code=201)
     def add(data:Item,request:Request):
         origin(request);s=required(request);check_csrf(request,s)
         kind,slug=KEY.fullmatch(data.key).groups()
+        table="atlas_user_items" if kind in ("site","module") else "atlas_user_entities"
         with db() as conn:
-            conn.execute("""INSERT INTO atlas_user_items(user_id,collection,kind,slug,note,created_at)
+            conn.execute("""INSERT INTO """+table+"""(user_id,collection,kind,slug,note,created_at)
             VALUES(?,?,?,?,?,?) ON CONFLICT(user_id,collection,kind,slug) DO NOTHING""",
             (s["user_id"],data.collection,kind,slug,"",now()))
         return {"ok":True}
     @router.delete("/me/library/{collection}/{kind}/{slug}")
-    def remove(collection:Literal["saved","board"],kind:Literal["site","module"],slug:str,request:Request):
+    def remove(collection:Literal["saved","board"],kind:Literal["site","module","pattern","article"],slug:str,request:Request):
         origin(request);s=required(request);check_csrf(request,s)
         if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,110}",slug):error(400,"资源标识无效。")
+        table="atlas_user_items" if kind in ("site","module") else "atlas_user_entities"
         with db() as conn:
-            conn.execute("DELETE FROM atlas_user_items WHERE user_id=? AND collection=? AND kind=? AND slug=?",
+            conn.execute("DELETE FROM "+table+" WHERE user_id=? AND collection=? AND kind=? AND slug=?",
                          (s["user_id"],collection,kind,slug))
+            if collection=="saved":
+                conn.execute("""DELETE FROM atlas_user_folder_items WHERE kind=? AND slug=? AND
+                folder_id IN (SELECT id FROM atlas_user_folders WHERE user_id=?)""",(kind,slug,s["user_id"]))
+                conn.execute("DELETE FROM atlas_item_annotations WHERE user_id=? AND kind=? AND slug=?",(s["user_id"],kind,slug))
         return {"ok":True}
     @router.patch("/me/library/note")
     def note(data:Note,request:Request):
         origin(request);s=required(request);check_csrf(request,s)
         kind,slug=KEY.fullmatch(data.key).groups()
+        table="atlas_user_items" if kind in ("site","module") else "atlas_user_entities"
         with db() as conn:
-            conn.execute("""UPDATE atlas_user_items SET note=?
-            WHERE user_id=? AND collection='board' AND kind=? AND slug=?""",(data.note,s["user_id"],kind,slug))
+            conn.execute("UPDATE "+table+" SET note=? WHERE user_id=? AND collection='board' AND kind=? AND slug=?",
+                         (data.note,s["user_id"],kind,slug))
         return {"ok":True}
+
+    class FolderPayload(BaseModel):
+        name:str=Field(min_length=1,max_length=50)
+        color:str="#315BE8"
+        @field_validator("name")
+        @classmethod
+        def clean_name(cls,v):
+            v=v.strip()
+            if not v or any(ord(x)<32 for x in v):raise ValueError("收藏夹名称无效。")
+            return v
+        @field_validator("color")
+        @classmethod
+        def clean_color(cls,v):
+            if not COLOR.fullmatch(v):raise ValueError("收藏夹配色无效。")
+            return v.upper()
+    class FolderItem(BaseModel):
+        key:str=Field(max_length=125)
+        @field_validator("key")
+        @classmethod
+        def valid_key(cls,v):
+            if not KEY.fullmatch(v):raise ValueError("资源标识无效")
+            return v
+    class Annotation(BaseModel):
+        key:str=Field(max_length=125)
+        note:str=Field(max_length=3000,default="")
+        tags:list[str]=Field(default_factory=list,max_length=10)
+        @field_validator("key")
+        @classmethod
+        def valid_key(cls,v):
+            if not KEY.fullmatch(v):raise ValueError("资源标识无效")
+            return v
+        @field_validator("tags")
+        @classmethod
+        def valid_tags(cls,v):
+            cleaned=[]
+            for x in v:
+                x=x.strip()
+                if not x or len(x)>24 or any(ord(c)<32 for c in x):raise ValueError("标签格式不正确")
+                if x.casefold() not in [a.casefold() for a in cleaned]:cleaned.append(x)
+            return cleaned
+
+    @router.post("/me/folders",status_code=201)
+    def folder_create(data:FolderPayload,request:Request):
+        origin(request);s=required(request);check_csrf(request,s)
+        uid=s["user_id"]
+        with db() as conn:
+            row=conn.one("SELECT COUNT(*) AS n FROM atlas_user_folders WHERE user_id=?",(uid,))
+            if row["n"]>=40:error(409,"每个账户最多创建 40 个收藏夹。")
+            if conn.one("SELECT id FROM atlas_user_folders WHERE user_id=? AND name_key=?",(uid,data.name.casefold())):
+                error(409,"已存在同名收藏夹。")
+            fid=str(uuid.uuid4())
+            conn.execute("""INSERT INTO atlas_user_folders(id,user_id,name,name_key,color,created_at,updated_at)
+                VALUES(?,?,?,?,?,?,?)""",(fid,uid,data.name,data.name.casefold(),data.color,now(),now()))
+        return {"id":fid,"name":data.name,"color":data.color,"item_count":0}
+    @router.patch("/me/folders/{folder_id}")
+    def folder_update(folder_id:str,data:FolderPayload,request:Request):
+        origin(request);s=required(request);check_csrf(request,s)
+        with db() as conn:
+            folder_for_user(conn,s["user_id"],folder_id)
+            dup=conn.one("SELECT id FROM atlas_user_folders WHERE user_id=? AND name_key=?",
+                         (s["user_id"],data.name.casefold()))
+            if dup and dup["id"]!=folder_id:error(409,"已存在同名收藏夹。")
+            conn.execute("UPDATE atlas_user_folders SET name=?,name_key=?,color=?,updated_at=? WHERE id=? AND user_id=?",
+                         (data.name,data.name.casefold(),data.color,now(),folder_id,s["user_id"]))
+        return {"ok":True}
+    @router.delete("/me/folders/{folder_id}")
+    def folder_delete(folder_id:str,request:Request):
+        origin(request);s=required(request);check_csrf(request,s)
+        with db() as conn:
+            folder_for_user(conn,s["user_id"],folder_id)
+            conn.execute("DELETE FROM atlas_user_folders WHERE id=? AND user_id=?",(folder_id,s["user_id"]))
+        return {"ok":True}
+    @router.post("/me/folders/{folder_id}/items",status_code=201)
+    def folder_add_item(folder_id:str,data:FolderItem,request:Request):
+        origin(request);s=required(request);check_csrf(request,s)
+        kind,slug=KEY.fullmatch(data.key).groups()
+        with db() as conn:
+            folder_for_user(conn,s["user_id"],folder_id)
+            if not saved_in_db(conn,s["user_id"],kind,slug):
+                error(409,"请先收藏该资源，再加入收藏夹。")
+            conn.execute("""INSERT INTO atlas_user_folder_items(folder_id,kind,slug,created_at)
+              VALUES(?,?,?,?) ON CONFLICT(folder_id,kind,slug) DO NOTHING""",(folder_id,kind,slug,now()))
+        return {"ok":True}
+    @router.delete("/me/folders/{folder_id}/items/{kind}/{slug}")
+    def folder_remove_item(folder_id:str,kind:Literal["site","module","pattern","article"],slug:str,request:Request):
+        origin(request);s=required(request);check_csrf(request,s)
+        if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,110}",slug):error(400,"无效资源")
+        with db() as conn:
+            folder_for_user(conn,s["user_id"],folder_id)
+            conn.execute("DELETE FROM atlas_user_folder_items WHERE folder_id=? AND kind=? AND slug=?",(folder_id,kind,slug))
+        return {"ok":True}
+    @router.patch("/me/library/annotation")
+    def annotation_update(data:Annotation,request:Request):
+        origin(request);s=required(request);check_csrf(request,s)
+        kind,slug=KEY.fullmatch(data.key).groups()
+        with db() as conn:
+            if not saved_in_db(conn,s["user_id"],kind,slug):error(409,"请先收藏该资源。")
+            conn.execute("""INSERT INTO atlas_item_annotations(user_id,kind,slug,note,tags_json,updated_at)
+                VALUES(?,?,?,?,?,?) ON CONFLICT(user_id,kind,slug)
+                DO UPDATE SET note=excluded.note,tags_json=excluded.tags_json,updated_at=excluded.updated_at""",
+                (s["user_id"],kind,slug,data.note,__import__("json").dumps(data.tags,ensure_ascii=False),now()))
+        return {"ok":True}
+    @router.get("/me/export")
+    def export_personal_data(request:Request,response:Response):
+        s=required(request)
+        response.headers["Cache-Control"]="no-store"
+        response.headers["Content-Disposition"]='attachment; filename="b2b-atlas-personal-export.json"'
+        return {"version":1,"exported_at":now(),"user":public_user(s),"library":library_data(s["user_id"]),
+                "notice":"仅包含该账户的公开资料字段和私人收藏内容，不包含密码、登录令牌或其他用户资料。"}
     app.include_router(router)
