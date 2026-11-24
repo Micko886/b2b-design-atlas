@@ -270,8 +270,36 @@ async function syncAuth(){
  }finally{state.authReady=true}
 }
 function accountPrompt(message='登录后即可收藏与建立研究板。'){
- const next=location.pathname+location.search;
- return '<div class="account-gate"><div class="account-gate-icon">♧</div><h2>个人资料需要登录</h2><p>'+h(message)+'</p><div class="account-gate-actions"><a class="primary-button" href="/login?next='+encodeURIComponent(next)+'" data-link="/login?next='+encodeURIComponent(next)+'">登录账户 ↗</a><a class="quiet-button" href="/register?next='+encodeURIComponent(next)+'" data-link="/register?next='+encodeURIComponent(next)+'">创建账户</a></div></div>'
+ const path=location.pathname;
+ const isBoard=path==='/board';
+ const isSaved=path==='/collections'||path==='/discover';
+ const heading=isBoard?'让每一个好想法，<br>都有继续生长的地方。':isSaved?'喜欢的设计，<br>不该只看过一次。':'为你的设计灵感，<br>留一个专属空间。';
+ const badge=isBoard?'RESEARCH BOARD':isSaved?'SAVED REFERENCES':'PRIVATE RESEARCH SPACE';
+ const lead=isBoard?'登录后把网站和页面参考整理为自己的研究板，留下思路、记录笔记，随时继续。':isSaved?'登录后收藏真实 B2B 网站和页面模块。下次打开，继续从自己喜欢的案例出发。':'登录 B2B Atlas，建立自己的设计收藏与研究板。浏览、保存和整理，都由你掌握。';
+ const next=encodeURIComponent(path+location.search);
+ const login='/login?next='+next,register='/register?next='+next;
+ const picks=['vast','fictiv','skydio'].map(x=>site(x)).filter(Boolean);
+ const previews=picks.map((s,i)=>`<div class="access-example"><div class="access-example-image"><img src="${img(s.screenshot_url)}" loading="${i===0?'eager':'lazy'}" alt="${h(s.name)} 公开网站参考图"></div><div class="access-example-meta"><strong>${h(s.name)}</strong><small>${h(s.sector)}</small></div><span class="access-example-marker" aria-hidden="true">↗</span></div>`).join('');
+ return `<div class="access-landing"><div class="shell">
+   <div class="access-breadcrumb"><a href="/" data-link="/">B2B Atlas</a><span aria-hidden="true">/</span><span>${isBoard?'研究工作台':isSaved?'我的收藏':'个人中心'}</span><span class="access-breadcrumb-status"><span></span> 需要登录</span></div>
+   <section class="access-stage" aria-labelledby="access-title">
+    <div class="access-content"><div class="access-kicker"><span class="access-kicker-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span><span>${badge}</span></div>
+      <h1 id="access-title">${heading}</h1><p class="access-lead">${lead}</p>
+      <div class="access-actions"><a href="${login}" data-link="${login}" class="access-primary">登录并继续 <span aria-hidden="true">↗</span></a><a href="${register}" data-link="${register}" class="access-secondary">创建免费账户 <span aria-hidden="true">→</span></a></div>
+      <p class="access-account-note">已有账户可直接登录；新用户只需要邮箱和密码。</p>
+      <div class="access-benefits"><div><span aria-hidden="true">01</span><strong>保存灵感</strong><small>网站与页面参考集中收藏</small></div><div><span aria-hidden="true">02</span><strong>持续研究</strong><small>整理研究板，记录自己的观察</small></div><div><span aria-hidden="true">03</span><strong>个人专属</strong><small>收藏和笔记按账号分开保存</small></div></div>
+    </div>
+    <div class="access-preview" aria-label="个人资料库展示示意">
+      <div class="access-preview-top"><div class="access-preview-brand"><span class="access-preview-brandmark">◈</span><span>My research space<small>PRIVATE LIBRARY</small></span></div><div class="access-preview-avatar" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="3.5"/><path d="M5.5 20c.4-4.1 2.9-6.2 6.5-6.2s6.1 2.1 6.5 6.2"/></svg></div></div>
+      <div class="access-preview-tabs"><span class="active">Saved websites</span><span>Research board</span></div>
+      <div class="access-preview-label"><span>RECENT REFERENCES</span><span>VISUAL RESEARCH ↗</span></div>
+      <div class="access-preview-list">${previews}</div>
+      <div class="access-preview-bottom"><span aria-hidden="true">◎</span><span>你的个人收藏将在登录后显示</span></div>
+      <span class="access-preview-corner" aria-hidden="true"></span>
+    </div>
+   </section>
+   <div class="access-after"><span>只想先逛逛？</span><a href="/websites" data-link="/websites">浏览 Websites ↗</a><a href="/sections" data-link="/sections">探索 Sections ↗</a><a href="/insights" data-link="/insights">阅读 Insights ↗</a></div>
+ </div></div>`;
 }
 function authView(register=false){
  const label=register?'注册账户':'登录账户';
@@ -284,7 +312,7 @@ function authView(register=false){
  +'<p class="auth-switch">'+(register?'已有账户？':'还没有账户？')+' <a href="'+(register?'/login':'/register')+'?next='+encodeURIComponent(next)+'" data-link="'+(register?'/login':'/register')+'?next='+encodeURIComponent(next)+'">'+(register?'前往登录':'免费创建账户')+'</a></p><p class="auth-smallprint">使用邮箱和密码登录。当前不支持邮件验证及密码找回，请妥善保管密码。</p></section></div>';
 }
 function accountView(){
- if(!loggedIn())return '<div class="shell utility-page">'+accountPrompt('用户中心仅对登录用户开放，你的收藏和研究板会按账户隔离。')+'</div>';
+ if(!loggedIn())return accountPrompt('用户中心仅对登录用户开放，你的收藏和研究板会按账户隔离。');
  const u=state.auth.user||{},savedCount=state.saved.length,boardCount=state.board.length;
  const tab=new URLSearchParams(location.search).get('tab')||'saved',items=(tab==='board'?state.board:state.saved).map(byKey).filter(Boolean);
  const legacyCount=(state.legacySaved?.length||0)+(state.legacyBoard?.length||0);
@@ -352,16 +380,36 @@ async function importLegacy(){
 
 function collectionsView(){
  const a=state.saved.map(byKey).filter(Boolean);
- if(!loggedIn())return '<div class="shell utility-page">'+accountPrompt('登录后可查看并管理你的个人收藏，收藏内容不会公开。')+'</div>';
+ if(!loggedIn())return accountPrompt('登录后可查看并管理你的个人收藏，收藏内容不会公开。');
  return '<div class="shell utility-page">'+topHeading('MY COLLECTION','我的收藏','专属于你的 B2B 网站与页面参考，已同步到当前账号。')+countTop(a.length,'个收藏案例')+(a.length?'<div class="masonry">'+a.map((x,i)=>card(x,i,'saved')).join('')+'</div>':'<div class="account-empty"><h2>还没有收藏内容</h2><p>在网站或 Sections 页面点击书签图标开始收藏。</p><a href="/websites" data-link="/websites" class="primary-button">探索网站 ↗</a></div>')+'</div>';
 }
 function boardView(){
- if(!loggedIn())return '<div class="shell utility-page">'+accountPrompt('研究板是账户专属空间。登录后可以整理案例、填写笔记并导出。')+'</div>';
+ if(!loggedIn())return accountPrompt('研究板是账户专属空间。登录后可以整理案例、填写笔记并导出。');
  const items=state.board.map(byKey).filter(Boolean);
  return '<div class="shell utility-page">'+topHeading('WORKSPACE','我的研究板','将设计参考整理为项目研究资料，笔记会保存到你的账号。')+'<div class="board-tools"><span>'+items.length+' 个研究参考</span><button data-action="export-board" class="primary-button" '+(!items.length?'disabled':'')+'>导出 Markdown ↗</button></div>'+(items.length?'<div class="board-grid">'+items.map(x=>'<article class="board-item"><div class="board-image"><a href="'+cardInfo(x).url+'" data-link="'+cardInfo(x).url+'"><img loading="lazy" src="'+img(x.screenshot_url)+'" alt="'+h(cardInfo(x).name)+'"></a></div><div class="board-heading"><a href="'+cardInfo(x).url+'" data-link="'+cardInfo(x).url+'">'+h(cardInfo(x).name)+'</a><button data-action="board" data-key="'+h(key(x))+'" aria-label="从研究板移除">×</button></div><p>'+h(cardInfo(x).sub)+'</p><label>研究笔记<textarea data-note="'+h(key(x))+'" placeholder="这条参考对项目有什么价值？">'+h(state.notesByKey[key(x)]||'')+'</textarea></label></article>').join('')+'</div>':'<div class="account-empty"><h2>研究板还是空的</h2><p>打开案例详情，选择“研究工作台”即可加入。</p><a href="/websites" data-link="/websites" class="primary-button">探索网站 ↗</a></div>')+'</div>';
 }
-function notFound(){return '<div class="shell empty standalone"><h1>Reference not found</h1><p>Try browsing the current library.</p><a class="primary-button" href="/websites" data-link="/websites">Browse websites ↗</a></div>'}
-function render(){decodeFilters();const parts=location.pathname.split('/').filter(Boolean),section=parts[0]||'home';let html;if(section==='home')html=homeView();else if(section==='websites'&&!parts[1])html=listView('websites');else if(section==='sections'&&!parts[1])html=listView('sections');else if(section==='patterns'&&!parts[1])html=patternsView();else if(section==='insights'&&!parts[1])html=insightsIndex();else if(section==='insights'){let a=articleBy(parts[1]);html=a?insightArticle(a):notFound();}else if(section==='websites'){let s=site(parts[1]);html=s?detailView(s):notFound()}else if(section==='sections'){let m=moduleBy(parts[1]);html=m&&site(m.site_id)?detailView(site(m.site_id),m):notFound()}else if(section==='patterns'){let p=pattern(parts[1]);html=p?patternDetail(p):notFound()}else if(section==='account')html=accountView();else if(section==='login')html=authView(false);else if(section==='register')html=authView(true);else if(section==='board')html=boardView();else if(section==='collections'||section==='discover')html=collectionsView();else html=notFound();app.innerHTML=html;document.title=section==='account'?'个人中心 · B2B Atlas':section==='login'?'登录 · B2B Atlas':section==='register'?'注册 · B2B Atlas':section==='insights'&&parts[1]?(articleBy(parts[1])?.title||'文章')+' · B2B Atlas':(section==='insights'?'资讯与研究':section==='home'?'Discover':titleCase(section))+' · B2B Atlas';const desc=$('meta[name="description"]');if(desc)desc.content=section==='insights'&&parts[1]?(articleBy(parts[1])?.subtitle||'B2B Atlas 设计研究'):section==='insights'?'B2B Atlas 资讯与研究：B2B 网站案例、设计方法、视觉系统与转化策略。':'A visual research library of B2B websites, sections and design patterns.';$$('.desktop-nav a').forEach(x=>x.classList.toggle('active',x.dataset.nav===section));$('#saved-count').hidden=!loggedIn()||!state.saved.length;$('#saved-count').textContent=state.saved.length;const acc=$('.account-nav');if(acc){acc.classList.toggle('is-logged-in',loggedIn());acc.title=loggedIn()?'个人中心 · '+state.auth.user.display_name:'登录 / 注册';}$('#mobile-menu').hidden=true;if(section==='websites'&&!parts[1]||section==='sections'&&!parts[1])renderResults();if(section==='insights'&&!parts[1])renderInsightResults()}
+function notFound(){
+ const menu=[['Websites','精选 B2B 网站与产品案例','/websites','01'],['Sections','真实网页的局部设计参考','/sections','02'],['Patterns','设计模式与解决方法','/patterns','03'],['Insights','设计研究和原创文章','/insights','04']];
+ return `<div class="missing-landing"><div class="shell">
+   <nav class="missing-breadcrumb" aria-label="当前位置"><a href="/" data-link="/">B2B Atlas</a><span aria-hidden="true">/</span><span>404 · Page not found</span></nav>
+   <section class="missing-stage" aria-labelledby="missing-title">
+    <div class="missing-left"><div class="missing-small"><span class="missing-small-dot"></span> ERROR 404 <span class="missing-small-line"></span> LOST REFERENCE</div>
+      <div class="missing-number" aria-hidden="true">404<span class="missing-number-dot">.</span></div>
+      <h1 id="missing-title">页面走丢了，<br>灵感还在这里。</h1>
+      <p>这个链接可能已经更改、被移除，或者地址输入有误。<br>没关系，你可以回到资源库，继续发现值得研究的好设计。</p>
+      <div class="missing-actions"><a href="/" data-link="/" class="access-primary">返回首页 <span aria-hidden="true">↗</span></a><button data-action="global-search" class="access-secondary" type="button"><span aria-hidden="true">⌕</span> 搜索资源</button></div>
+    </div>
+    <div class="missing-art" aria-hidden="true">
+      <div class="missing-art-top"><span>ATLAS / DIRECTORY</span><span>↗</span></div>
+      <div class="missing-art-inner"><div class="missing-art-icon"><svg viewBox="0 0 72 72" fill="none"><rect x="11" y="9" width="50" height="54" rx="9" stroke="currentColor" stroke-width="2"/><path d="M23 24h26M23 34h18M23 44h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="52" cy="49" r="12" fill="#f3f7ff" stroke="#1a4ff3" stroke-width="2"/><path d="m47 44 10 10m0-10L47 54" stroke="#1a4ff3" stroke-width="2" stroke-linecap="round"/></svg></div>
+        <div class="missing-art-code">NO MATCH FOUND</div><div class="missing-art-bars"><i></i><i></i><i></i></div><div class="missing-art-pill">REFERENCE NOT AVAILABLE <span>×</span></div>
+      </div><div class="missing-art-bottom"><span>INDEX STATUS</span><span>404 / UNKNOWN</span></div>
+    </div>
+   </section>
+   <section class="missing-explore" aria-label="继续探索"><div class="missing-explore-head"><div><span class="eyebrow">BACK TO EXPLORATION</span><h2>换个入口，继续探索。</h2></div><span>04 / LIBRARY ENTRIES</span></div><div class="missing-links">${menu.map(([title,subtitle,url,num])=>`<a href="${url}" data-link="${url}" class="missing-link"><span class="missing-link-index">${num}</span><span class="missing-link-copy"><strong>${title}</strong><small>${subtitle}</small></span><span class="missing-link-arrow" aria-hidden="true">↗</span></a>`).join('')}</div></section>
+ </div></div>`;
+}
+function render(){decodeFilters();const parts=location.pathname.split('/').filter(Boolean),section=parts[0]||'home';let html;if(section==='home')html=homeView();else if(section==='websites'&&!parts[1])html=listView('websites');else if(section==='sections'&&!parts[1])html=listView('sections');else if(section==='patterns'&&!parts[1])html=patternsView();else if(section==='insights'&&!parts[1])html=insightsIndex();else if(section==='insights'){let a=articleBy(parts[1]);html=a?insightArticle(a):notFound();}else if(section==='websites'){let s=site(parts[1]);html=s?detailView(s):notFound()}else if(section==='sections'){let m=moduleBy(parts[1]);html=m&&site(m.site_id)?detailView(site(m.site_id),m):notFound()}else if(section==='patterns'){let p=pattern(parts[1]);html=p?patternDetail(p):notFound()}else if(section==='account')html=accountView();else if(section==='login')html=authView(false);else if(section==='register')html=authView(true);else if(section==='board')html=boardView();else if(section==='collections'||section==='discover')html=collectionsView();else html=notFound();const isMissing=html.includes('class="missing-landing"');app.innerHTML=html;document.title=isMissing?'404 · 页面未找到 · B2B Atlas':section==='account'?'个人中心 · B2B Atlas':section==='login'?'登录 · B2B Atlas':section==='register'?'注册 · B2B Atlas':section==='insights'&&parts[1]?(articleBy(parts[1])?.title||'文章')+' · B2B Atlas':(section==='insights'?'资讯与研究':section==='home'?'Discover':titleCase(section))+' · B2B Atlas';const desc=$('meta[name="description"]');if(desc)desc.content=isMissing?'页面不存在或已被移动。继续探索 B2B Atlas 的 B2B Websites、Sections、Patterns 和 Insights。':section==='insights'&&parts[1]?(articleBy(parts[1])?.subtitle||'B2B Atlas 设计研究'):section==='insights'?'B2B Atlas 资讯与研究：B2B 网站案例、设计方法、视觉系统与转化策略。':'A visual research library of B2B websites, sections and design patterns.';$$('.desktop-nav a').forEach(x=>x.classList.toggle('active',x.dataset.nav===section));$('#saved-count').hidden=!loggedIn()||!state.saved.length;$('#saved-count').textContent=state.saved.length;const acc=$('.account-nav');if(acc){acc.classList.toggle('is-logged-in',loggedIn());acc.title=loggedIn()?'个人中心 · '+state.auth.user.display_name:'登录 / 注册';}$('#mobile-menu').hidden=true;if(section==='websites'&&!parts[1]||section==='sections'&&!parts[1])renderResults();if(section==='insights'&&!parts[1])renderInsightResults()}
 function updateListing(k,v){if(k==='q'){state.q=v;setQuery('q',v)}else{state[k]=v;setQuery(k,v)}if(k==='category'||k==='sector'){const target=k==='category'?'category':'sector';$$('.category-nav [data-action="category"]').forEach(x=>x.classList.toggle('active',x.dataset.value===v));let sel=$('.listing-controls [data-field="'+target+'"]');if(sel)sel.value=v}if(k==='density')$$('[data-action=density]').forEach(b=>b.classList.toggle('active',b.dataset.value===v));renderResults()}
 function showOverlay(markup){overlay.hidden=false;overlay.innerHTML='<div class="overlay-backdrop" data-action="close-overlay"></div><div class="overlay-body" role="dialog" aria-modal="true">'+markup+'<button class="modal-close" data-action="close-overlay" aria-label="Close">×</button></div>';document.body.classList.add('modal-open')}
 function closeOverlay(){overlay.hidden=true;overlay.innerHTML='';document.body.classList.remove('modal-open')}
