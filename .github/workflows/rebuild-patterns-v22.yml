@@ -1,0 +1,95 @@
+name: Rebuild and visually verify Patterns V2.2
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/rebuild-patterns-v22.yml']
+permissions:
+  contents: write
+jobs:
+  check-and-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Extract exact latest live source and apply Patterns redesign
+        run: |
+          mkdir -p "$RUNNER_TEMP/atlas-v22"
+          tar -xzf atlas-source-v21.tar.gz -C "$RUNNER_TEMP/atlas-v22"
+          cp -a screenshots "$RUNNER_TEMP/atlas-v22/screenshots"
+          python -m py_compile scripts/rebuild-patterns-v22-js.py
+          python scripts/rebuild-patterns-v22-js.py "$RUNNER_TEMP/atlas-v22"
+          cat scripts/patterns-gallery-v22.css >> "$RUNNER_TEMP/atlas-v22/static/assets/atlas-v10.css"
+          node --check "$RUNNER_TEMP/atlas-v22/static/assets/atlas-v10.js"
+          python -m pip install -q playwright -r "$RUNNER_TEMP/atlas-v22/requirements.txt"
+          google-chrome --version
+      - name: Start local review server
+        run: |
+          cd "$RUNNER_TEMP/atlas-v22"
+          ATLAS_DB_PATH=/tmp/atlas-v22-visual.sqlite3 PORT=8792 python run.py >/tmp/v22-server.log 2>&1 &
+          for i in $(seq 1 40); do curl -fsS http://127.0.0.1:8792/api/health && break || sleep 1; done
+      - name: Verify image-first desktop, tablet and mobile layout including interactions
+        run: |
+          python - <<'PY'
+          import asyncio
+          from pathlib import Path
+          from playwright.async_api import async_playwright
+          folder=Path('screenshots/qa-v22')
+          folder.mkdir(parents=True,exist_ok=True)
+          async def go():
+            async with async_playwright() as p:
+              b=await p.chromium.launch(channel='chrome',headless=True,args=['--no-sandbox','--disable-dev-shm-usage'])
+              for width,name in [(1440,'desktop'),(1024,'tablet'),(390,'mobile')]:
+                pg=await b.new_page(viewport={'width':width,'height':1000},device_scale_factor=1)
+                errors=[];pg.on('pageerror',lambda e: errors.append(str(e)))
+                await pg.goto('http://127.0.0.1:8792/patterns',wait_until='networkidle',timeout=55000)
+                await pg.evaluate("""async()=>{
+                  const imgs=[...document.images];for(const img of imgs)img.loading='eager';
+                  await Promise.race([Promise.all(imgs.map(i=>i.decode().catch(()=>null))),new Promise(r=>setTimeout(r,12000))])
+                }""")
+                assert await pg.locator('.p22-group').count()==5,(name,'groups')
+                assert await pg.locator('.p22-card').count()==20,(name,'cards')
+                assert await pg.locator('.p22-source').count()==40,(name,'real source links')
+                assert await pg.locator('.p22-nav a').count()==5,(name,'category links')
+                assert not errors,(name,errors)
+                assert await pg.evaluate('document.documentElement.scrollWidth <= innerWidth + 2'),(name,'horizontal overflow')
+                assert await pg.evaluate('[...document.images].every(x=>x.naturalWidth>0)'),(name,'broken image')
+                cols=await pg.locator('.p22-grid').first.evaluate('(e)=>getComputedStyle(e).gridTemplateColumns.split(" ").length')
+                assert cols==(1 if width<761 else 2),(name,'columns',cols)
+                first=await pg.locator('.p22-image').first.bounding_box()
+                assert first and first['y']<780,(name,'images too far below fold',first)
+                await pg.screenshot(path=str(folder/f'patterns-{name}-top.png'),full_page=False)
+                notes=pg.locator('.p22-details').first
+                assert not await notes.get_attribute('open'),(name,'analysis should be collapsed')
+                await notes.locator('summary').click()
+                assert await notes.evaluate('(x)=>x.open'),(name,'analysis did not expand')
+                assert await notes.locator('text=What to compare').count()==1
+                await notes.locator('summary').click()
+                assert not await notes.evaluate('(x)=>x.open'),(name,'analysis did not collapse')
+                await pg.locator('.p22-nav a').nth(1).click()
+                assert await pg.evaluate("location.hash==='#p22-category-1'"),(name,'category anchor')
+                await pg.locator('#p22-category-1').screenshot(path=str(folder/f'patterns-{name}-examples.png'))
+                print('PASS_V22',name,'columns',cols,'images',40,'yFirstImage',round(first['y']),flush=True)
+                await pg.close()
+              await b.close()
+          asyncio.run(go())
+          PY
+      - name: Publish only after screenshot and interaction QA passes
+        run: |
+          tar -czf atlas-source-v22.tar.gz \
+            --exclude='./screenshots' --exclude='./data' \
+            --exclude='__pycache__' --exclude='.pytest_cache' \
+            -C "$RUNNER_TEMP/atlas-v22" .
+          sed -i 's/atlas-source-v21.tar.gz/atlas-source-v22.tar.gz/g' Dockerfile
+          git config user.name "B2B Atlas UI Review"
+          git config user.email "actions@users.noreply.github.com"
+          git add atlas-source-v22.tar.gz Dockerfile screenshots/qa-v22
+          if ! git diff --cached --quiet; then
+            git commit -m "Replace long Patterns articles with visually tested image-first comparison cards"
+            git restore .
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
