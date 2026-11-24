@@ -1,7 +1,7 @@
 name: V40 Authentication QA
 on:
   push:
-    branches: [account-auth-v40]
+    branches: [account-auth-v40, p0-v42-v43-security-collections]
   workflow_dispatch:
 jobs:
   tests:
@@ -14,6 +14,6 @@ jobs:
       - name: Install test dependencies
         run: pip install "fastapi>=0.115,<1" "pydantic>=2,<3" "httpx>=0.27,<1" "python-multipart>=0.0.18,<1"
       - name: Compile account backend
-        run: python -m py_compile backend/user_auth.py backend/install_auth.py
+        run: python -m py_compile backend/user_auth.py backend/install_auth.py backend/seo_routes.py
       - name: Exercise real account API with temporary isolated DB
         run: PYTHONPATH=backend python backend/test_auth.py
