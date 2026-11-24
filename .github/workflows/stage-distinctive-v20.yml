@@ -1,0 +1,80 @@
+name: Stage distinctive B2B design captures V2.0
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/stage-distinctive-v20.yml'
+permissions:
+  contents: write
+concurrency:
+  group: atlas-v20-research
+  cancel-in-progress: false
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Real browser and image tools
+        run: |
+          python -m pip install -q playwright pillow
+          python -m playwright install --with-deps chromium
+      - name: Prepare source and historical screenshot library
+        run: |
+          mkdir -p "$RUNNER_TEMP/atlas-v20"
+          tar -xzf atlas-source-v19.tar.gz -C "$RUNNER_TEMP/atlas-v20"
+          cp -a screenshots "$RUNNER_TEMP/atlas-v20/screenshots"
+          mkdir -p "$RUNNER_TEMP/atlas-v20/scripts"
+          cp scripts/expand_distinctive_sites_v20.py "$RUNNER_TEMP/atlas-v20/scripts"
+          python -m pip install -q -r "$RUNNER_TEMP/atlas-v20/requirements.txt"
+      - name: Capture and validate candidates without publishing any new cards
+        run: |
+          cd "$RUNNER_TEMP/atlas-v20"
+          python scripts/expand_distinctive_sites_v20.py
+          python create_module_catalog.py
+          python -m pytest -q
+      - name: Stage preview assets and audit without modifying live Docker deployment
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import os,json,shutil
+          base=Path(os.environ['RUNNER_TEMP'])/'atlas-v20'
+          report=json.loads((base/'screenshots/research-v20/audit.json').read_text())
+          print('PENDING_REVIEW',report['attempted'],report['accepted'],report['rejected'],report['new_modules'],report['approved'])
+          assert report['accepted']>=12
+          for sid in report['approved']:
+            for folder in ('sites','notes','modules'):
+              files=list((base/'screenshots'/folder).glob(sid+'*.webp'))
+              if folder=='sites': assert len(files)==1
+              if folder in ('notes','modules'): assert len(files)>=1
+              dest=Path('screenshots')/folder
+              dest.mkdir(parents=True,exist_ok=True)
+              for src in files:shutil.copy2(src,dest/src.name)
+          dest=Path('screenshots/research-v20')
+          dest.mkdir(parents=True,exist_ok=True)
+          for name in ('audit.json','contact-sheet.jpg'):
+            shutil.copy2(base/'screenshots/research-v20'/name,dest/name)
+          with open('REVIEW-V20.md','w') as f:
+            f.write('# B2B Atlas V2.0 visual curation — pending human review\n\n')
+            f.write(f"Captured {report['accepted']} of {report['attempted']} candidates. This stage has NOT modified the production bundle or live site.\n\n")
+            f.write('Screenshot contact sheet: screenshots/research-v20/contact-sheet.jpg\n\n')
+            for entry in report['results']:
+              if entry.get('kind')=='website':f.write('- '+entry['id']+' — '+entry['url']+'\n')
+            f.write('\nOriginal screenshots are source-attributed and copyright remains with their owners.\n')
+          PY
+          tar -czf atlas-staged-v20.tar.gz --exclude='./screenshots' --exclude='./data' --exclude='__pycache__' --exclude='.pytest_cache' -C "$RUNNER_TEMP/atlas-v20" .
+      - name: Commit pending capture staging, not a live site update
+        run: |
+          git config user.name "B2B Atlas Research"
+          git config user.email "actions@users.noreply.github.com"
+          git add atlas-staged-v20.tar.gz REVIEW-V20.md screenshots/sites screenshots/notes screenshots/modules screenshots/research-v20
+          if ! git diff --cached --quiet; then
+            git commit -m "Stage visually distinctive B2B website captures for manual design review"
+            git restore .
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
