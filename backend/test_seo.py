@@ -19,7 +19,7 @@ with tempfile.TemporaryDirectory() as directory:
         ("/",200,"B2B Atlas"),("/websites",200,"Websites"),("/websites/vast",200,"Space station"),
         ("/sections/vast-hero",200,"Orbital Hero"),("/patterns/object-first-hero",200,"Object first"),
         ("/insights/good-study",200,"Article"),("/account",200,"noindex"),
-        ("/forgot-password",200,"noindex"),("/websites/unknown",404,"noindex"),
+        ("/forgot-password",200,"noindex"),("/compare",200,"noindex"),("/websites/unknown",404,"noindex"),
         ("/insights/unknown",404,"404"),("/account/invalid",404,"noindex"),("/missing",404,"404")]:
         response=seo.seo_document(path.lstrip("/"))
         assert response.status_code==status,(path,response.status_code)
@@ -38,6 +38,7 @@ with tempfile.TemporaryDirectory() as directory:
     assert "/account" not in sitemap.text
     robots=client.get("/robots.txt")
     assert "Disallow: /account" in robots.text
+    assert "Disallow: /compare" in robots.text
     assert robots.headers["x-content-type-options"]=="nosniff"
     assert robots.headers["x-frame-options"]=="DENY"
 print("SEO_V42_QA_PASS: exact HTTP 404, dynamic SEO, canonical, sitemap, robots, secure headers")

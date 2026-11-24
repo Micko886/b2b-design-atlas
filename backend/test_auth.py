@@ -82,3 +82,27 @@ assert guest.get("/api/me/export").status_code==401
 assert guest.post("/api/me/folders",json={"name":"bad"}).status_code==401
 assert a.post("/api/me/folders",json={"name":"no-csrf"}).status_code==403
 print("V43_QA_PASS: 4 resource kinds, folder CRUD, per-user isolation, tags, notes and privacy export")
+
+
+# V44: saved comparison snapshots are private, bounded and editable.
+payload={"name":"工业网站对比","site_ids":["vast","fictiv","figure-robotics"]}
+created=check(a.post("/api/me/comparisons",json=payload,headers=ha),201)
+comparison_id=created["id"]
+assert created["site_ids"]==payload["site_ids"]
+mine=check(a.get("/api/me/library"),200)
+assert mine["comparisons"][0]["id"]==comparison_id
+assert check(a.get("/api/me/comparisons"),200)[0]["name"]=="工业网站对比"
+assert check(b.get("/api/me/comparisons"),200)==[]
+check(b.patch("/api/me/comparisons/"+comparison_id,json={"name":"stolen","site_ids":["vast","fictiv"]},headers=hb),404)
+check(b.delete("/api/me/comparisons/"+comparison_id,headers=hb),404)
+check(a.post("/api/me/comparisons",json={"name":"duplicate","site_ids":["vast","vast"]},headers=ha),422)
+check(a.post("/api/me/comparisons",json={"name":"single","site_ids":["vast"]},headers=ha),422)
+check(a.post("/api/me/comparisons",json={"name":"too many","site_ids":["vast","fictiv","skydio","helion","saronic"]},headers=ha),422)
+updated=check(a.patch("/api/me/comparisons/"+comparison_id,json={"name":"制造与机器人","site_ids":["fictiv","figure-robotics"]},headers=ha),200)
+assert updated["site_ids"]==["fictiv","figure-robotics"]
+assert check(a.get("/api/me/export"),200)["library"]["comparisons"][0]["name"]=="制造与机器人"
+check(a.delete("/api/me/comparisons/"+comparison_id,headers=ha),200)
+assert check(a.get("/api/me/comparisons"),200)==[]
+assert a.post("/api/me/comparisons",json=payload).status_code==403
+assert guest.get("/api/me/comparisons").status_code==401
+print("V44_QA_PASS: private comparison snapshots, 2-4 site limits, CRUD, CSRF, export and account isolation")

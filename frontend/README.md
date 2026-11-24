@@ -5,22 +5,23 @@ This is the only actively loaded UI. No historical atlas-vXX CSS or JavaScript i
 ## Architecture
 - \`index.html\`: document shell, accessible navigation, overlay and main region.
 - \`app.css\`: unified design system, components and responsive breakpoints.
-- \`app.js\`: discovery, filters, masonry cards, research dossiers, patterns, saved collection and project board.
+- \`app.js\`: discovery, filters, masonry cards, research dossiers, patterns, saved collection, website comparison and project board.
 - \`research.json\`: source-reviewed company/design research (5 profiles); unknown fields are not guessed.
 - \`patterns.json\`: 20 design patterns tied to real curated modules.
 
 ## Data contracts
 Live backend: \`/api/source-library\` and \`/api/module-library\`.
 Generated screenshot color index: \`/assets/screenshot-palettes.json\`.
-Local saved references and project notes remain browser-local in localStorage.
+Authenticated saved references, folders, notes and comparison snapshots are stored per account in PostgreSQL. The browser stores only the temporary comparison selection so it can be shared as a URL before saving.
 
 ## Design contract
 - Home: brand overview, three real website captures, search, featured discovery.
 - Websites / Sections: full-width gallery, horizontal category navigation, small controls and original-ratio masonry images. Never a duplicate sidebar/module navigation.
 - Project detail: big source capture with thumbnails on the left, verified attributes and visual data on the right, followed by concrete design analysis and related references.
 - Patterns: problem, principle and actual section evidence; no fabricated metrics.
+- Website comparison: select 2–4 sites, compare business positioning, visual language, screenshot colors, page structure, trust, conversion and linked patterns. Missing research fields are explicitly marked; no synthetic ratings are generated. Saved comparison sets are private account records and can be reopened from the research board.
 - System: white background, near-black text, blue \`#0647FF\`, modern sans-serif typography, subdued chrome, accessible focus rings and responsive layout.
 - Preservation: original image URLs, data provenance, valid source links and existing saved/board localStorage keys.
 
 ## Release gate
-Review 390px, 768px, and 1440px viewports. Check no horizontal overflow, no script exceptions, intact thumbnails, search, category/style/color filters, save / board persistence, notes, export and pattern deep links. Only replace production on a complete QA pass.
+Review 390px, 768px, and 1440px viewports. Check no horizontal overflow, no script exceptions, intact thumbnails, search, category/style/color filters, save / board persistence, comparison selection and saved comparisons, notes, export and pattern deep links. Only replace production on a complete QA pass.
