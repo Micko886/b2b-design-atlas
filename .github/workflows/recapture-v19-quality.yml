@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/recapture-v19-quality.yml'
+      - 'scripts/recapture-v19-quality.py'
   workflow_dispatch:
 permissions:
   contents: write
