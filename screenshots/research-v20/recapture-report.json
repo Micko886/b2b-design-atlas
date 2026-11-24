@@ -1,0 +1,36 @@
+[
+  {
+    "id": "q-industrial",
+    "status": "skipped",
+    "reason": "Cannot close expected consent using visible controls"
+  },
+  {
+    "id": "novanta-photonics",
+    "status": "recaptured",
+    "clicked": "Okay",
+    "first_scroll": 0,
+    "delta": 128.4
+  },
+  {
+    "id": "attio",
+    "status": "skipped",
+    "reason": "Cannot close expected consent using visible controls"
+  },
+  {
+    "id": "clay",
+    "status": "skipped",
+    "reason": "Cannot close expected consent using visible controls"
+  },
+  {
+    "id": "primeasia-leather",
+    "status": "recaptured",
+    "clicked": null,
+    "first_scroll": 560,
+    "delta": 23.0
+  },
+  {
+    "id": "carbo-tech",
+    "status": "skipped",
+    "reason": "Insufficient screenshot visual content"
+  }
+]
