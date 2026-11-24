@@ -393,10 +393,63 @@ async function importLegacy(){
  }catch(e){notify('部分资料可能已导入：'+e.message);await loadLibrary();render()}
 }
 
+function folderUrl(id='',kind='',tag=''){const p=new URLSearchParams();if(id)p.set('folder',id);if(kind)p.set('kind',kind);if(tag)p.set('tag',tag);return '/collections'+(p.toString()?'?'+p:'')}
+function savedDetailCard(k){
+ const x=byKey(k);if(!x)return '';
+ const info=cardInfo(x),kind=entityKind(x),meta=state.annotations[k]||{},tags=meta.tags||[];
+ const attached=state.folders.filter(f=>(state.folderItems[f.id]||[]).includes(k)),available=state.folders.filter(f=>!attached.some(g=>g.id===f.id));
+ return `<article class="library-item"><a class="library-item-image" href="${info.url}" data-link="${info.url}"><img loading="lazy" src="${img(entityImage(x))}" alt="${h(info.name)}"></a>
+ <div class="library-item-body"><div class="library-item-top"><span>${{site:'WEBSITE',module:'SECTION',pattern:'PATTERN',article:'ARTICLE'}[kind]}</span><button data-action="save" data-key="${h(k)}" aria-label="移除收藏" title="移出收藏">${bookmarkIcon(true)}</button></div>
+ <h3><a href="${info.url}" data-link="${info.url}">${h(info.name)}</a></h3><p>${h(info.sub)}</p>
+ ${tags.length?`<div class="library-tags">${tags.map(t=>`<span># ${h(t)}</span>`).join('')}</div>`:''}
+ ${attached.length?`<div class="library-folders-inline">${attached.map(f=>`<span style="--folder-color:${h(f.color)}">${h(f.name)}<button data-action="folder-remove-item" data-folderid="${h(f.id)}" data-key="${h(k)}" aria-label="从收藏夹移除">×</button></span>`).join('')}</div>`:''}
+ <div class="library-item-controls">${available.length?`<label>加入收藏夹 <select data-folder-add="${h(k)}"><option value="">选择收藏夹</option>${available.map(f=>`<option value="${h(f.id)}">${h(f.name)}</option>`).join('')}</select></label>`:'<a href="/collections" data-link="/collections">管理收藏夹 ↗</a>'}
+ <details><summary>笔记与标签 ${meta.note?'●':''}</summary><form class="library-annotation-form" data-key="${h(k)}"><label>研究笔记<textarea name="note" maxlength="3000" rows="3" placeholder="有什么值得借鉴的设计？">${h(meta.note||'')}</textarea></label><label>标签（用逗号分隔）<input name="tags" maxlength="250" value="${h(tags.join('，'))}" placeholder="首屏，视觉设计，RFQ"></label><button type="submit">保存笔记 ↗</button></form></details></div></div></article>`;
+}
 function collectionsView(){
- const a=state.saved.map(byKey).filter(Boolean);
  if(!loggedIn())return accountPrompt('登录后可查看并管理你的个人收藏，收藏内容不会公开。');
- return '<div class="shell utility-page">'+topHeading('MY COLLECTION','我的收藏','专属于你的 B2B 网站与页面参考，已同步到当前账号。')+countTop(a.length,'个收藏案例')+(a.length?'<div class="masonry">'+a.map((x,i)=>card(x,i,'saved')).join('')+'</div>':'<div class="account-empty"><h2>还没有收藏内容</h2><p>在网站或 Sections 页面点击书签图标开始收藏。</p><a href="/websites" data-link="/websites" class="primary-button">探索网站 ↗</a></div>')+'</div>';
+ const p=new URLSearchParams(location.search),folder=state.folders.find(f=>f.id===p.get('folder')),kind=['site','module','pattern','article'].includes(p.get('kind'))?p.get('kind'):'',tag=p.get('tag')||'';
+ const all=(folder?state.folderItems[folder.id]||[]:state.saved).filter(k=>state.saved.includes(k));
+ const items=all.filter(k=>(!kind||k.startsWith(kind+':'))&&(!tag||(state.annotations[k]?.tags||[]).includes(tag))).filter(k=>byKey(k));
+ const types=[['全部',''],['Websites','site'],['Sections','module'],['Patterns','pattern'],['Insights','article']];
+ const tabs=types.map(([t,v])=>`<a href="${folderUrl(folder?.id||'',v,tag)}" data-link="${folderUrl(folder?.id||'',v,tag)}" class="${kind===v?'active':''}">${t} <small>${all.filter(k=>!v||k.startsWith(v+':')).length}</small></a>`).join('');
+ const tags=Array.from(new Set(Object.values(state.annotations).flatMap(x=>x.tags||[]))).slice(0,16);
+ return `<div class="shell library-page"><header class="library-page-head"><div><span class="eyebrow">MY REFERENCES / PERSONAL COLLECTIONS</span><h1>我的收藏空间<span>.</span></h1><p>集中收藏、分组管理，并给每条参考添加自己的笔记和标签。</p></div><button class="quiet-button" data-action="export-personal">导出个人数据 ↓</button></header>
+ <div class="library-stats"><span><b>${state.saved.length}</b> 所有收藏</span><span><b>${state.folders.length}</b> 收藏夹</span><span><b>${Object.keys(state.annotations).length}</b> 研究笔记与标签</span><a href="/account" data-link="/account">个人中心 ↗</a></div>
+ <div class="library-columns"><aside class="library-sidebar"><h2>我的收藏夹</h2><nav aria-label="个人收藏夹"><a href="/collections" data-link="/collections" class="${!folder?'active':''}">▦ 全部收藏 <small>${state.saved.length}</small></a>${state.folders.map(f=>`<a href="${folderUrl(f.id)}" data-link="${folderUrl(f.id)}" class="${folder?.id===f.id?'active':''}"><span style="color:${h(f.color)}">●</span>${h(f.name)} <small>${f.item_count||0}</small></a>`).join('')}</nav>
+ <form id="folder-create-form" class="library-create"><strong>新建收藏夹</strong><input name="name" required maxlength="50" placeholder="例如：工业官网改版"><div><input type="color" name="color" value="#315BE8" aria-label="收藏夹颜色"><button type="submit">创建收藏夹 +</button></div></form><p>每个账户最多 40 个收藏夹。</p><a href="/board" data-link="/board" class="library-board-link">进入研究工作台 ↗</a></aside>
+ <section class="library-content"><div class="library-content-head"><div><span class="eyebrow">${folder?'PROJECT COLLECTION':'ALL SAVED RESOURCES'}</span><h2>${h(folder?.name||'全部收藏')}</h2><p>${folder?'按项目管理这一组设计参考':'Websites、Sections、Patterns、Insights 统一管理'}</p></div><b>${items.length} REFERENCES</b></div>
+ ${folder?`<form id="folder-edit-form" data-folderid="${h(folder.id)}" class="library-edit"><input name="name" required maxlength="50" value="${h(folder.name)}" aria-label="收藏夹名称"><input name="color" type="color" value="${h(folder.color)}" aria-label="收藏夹颜色"><button type="submit">保存名称</button><button type="button" data-action="folder-delete" data-folderid="${h(folder.id)}">删除收藏夹</button></form>`:''}
+ <nav class="library-kind-nav" aria-label="收藏类型">${tabs}</nav>
+ ${tags.length?`<nav class="library-tag-nav" aria-label="标签筛选"><span>标签</span><a href="${folderUrl(folder?.id||'',kind)}" data-link="${folderUrl(folder?.id||'',kind)}" class="${!tag?'active':''}">全部</a>${tags.map(t=>`<a href="${folderUrl(folder?.id||'',kind,t)}" data-link="${folderUrl(folder?.id||'',kind,t)}" class="${tag===t?'active':''}"># ${h(t)}</a>`).join('')}</nav>`:''}
+ ${items.length?`<div class="library-items">${items.map(savedDetailCard).join('')}</div>`:`<div class="account-empty"><h3>这里还没有收藏</h3><p>先去探索 B2B 网站、页面模块、设计模式或资讯文章，点击书签保存后即可整理。</p><a href="/websites" data-link="/websites" class="primary-button">探索资源 ↗</a></div>`}
+ </section></div></div>`;
+}
+async function saveFolder(form,editing=false){
+ const fields=new FormData(form),name=String(fields.get('name')||'').trim(),color=String(fields.get('color')||'#315BE8');
+ if(!name){notify('请输入收藏夹名称');return}
+ try{const obj=await api(editing?'/api/me/folders/'+form.dataset.folderid:'/api/me/folders',{method:editing?'PATCH':'POST',body:JSON.stringify({name,color})});await loadLibrary();notify('收藏夹已保存');if(editing)render();else go(folderUrl(obj.id))}
+ catch(e){notify(e.message)}
+}
+async function folderDelete(id){
+ const f=state.folders.find(x=>x.id===id);if(!f||!window.confirm('确定删除「'+f.name+'」？原始收藏仍会保留。'))return;
+ try{await api('/api/me/folders/'+id,{method:'DELETE'});await loadLibrary();notify('收藏夹已删除，原收藏不变');go('/collections')}catch(e){notify(e.message)}
+}
+async function folderAssign(id,k){
+ if(!id)return;
+ try{await api('/api/me/folders/'+id+'/items',{method:'POST',body:JSON.stringify({key:k})});await loadLibrary();notify('已加入收藏夹');render()}catch(e){notify(e.message)}
+}
+async function folderRemove(id,k){
+ const [kind,slug]=String(k).split(':');
+ try{await api('/api/me/folders/'+id+'/items/'+kind+'/'+slug,{method:'DELETE'});await loadLibrary();notify('已移出该收藏夹');render()}catch(e){notify(e.message)}
+}
+async function annotationSave(form){
+ const fields=new FormData(form),key=form.dataset.key,note=String(fields.get('note')||'').trim(),tags=String(fields.get('tags')||'').split(/[,，、]/).map(t=>t.trim()).filter(Boolean).slice(0,10);
+ try{await api('/api/me/library/annotation',{method:'PATCH',body:JSON.stringify({key,note,tags})});await loadLibrary();notify('研究笔记已保存')}catch(e){notify(e.message)}
+}
+async function personalExport(){
+ if(!loggedIn())return;
+ try{const d=await api('/api/me/export');const url=URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='b2b-atlas-personal-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);notify('个人数据已导出')}catch(e){notify(e.message)}
 }
 function boardView(){
  if(!loggedIn())return accountPrompt('研究板是账户专属空间。登录后可以整理案例、填写笔记并导出。');
