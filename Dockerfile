@@ -11,7 +11,7 @@ COPY enhancements/atlas-next.css /srv/atlas/static/assets/atlas-next.css
 COPY enhancements/build_palettes.py /srv/atlas/build_palettes.py
 COPY enhancements/atlas-v31.js /srv/atlas/static/assets/atlas-v31.js
 COPY enhancements/atlas-v31.css /srv/atlas/static/assets/atlas-v31.css
-RUN python -c "from pathlib import Path; p=Path('static/index.html'); s=p.read_text(); assert '</head>' in s; p.write_text(s.replace('</head>', '<link rel=\"stylesheet\" href=\"/assets/atlas-research.css?v=30\"><script defer src=\"/assets/atlas-research.js?v=30\"></script><link rel=\"stylesheet\" href=\"/assets/atlas-next.css?v=30\"><script defer src=\"/assets/atlas-next.js?v=30\"></script><link rel=\"stylesheet\" href=\"/assets/atlas-v31.css?v=31\"><script defer src=\"/assets/atlas-v31.js?v=31\"></script></head>'))"
+RUN python -c "from pathlib import Path; p=Path('static/index.html'); s=p.read_text(); assert '</head>' in s; p.write_text(s.replace('</head>', '<link rel=\"stylesheet\" href=\"/assets/atlas-research.css?v=30\"><script defer src=\"/assets/atlas-research.js?v=30\"></script><link rel=\"stylesheet\" href=\"/assets/atlas-next.css?v=30\"><script defer src=\"/assets/atlas-next.js?v=30\"></script><link rel=\"stylesheet\" href=\"/assets/atlas-v31.css?v=31.1\"><script defer src=\"/assets/atlas-v31.js?v=31\"></script></head>'))"
 RUN pip install --no-cache-dir -r requirements.txt && mkdir -p /srv/atlas/data
 RUN python create_module_catalog.py && python build_palettes.py
 EXPOSE 8000
