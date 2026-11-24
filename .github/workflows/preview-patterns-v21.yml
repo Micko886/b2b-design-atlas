@@ -1,0 +1,76 @@
+name: Preview new 20-Pattern comparison library V2.1
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/preview-patterns-v21.yml']
+permissions:
+  contents: write
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prepare current live source and real images
+        run: |
+          mkdir -p "$RUNNER_TEMP/atlas-patterns-v21"
+          tar -xzf atlas-source-v20.tar.gz -C "$RUNNER_TEMP/atlas-patterns-v21"
+          cp -a screenshots "$RUNNER_TEMP/atlas-patterns-v21/screenshots"
+          mkdir -p "$RUNNER_TEMP/atlas-patterns-v21/scripts"
+          cp scripts/apply-patterns-v21.py "$RUNNER_TEMP/atlas-patterns-v21/scripts/"
+          python -m py_compile scripts/apply-patterns-v21.py
+          python "$RUNNER_TEMP/atlas-patterns-v21/scripts/apply-patterns-v21.py" "$RUNNER_TEMP/atlas-patterns-v21" "$GITHUB_WORKSPACE/patterns-v21.json"
+          node --check "$RUNNER_TEMP/atlas-patterns-v21/static/assets/atlas-v10.js"
+          python -m pip install -q -r "$RUNNER_TEMP/atlas-patterns-v21/requirements.txt"
+          python -m pip install -q playwright
+          python -m playwright install --with-deps chromium
+      - name: Launch Patterns review server
+        run: |
+          cd "$RUNNER_TEMP/atlas-patterns-v21"
+          ATLAS_DB_PATH=/tmp/atlas-v21-patterns.sqlite3 PORT=8794 python run.py >/tmp/v21-patterns-server.log 2>&1 &
+          for i in $(seq 1 40); do curl -fsS http://127.0.0.1:8794/api/health && break || sleep 1; done
+      - name: Browser verify groups, 20 actual pattern rows and 40 linked screenshots
+        run: |
+          python - <<'PY'
+          import asyncio
+          from pathlib import Path
+          from playwright.async_api import async_playwright
+          shots=Path('screenshots/qa-v21-patterns');shots.mkdir(parents=True,exist_ok=True)
+          async def check():
+            async with async_playwright() as p:
+              browser=await p.chromium.launch(headless=True,args=['--no-sandbox'])
+              for name,width in [('desktop',1440),('mobile',390)]:
+                page=await browser.new_page(viewport={'width':width,'height':900},device_scale_factor=1)
+                errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+                await page.goto('http://127.0.0.1:8794/patterns',wait_until='networkidle',timeout=45000)
+                assert await page.locator('.pattern-family-v21').count()==5
+                assert await page.locator('.pattern-study-v21').count()==20
+                assert await page.locator('.pattern-source-v21').count()==40
+                await page.evaluate("""async()=>{
+                  for(const img of document.images)img.loading='eager';
+                  await Promise.race([Promise.all([...document.images].map(img=>img.decode().catch(()=>null))),new Promise(r=>setTimeout(r,9000))])
+                }""")
+                assert await page.evaluate('[...document.images].every(img=>img.naturalWidth>0)'),(name,'broken image')
+                assert not errors,(name,errors)
+                assert await page.evaluate('document.documentElement.scrollWidth<=innerWidth+2'),(name,'overflow')
+                await page.screenshot(path=str(shots/f'{name}.png'),full_page=(name=='desktop'))
+                print('PATTERNS_V21_QA_PASS',name,'patterns',20,'real example links',40,flush=True)
+                await page.close()
+              await browser.close()
+          asyncio.run(check())
+          PY
+      - name: Commit verifiable visual QA shots
+        run: |
+          git config user.name "B2B Atlas Visual QA"
+          git config user.email "actions@users.noreply.github.com"
+          git add screenshots/qa-v21-patterns
+          if ! git diff --cached --quiet; then
+            git commit -m "Verify V2.1 Patterns in real desktop/mobile Chromium"
+            git restore .
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
