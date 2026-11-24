@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-24T02:06:19.614021+00:00",
+  "date": "2026-11-24T02:08:36.866799+00:00",
   "items": [
     {
       "id": "universal-robots",
@@ -8,7 +8,7 @@
       "consent_clicked": true,
       "first_scroll": 0,
       "second_scroll": 850,
-      "frame_change": 133.3
+      "frame_change": 132.6
     },
     {
       "id": "siemens-healthineers",
@@ -17,16 +17,16 @@
       "consent_clicked": true,
       "first_scroll": 0,
       "second_scroll": 850,
-      "frame_change": 60.5
+      "frame_change": 60.6
     },
     {
       "id": "boston-dynamics",
       "status": "recaptured",
       "url": "https://bostondynamics.com/",
-      "consent_clicked": false,
+      "consent_clicked": true,
       "first_scroll": 850,
       "second_scroll": 1650,
-      "frame_change": 153.8
+      "frame_change": 156.6
     }
   ]
 }
