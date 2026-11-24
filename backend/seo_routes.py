@@ -28,7 +28,8 @@ PRIVATE = {
     "login":("登录账户","登录你的 B2B Atlas 账户。"),
     "register":("创建账户","创建 B2B Atlas 账户并收藏参考资料。"),
     "forgot-password":("找回密码","通过一次性安全链接重置 B2B Atlas 账户密码。"),
-    "reset-password":("重置密码","设置新的 B2B Atlas 登录密码。")
+    "reset-password":("重置密码","设置新的 B2B Atlas 登录密码。"),
+    "compare":("网站对比","登录后可保存和管理你的网站横向对比研究。")
 }
 def read_json(path, default):
     try:return json.loads(Path(path).read_text(encoding="utf-8"))
