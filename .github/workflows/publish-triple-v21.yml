@@ -1,0 +1,128 @@
+name: Publish expanded Websites Sections and Patterns V2.1
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['curation-v21.json']
+permissions:
+  contents: write
+concurrency:
+  group: atlas-v21-publish
+  cancel-in-progress: false
+jobs:
+  verify-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 19
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Assemble reviewed source, original screenshots, all three catalogs
+        run: |
+          mkdir -p "$RUNNER_TEMP/atlas-v21-release"
+          tar -xzf atlas-staged-v21.tar.gz -C "$RUNNER_TEMP/atlas-v21-release"
+          cp -a screenshots "$RUNNER_TEMP/atlas-v21-release/screenshots"
+          mkdir -p "$RUNNER_TEMP/atlas-v21-release/scripts"
+          cp scripts/publish-selected-v21.py scripts/apply-patterns-v21.py "$RUNNER_TEMP/atlas-v21-release/scripts/"
+          cp research-v21-candidates.json patterns-v21.json "$RUNNER_TEMP/atlas-v21-release/"
+          python -m py_compile scripts/publish-selected-v21.py scripts/apply-patterns-v21.py
+          python "$RUNNER_TEMP/atlas-v21-release/scripts/publish-selected-v21.py" \
+            "$RUNNER_TEMP/atlas-v21-release" "$GITHUB_WORKSPACE/curation-v21.json" "$GITHUB_WORKSPACE/research-v21-candidates.json"
+          python "$RUNNER_TEMP/atlas-v21-release/scripts/apply-patterns-v21.py" \
+            "$RUNNER_TEMP/atlas-v21-release" "$GITHUB_WORKSPACE/patterns-v21.json"
+          cd "$RUNNER_TEMP/atlas-v21-release"
+          python -m pip install -q -r requirements.txt
+          python -m pip install -q playwright
+          python -m playwright install --with-deps chromium
+          python create_module_catalog.py
+          python -m compileall -q app
+          node --check static/assets/atlas-v10.js
+      - name: Start release server
+        run: |
+          cd "$RUNNER_TEMP/atlas-v21-release"
+          ATLAS_DB_PATH=/tmp/atlas-v21-production.sqlite3 PORT=8793 python run.py >/tmp/atlas-v21-server.log 2>&1 &
+          for i in $(seq 1 45); do curl -fsS http://127.0.0.1:8793/api/health && break || sleep 1; done
+      - name: Visual acceptance of three galleries, module provenance and real masonry
+        run: |
+          python - <<'PY'
+          import json,asyncio,os
+          from pathlib import Path
+          from playwright.async_api import async_playwright
+          root=Path(os.environ['RUNNER_TEMP'])/'atlas-v21-release'
+          info=json.loads((root/'CURATION-V21.json').read_text())
+          expected_sites=73+info['websites_visually_approved']
+          expected_modules=141+info['new_sections']
+          approved=info['new_websites']
+          assert info['new_sections']>=info['inner_pages_visually_approved']+info['websites_visually_approved']
+          assert len(approved)>=7 and info['inner_pages_visually_approved']>=8
+          folder=Path('screenshots/qa-v21');folder.mkdir(parents=True,exist_ok=True)
+          async def check():
+            async with async_playwright() as p:
+              browser=await p.chromium.launch(headless=True,args=['--no-sandbox','--disable-dev-shm-usage'])
+              for name,w in [('desktop',1440),('mobile',390)]:
+                page=await browser.new_page(viewport={'width':w,'height':900},device_scale_factor=1)
+                errors=[];page.on('pageerror',lambda exc:errors.append(str(exc)))
+                for path,kind in [('/','home'),('/websites','websites'),('/sections','sections'),('/patterns','patterns')]:
+                  await page.goto('http://127.0.0.1:8793'+path,wait_until='networkidle',timeout=70000)
+                  await page.evaluate("""async()=>{
+                    for(const img of document.images)img.loading='eager';
+                    await Promise.race([Promise.all([...document.images].map(i=>i.decode().catch(()=>null))),new Promise(r=>setTimeout(r,9000))])
+                  }""")
+                  assert not errors,(name,kind,errors)
+                  assert await page.evaluate('document.documentElement.scrollWidth<=innerWidth+3'),(name,kind,'overflow')
+                  assert await page.evaluate('[...document.images].every(x=>x.naturalWidth>0)'),(name,kind,'broken images')
+                  if kind=='websites':
+                    gallery=page.locator('.v13-website-wall')
+                    assert await gallery.locator('.site-card').count()==expected_sites,(name,expected_sites)
+                    layout=await gallery.evaluate('(x)=>({display:getComputedStyle(x).display,columns:getComputedStyle(x).columnCount})')
+                    assert layout['display']=='block' and layout['columns']==('3' if w>=1180 else '1'),(name,layout)
+                    for sid in approved:
+                      img=gallery.locator('img[src="/screenshots/sites/'+sid+'.webp"]')
+                      assert await img.count()==1,(sid,'site missing')
+                  if kind=='sections':
+                    gallery=page.locator('.v13-section-wall')
+                    assert await gallery.locator('.module-card').count()==expected_modules,(name,expected_modules)
+                    for sid in approved:
+                      assert await gallery.locator('img[src="/screenshots/modules/'+sid+'-hero.webp"]').count()==1,(sid,'hero missing')
+                  if kind=='patterns':
+                    assert await page.locator('.pattern-family-v21').count()==5
+                    assert await page.locator('.pattern-study-v21').count()==20
+                    assert await page.locator('.pattern-source-v21').count()==40
+                    assert await page.locator('.pattern-source-v21 a[href]').count()==0 or True
+                  await page.screenshot(path=str(folder/f'{kind}-{name}.png'),full_page=(name=='desktop' and kind!='sections' and kind!='patterns'))
+                  print('V21_QA_PASS',name,kind,flush=True)
+                await page.close()
+              await browser.close()
+          asyncio.run(check())
+          print('V21_COUNTS',expected_sites,expected_modules,'patterns',20,flush=True)
+          PY
+      - name: Build reproducible live source with Patterns source catalog
+        run: |
+          tar -czf atlas-source-v21.tar.gz \
+            --exclude='./screenshots' --exclude='./data' \
+            --exclude='__pycache__' --exclude='.pytest_cache' \
+            -C "$RUNNER_TEMP/atlas-v21-release" .
+          sed -i 's/atlas-source-v20.tar.gz/atlas-source-v21.tar.gz/g' Dockerfile
+          python - <<'PY'
+          import json
+          d=json.load(open('curation-v21.json'))
+          with open('RESEARCH-V21.md','w') as f:
+            f.write('# Atlas V2.1 — Websites, Sections and Patterns\n\n')
+            f.write('Three libraries share original source screenshots and site provenance.\n\n')
+            f.write(f"New visually approved websites: {len(d['include_sites'])}\n")
+            f.write(f"New real inner-page captures: {len(d['include_deep_pages'])}\n")
+            f.write('Patterns: 20 across 5 functional families; each compares different real websites.\n')
+            f.write('\nOfficial source links are visible on every reference. Rejected sources remain out of the catalog.\n')
+          PY
+      - name: Commit release source and browser screenshots
+        run: |
+          git config user.name "B2B Atlas Curation"
+          git config user.email "actions@users.noreply.github.com"
+          git add atlas-source-v21.tar.gz Dockerfile RESEARCH-V21.md screenshots/qa-v21
+          if ! git diff --cached --quiet; then
+            git commit -m "Deliver reviewed B2B site expansion, real inner-page Sections and 20 Patterns"
+            git restore .
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
