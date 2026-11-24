@@ -9,6 +9,9 @@ COPY screenshots/ /srv/atlas/screenshots/
 RUN find /srv/atlas/static/assets -maxdepth 1 -type f -name "atlas-*.js" -delete \
  && find /srv/atlas/static/assets -maxdepth 1 -type f -name "atlas-*.css" -delete
 # One HTML entry, one stylesheet, one app script and two immutable research datasets.
+COPY backend/user_auth.py /srv/atlas/app/user_auth.py
+COPY backend/install_auth.py /srv/atlas/install_auth.py
+RUN python /srv/atlas/install_auth.py
 COPY frontend/index.html /srv/atlas/static/index.html
 COPY frontend/app.css /srv/atlas/static/assets/app.css
 COPY frontend/app.js /srv/atlas/static/assets/app.js
@@ -16,7 +19,7 @@ COPY frontend/research.json /srv/atlas/static/assets/research.json
 COPY frontend/patterns.json /srv/atlas/static/assets/patterns.json
 COPY frontend/articles.json /srv/atlas/static/assets/articles.json
 COPY enhancements/build_palettes.py /srv/atlas/build_palettes.py
-RUN pip install --no-cache-dir -r requirements.txt && mkdir -p /srv/atlas/data
+RUN pip install --no-cache-dir -r requirements.txt 'psycopg[binary]>=3.2,<4' && mkdir -p /srv/atlas/data
 RUN python create_module_catalog.py && python build_palettes.py
 EXPOSE 8000
 CMD ["python","run.py"]
