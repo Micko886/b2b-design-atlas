@@ -1,0 +1,122 @@
+name: Publish visually curated real B2B design V2.0
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-curated-v20.yml'
+permissions:
+  contents: write
+concurrency:
+  group: atlas-v20-publish
+  cancel-in-progress: false
+jobs:
+  verify-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prepare approved source and real screenshot assets
+        run: |
+          mkdir -p "$RUNNER_TEMP/atlas-v20-release"
+          tar -xzf atlas-staged-v20.tar.gz -C "$RUNNER_TEMP/atlas-v20-release"
+          cp -a screenshots "$RUNNER_TEMP/atlas-v20-release/screenshots"
+          mkdir -p "$RUNNER_TEMP/atlas-v20-release/scripts"
+          cp scripts/publish-curated-v20.py "$RUNNER_TEMP/atlas-v20-release/scripts"
+          python -m pip install -q -r "$RUNNER_TEMP/atlas-v20-release/requirements.txt"
+          python -m pip install -q playwright
+          python -m playwright install --with-deps chromium
+          python "$RUNNER_TEMP/atlas-v20-release/scripts/publish-curated-v20.py" "$RUNNER_TEMP/atlas-v20-release" "$GITHUB_WORKSPACE/curation-v20.json"
+          cd "$RUNNER_TEMP/atlas-v20-release"
+          python create_module_catalog.py
+          python -m compileall -q app
+          node --check static/assets/atlas-v10.js
+      - name: Start local release server
+        run: |
+          cd "$RUNNER_TEMP/atlas-v20-release"
+          ATLAS_DB_PATH=/tmp/atlas-v20-release.sqlite3 PORT=8796 python run.py >/tmp/v20-release-server.log 2>&1 &
+          for i in $(seq 1 50); do curl -fsS http://127.0.0.1:8796/api/health && break || sleep 1; done
+      - name: Verify live catalog and responsive true masonry in real Chromium
+        run: |
+          python - <<'PY'
+          import asyncio,json,os,pathlib
+          from playwright.async_api import async_playwright
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'atlas-v20-release'
+          curated=json.loads((root/'CURATION-V20.json').read_text())
+          expected_websites=51+curated['manually_approved']
+          expected_sections=97+curated['new_modules']
+          assert expected_websites==73,(expected_websites,curated)
+          assert expected_sections>=118
+          folder=pathlib.Path('screenshots/qa-v20');folder.mkdir(parents=True,exist_ok=True)
+          async def check():
+            async with async_playwright() as p:
+              browser=await p.chromium.launch(headless=True,args=['--no-sandbox'])
+              for name,width in [('desktop',1440),('mobile',390)]:
+                page=await browser.new_page(viewport={'width':width,'height':900},device_scale_factor=1)
+                errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+                for path,kind in [('/','home'),('/websites','websites'),('/sections','sections'),('/patterns','patterns')]:
+                  await page.goto('http://127.0.0.1:8796'+path,wait_until='networkidle',timeout=70000)
+                  await page.evaluate("""async()=>{
+                    const imgs=[...document.images];for(let x of imgs)x.loading='eager';
+                    await Promise.race([Promise.all(imgs.map(x=>x.decode().catch(()=>null))),new Promise(r=>setTimeout(r,10000))])
+                  }""")
+                  assert not errors,(name,kind,errors)
+                  assert await page.evaluate('document.documentElement.scrollWidth<=innerWidth+3'),(name,kind,'horizontal overflow')
+                  if kind=='websites':
+                    gallery=page.locator('.v13-website-wall')
+                    count=await gallery.locator('.site-card').count()
+                    assert count==expected_websites,(kind,name,count,expected_websites)
+                    css=await gallery.evaluate("(el)=>({display:getComputedStyle(el).display,columns:getComputedStyle(el).columnCount})")
+                    assert css['display']=='block' and css['columns']==('3' if width>1180 else '1'),(name,kind,css)
+                    for sid in curated['new_sites']:
+                      el=gallery.locator('img[src="/screenshots/sites/'+sid+'.webp"]')
+                      assert await el.count()==1,(sid,'site omitted')
+                      assert await el.first.evaluate('(e)=>e.naturalWidth>0'),(sid,'image broken')
+                  if kind=='sections':
+                    gallery=page.locator('.v13-section-wall')
+                    count=await gallery.locator('.module-card').count()
+                    assert count==expected_sections,(kind,name,count,expected_sections)
+                    for sid in curated['new_sites']:
+                      assert await gallery.locator('img[src="/screenshots/modules/'+sid+'-hero.webp"]').count()==1,(sid,'no module')
+                  if kind=='home':
+                    assert await page.locator('.v13-hero .v13-shot').count()==3
+                  assert await page.evaluate('[...document.images].every(e=>e.naturalWidth>0)'),(name,kind,'broken images')
+                  await page.screenshot(path=str(folder/f'{kind}-{name}.png'),full_page=(name=='desktop' and kind!='sections'))
+                  print('QA_V20_PASS',name,kind,'cards',count if kind in ('websites','sections') else '-',flush=True)
+                await page.close()
+              await browser.close()
+          asyncio.run(check())
+          PY
+      - name: Build reproducible production bundle from approved captures only
+        run: |
+          tar -czf atlas-source-v20.tar.gz --exclude='./screenshots' --exclude='./data' --exclude='__pycache__' --exclude='.pytest_cache' -C "$RUNNER_TEMP/atlas-v20-release" .
+          sed -i 's/atlas-source-v19.tar.gz/atlas-source-v20.tar.gz/g' Dockerfile
+          python - <<'PY'
+          import json
+          m=json.load(open('curation-v20.json'))
+          r=json.load(open('screenshots/research-v20/audit.json'))
+          with open('RESEARCH-V20.md','w') as f:
+            f.write('# V2.0 visually curated B2B site references\n\n')
+            f.write(f"Candidates: {r['attempted']}; captured: {r['accepted']}; visually approved for publication: {len(m['include'])}.\n\n")
+            f.write('Curated from real Chromium screenshots. Rejected screenshots are not in the published catalog.\n\n')
+            for ident in m['include']:
+              d=m['notes'][ident]
+              f.write('- '+ident+' — '+d['style']+': '+', '.join(d['strengths'])+'\n')
+            f.write('\n## Exclusions after screenshot review\n\n')
+            for ident,reason in m['excluded_reasons'].items():f.write('- '+ident+': '+reason+'\n')
+            f.write('\nAll source images are originals from official company pages. Intellectual property remains with their owners.\n')
+          PY
+      - name: Commit production source, screenshots and QA evidence
+        run: |
+          git config user.name "B2B Atlas Design Curator"
+          git config user.email "actions@users.noreply.github.com"
+          git add atlas-source-v20.tar.gz Dockerfile RESEARCH-V20.md screenshots/qa-v20
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish 22 visually audited real B2B design references and sections"
+            git restore .
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
