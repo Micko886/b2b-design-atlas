@@ -14,6 +14,7 @@ COPY frontend/app.css /srv/atlas/static/assets/app.css
 COPY frontend/app.js /srv/atlas/static/assets/app.js
 COPY frontend/research.json /srv/atlas/static/assets/research.json
 COPY frontend/patterns.json /srv/atlas/static/assets/patterns.json
+COPY frontend/articles.json /srv/atlas/static/assets/articles.json
 COPY enhancements/build_palettes.py /srv/atlas/build_palettes.py
 RUN pip install --no-cache-dir -r requirements.txt && mkdir -p /srv/atlas/data
 RUN python create_module_catalog.py && python build_palettes.py
