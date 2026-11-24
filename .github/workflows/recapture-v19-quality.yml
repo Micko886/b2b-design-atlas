@@ -53,6 +53,11 @@ jobs:
                 errors=[];page.on('pageerror',lambda ex:errors.append(str(ex)))
                 for route,cls in [('/websites','.site-card'),('/sections','.module-card')]:
                   await page.goto('http://127.0.0.1:8799'+route,wait_until='networkidle')
+                  await page.evaluate("""async()=>{
+                    const imgs=[...document.images];
+                    for(const img of imgs)img.loading='eager';
+                    await Promise.race([Promise.all(imgs.map(x=>x.decode().catch(()=>null))),new Promise(r=>setTimeout(r,9000))]);
+                  }""")
                   expected=51 if cls=='.site-card' else 97
                   assert await page.locator(cls).count()==expected,(cls,w,expected)
                   for ident in ids:
