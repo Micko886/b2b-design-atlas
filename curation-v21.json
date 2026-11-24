@@ -1,0 +1,133 @@
+{
+  "batch": "v21",
+  "review_method": "Browser capture, visual screenshot contact-sheet inspection, rejection of overlays and weak sections. Only original company pages.",
+  "include_sites": [
+    "vast",
+    "figure-robotics",
+    "skydio",
+    "helion",
+    "cfs-energy",
+    "saronic",
+    "prima-power",
+    "rosler",
+    "tekna-machines",
+    "aixtron"
+  ],
+  "include_deep_pages": [
+    "figure-robotics-figure-03",
+    "skydio-drone-products",
+    "helion-fusion-technology",
+    "cfs-energy-fusion-system",
+    "saronic-autonomous-vessels",
+    "prima-power-automation-robotics",
+    "rosler-mass-finishing",
+    "tekna-machines-cnc-range",
+    "aixtron-deposition-products",
+    "prima-power-production-lines",
+    "formlabs-form4-product",
+    "xometry-3d-printing-service",
+    "kvadrat-textile-products",
+    "snohetta-architecture-projects",
+    "snohetta-architecture-discipline"
+  ],
+  "home_features": [
+    "figure-robotics",
+    "vast",
+    "saronic",
+    "cfs-energy",
+    "tekna-machines",
+    "helion"
+  ],
+  "notes": {
+    "vast": {
+      "style": "Cinematic aerospace manufacturing",
+      "strengths": [
+        "full-bleed spacecraft factory photography",
+        "oversized white type",
+        "strong engineering identity"
+      ]
+    },
+    "figure-robotics": {
+      "style": "Humanoid product art direction",
+      "strengths": [
+        "minimal product macro footage",
+        "dark contrast",
+        "hardware-first storytelling"
+      ]
+    },
+    "skydio": {
+      "style": "Enterprise drone product narrative",
+      "strengths": [
+        "drone hardware as hero",
+        "specific model entry",
+        "professional application photography"
+      ]
+    },
+    "helion": {
+      "style": "Fusion technology in context",
+      "strengths": [
+        "actual lab and machine imagery",
+        "mission-driven typography",
+        "process-based explanation"
+      ]
+    },
+    "cfs-energy": {
+      "style": "Macro industrial fusion identity",
+      "strengths": [
+        "close-up engineered materials",
+        "precision typography",
+        "credible technical storytelling"
+      ]
+    },
+    "saronic": {
+      "style": "Autonomous vessel product display",
+      "strengths": [
+        "oversized marine hardware hero",
+        "dark water photography",
+        "direct technology narrative"
+      ]
+    },
+    "prima-power": {
+      "style": "Integrated production line storytelling",
+      "strengths": [
+        "industrial workflow imagery",
+        "practical category navigation",
+        "automation proof"
+      ]
+    },
+    "rosler": {
+      "style": "Dark finishing machinery gallery",
+      "strengths": [
+        "studio-lit industrial equipment",
+        "clear surface-process product framing",
+        "premium contrast"
+      ]
+    },
+    "tekna-machines": {
+      "style": "Cinematic CNC machine presentation",
+      "strengths": [
+        "black machine showcase",
+        "precise product lighting",
+        "orderly technical hierarchy"
+      ]
+    },
+    "aixtron": {
+      "style": "Scientific industrial product branding",
+      "strengths": [
+        "minimal semiconductor technology imagery",
+        "clear technical sections",
+        "specialist product taxonomy"
+      ]
+    }
+  },
+  "excluded_reasons": {
+    "zipline": "Privacy popup obscures the original hero; no supported dismissal option",
+    "form-energy": "Persistent consent overlay impacts screenshot quality",
+    "krones": "A time-limited exhibition/news banner dominates the homepage; less distinctive than other choices",
+    "anduril": "Browser could not validate the homepage content",
+    "kern-microtechnik": "Homepage returned HTTP 429",
+    "helion-orion-project": "Sparse introductory frame, weak comparative design evidence",
+    "protolabs-3d-printing-service": "Cookie popup interferes with a readable service-section screenshot",
+    "vast-space-infrastructure": "Near-duplicate of accepted homepage rather than a useful distinct section"
+  }
+}
