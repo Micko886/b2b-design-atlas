@@ -22,3 +22,9 @@
 @media(max-width:380px){.shell{width:calc(100% - 24px)}.feature-grid{grid-template-columns:1fr}.section-grid{grid-template-columns:1fr}.hero-stack{height:175px}.hero-copy h1{font-size:30px}.filter-select{flex:1 1 42%}.dossier-actions{flex-wrap:wrap}.masonry-compact{column-count:1}}
 @media(hover:none){.card-actions{opacity:1}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{transition:none!important;animation:none!important}}
+
+/* Final visual QA refinements, part of the single design system. */
+.card-actions button svg{width:17px;height:17px}
+.dossier-actions button svg{width:15px;height:15px;vertical-align:middle}
+.listing{padding-top:23px}.listing .page-heading{margin-bottom:18px}.category-nav{margin:12px 0}.results-line{margin-bottom:11px}
+@media(max-width:680px){.listing{padding-top:17px}.listing .page-heading{margin-bottom:13px}.listing-controls{gap:6px}.filter-select select{height:36px}.category-nav{margin:8px 0}.card-actions button[data-action="preview"]{display:none}}
