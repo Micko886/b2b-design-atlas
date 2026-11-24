@@ -1,0 +1,24 @@
+[
+  {
+    "id": "vast",
+    "status": "recaptured",
+    "consent_action": "Reject all",
+    "std": 41.8
+  },
+  {
+    "id": "zipline",
+    "status": "not changed",
+    "reason": "No supported consent control visible"
+  },
+  {
+    "id": "form-energy",
+    "status": "not changed",
+    "reason": "No supported consent control visible"
+  },
+  {
+    "id": "cfs-energy",
+    "status": "recaptured",
+    "consent_action": "DECLINE",
+    "std": 42.2
+  }
+]
