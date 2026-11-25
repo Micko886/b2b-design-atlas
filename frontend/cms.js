@@ -558,7 +558,7 @@ function compareValue(field,value){
 function inlineReviewComparison(item){
  if(item.status!=='review')return '';
  const before=item.published||null,after=item.payload||{};
- const labels=Object.fromEntries((fieldSpecs[item.kind]||[]).map(x=>[x[0],x[1]]));
+ const labels={gallery:'页面截图',crop_px:'图片展示区域',modules:'关联页面模块',sections:'文章章节',design_strengths:'设计亮点',...Object.fromEntries((fieldSpecs[item.kind]||[]).map(x=>[x[0],x[1]]))};
  const fields=before?Array.from(new Set([...Object.keys(before),...Object.keys(after)])).filter(k=>
     JSON.stringify(before[k]??null)!==JSON.stringify(after[k]??null)):[];
  if(!before)return '<div class="cms-review-inline"><h4>首次发布</h4><p>这条内容尚未公开，请使用「发布前预览」检查内容、图片和排版。</p></div>';
@@ -576,7 +576,7 @@ function reviewBrief(item){
  const original=item.published||null,current=item.payload||{};
  const changed=original?Array.from(new Set([...Object.keys(original),...Object.keys(current)])).filter(k=>
    JSON.stringify(original[k]??null)!==JSON.stringify(current[k]??null)):[];
- const labels=Object.fromEntries((fieldSpecs[item.kind]||[]).map(x=>[x[0],x[1]]));
+ const labels={gallery:'页面截图',crop_px:'图片展示区域',modules:'关联页面模块',sections:'文章章节',design_strengths:'设计亮点',...Object.fromEntries((fieldSpecs[item.kind]||[]).map(x=>[x[0],x[1]]))};
  return '<div class="cms-review-brief"><div class="cms-review-brief-head"><div><span class="section-eyebrow">REVIEW GATE · v'+item.revision+'</span><h3>审核此内容版本</h3>'
  +'<p>对照公开快照检查字段更改，确认后再正式发布。</p></div><span class="cms-review-state">等待审核</span></div>'
  +(original?'<div class="cms-review-changes"><strong>对比已发布内容 · '+changed.length+' 项字段变化</strong>'
