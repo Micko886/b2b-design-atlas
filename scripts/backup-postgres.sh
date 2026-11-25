@@ -23,7 +23,7 @@ trap 'rm -f -- "$tmp"' EXIT
 pg_dump --dbname="$ATLAS_BACKUP_DATABASE_URL" --format=custom --compress=6 --no-owner --no-privileges --file="$tmp"
 pg_restore --list "$tmp" >/dev/null
 age -r "$ATLAS_BACKUP_AGE_RECIPIENT" -o "$prefix.dump.age" "$tmp"
-sha256sum "$prefix.dump.age" > "$prefix.dump.age.sha256"
+(cd "$ATLAS_BACKUP_DIR" && sha256sum "$(basename "$prefix.dump.age")") > "$prefix.dump.age.sha256"
 chmod 600 "$prefix.dump.age" "$prefix.dump.age.sha256"
 echo "Encrypted archive: $prefix.dump.age"
 echo "SHA256 manifest: $prefix.dump.age.sha256"
