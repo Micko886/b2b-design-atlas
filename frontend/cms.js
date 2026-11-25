@@ -194,7 +194,19 @@ function setCmsRole(){
  if(can('review'))options.push(['publish','批量发布'],['archive','归档下线']);
  $('#cms-bulk-action').innerHTML=options.map(([key,label])=>'<option value="'+key+'">'+label+'</option>').join('');
 }
-function btnDisable(value){state.busy=value;$$('#cms-editor-body button,#cms-new,#cms-refresh,#cms-export').forEach(x=>{if(!x.dataset.alwaysEnabled)x.disabled=value})}
+function btnDisable(value){
+ state.busy=value;
+ $('[data-editor-pane] button,#cms-editor-body .cms-edit-quick-actions button,#cms-new,#cms-refresh,#cms-export').forEach(button=>{
+  if(button.dataset.alwaysEnabled)return;
+  if(value){
+   if(button.dataset.cmsBeforeBusy===undefined)button.dataset.cmsBeforeBusy=button.disabled?'1':'0';
+   button.disabled=true;
+  }else if(button.dataset.cmsBeforeBusy!==undefined){
+   button.disabled=button.dataset.cmsBeforeBusy==='1';
+   delete button.dataset.cmsBeforeBusy;
+  }
+ });
+}
 function setNotice(text,error=false){const el=$('#cms-notice');el.innerHTML='<div>'+icon(error?'lock':mode==='preview'?'lock':'check')+'<span>'+h(text)+'</span></div><span>'+(error?'REQUIRES ACTION':mode==='preview'?'PUBLIC PREVIEW':'ADMIN ONLY')+'</span>';el.hidden=mode==='admin'&&!error;el.classList.toggle('cms-notice-error',error)}
 function listUrl(){const u=new URL(location.href);u.searchParams.set('kind',state.kind);return u.pathname+u.search}
 function showKind(){
@@ -698,6 +710,7 @@ const history=item.history||[];
  const seoPanel=item.kind==='article'?seoStudio(values):'';
  root.classList.toggle('cms-easy-mode',true);
  root.innerHTML=topbar+siteHeader+tabs
+  +'<div id="cms-transition-feedback" class="cms-transition-feedback" role="alert" aria-live="assertive" hidden></div>'
   +'<div data-editor-pane="content">'+form+'</div>'
   +'<div class="cms-private-preview-pane" data-editor-pane="preview" hidden><div class="cms-preview-heading"><div><h3>发布前预览</h3><p>模拟前台视觉效果，显示当前草稿和未保存修改；预览本身不会发布内容。</p></div><span id="cms-private-preview-state">仅当前浏览器可见</span></div><p id="cms-private-preview-error" role="alert" hidden></p><div id="cms-private-preview"></div></div>'
   +(item.kind==='article'?'<div data-editor-pane="seo" hidden>'+seoPanel+'</div>':'')
@@ -772,6 +785,26 @@ async function saveDraft(event){
  if(autosavePaused){message('版本冲突时不可覆盖远端草稿，请先复制内容并刷新。',false);return}
  await persistDraft(false);
 }
+// V52.8 · Persistent, actionable review feedback. No auto-retry of release writes.
+function clearTransitionFeedback(){
+ const panel=$('#cms-transition-feedback');if(panel){panel.hidden=true;panel.innerHTML=''}
+}
+function transitionErrorInfo(error,action,applied=false){
+ if(applied)return {title:'操作已提交，但页面刷新失败',detail:'请重新读取服务器状态后再继续，避免重复发布。'};
+ if(error.status===409)return {title:'内容版本已经变化',detail:'其他窗口或编辑人员可能修改了这条内容。重新加载最新版本后再决定是否操作。'};
+ if(error.status===401)return {title:'登录已失效',detail:'请重新登录。原来的公开版本未因本次请求发生变化。'};
+ if(error.status===403)return {title:'没有执行权限',detail:'请使用具备审核权限的账号，或联系最高管理员。'};
+ if(error.status===422)return {title:action==='publish'?'暂时无法发布':'内容校验未通过',detail:'请根据下方错误检查图片、分类、正文及关联内容，修改后再提交。'};
+ return {title:'操作未确认成功',detail:'请检查网络并重新读取内容状态，避免重复执行操作。'};
+}
+function showTransitionFeedback(error,action,applied=false){
+ const panel=$('#cms-transition-feedback');if(!panel)return;
+ const info=transitionErrorInfo(error,action,applied);
+ panel.hidden=false;
+ panel.innerHTML='<div><strong>'+h(info.title)+'</strong><p>'+h(error.message||'服务器没有返回详细原因')+'</p><small>'+h(info.detail)+'</small></div>'
+  +'<button type="button" data-review-reload>重新读取服务器状态</button>';
+ panel.scrollIntoView({block:'nearest',behavior:'smooth'});
+}
 async function transition(action){
  if(mode!=='admin'||state.busy||!state.selected)return;
  if(state.dirty||autosavePaused){message('请先等待自动保存成功或解决版本冲突，再继续审核。',false);return}
@@ -782,13 +815,16 @@ async function transition(action){
    if(reason.trim().length<4){message('退回原因至少 4 个字符。',false);return}
  }
  if(action==='archive'&&!confirm('确定归档「'+(item.payload.name||item.payload.title||item.slug)+'」？该页面将从前台列表移除。'))return;
+ clearTransitionFeedback();
  btnDisable(true);
+ let applied=false;
  try{
-   const result=await api('/api/admin/content/'+item.kind+'/'+item.slug+'/'+action,{
+   await api('/api/admin/content/'+item.kind+'/'+item.slug+'/'+action,{
     method:'POST',body:JSON.stringify({expected_revision:item.revision,...(action==='reject'?{reason}:{})})});
-   message({submit:'已提交审核',publish:'内容已发布到前台',archive:'已归档下线',reject:'已退回草稿并记录审核意见'}[action]||'操作完成');
+   applied=true;
    state.dirty=false;await loadKind(false);await selectItem(item.slug);
- }catch(e){message(e.message,false)}
+   message({submit:'已提交审核',publish:'内容已发布到前台',archive:'已归档下线',reject:'已退回草稿并记录审核意见'}[action]||'操作完成');
+ }catch(e){showTransitionFeedback(e,action,applied);message(applied?'操作可能已完成，请重新读取服务器状态':e.message,false)}
  finally{btnDisable(false)}
 }
 async function restoreRevision(revision){
@@ -1674,6 +1710,7 @@ function boot(){
    if(e.target.closest('[data-close-editor]')){closeEditor();return}
    if(e.target.closest('[data-editor-save]')){if(!state.dirty&&state.selected?.status!=='source')message('当前没有待保存的修改。');else if($('#cms-edit-form')?.reportValidity())await saveDraft({preventDefault(){}});return}
    if(e.target.closest('[data-editor-submit]')){await transition('submit');return}
+   if(e.target.closest('[data-review-reload]')){if(state.busy||!state.selected)return;const slug=state.selected.slug;try{await loadKind(false);await selectItem(slug);clearTransitionFeedback();message('已重新读取服务器状态')}catch(e){showTransitionFeedback(e,'reload',false)}return}
    if(e.target.closest('[data-gallery-add]')){state.mediaTarget=null;state.mediaField='field-gallery';await openMedia();return}
    const galleryRemove=e.target.closest('[data-gallery-remove]');
    if(galleryRemove){const items=galleryValue();items.splice(Number(galleryRemove.dataset.galleryRemove),1);updateGallery(items);return}
