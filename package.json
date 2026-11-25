@@ -1,0 +1,11 @@
+{
+  "name": "b2b-design-atlas-cms-browser-tests",
+  "private": true,
+  "description": "Isolated browser regression checks; the production app does not require Node.js.",
+  "scripts": {
+    "test:cms:browser": "playwright test tests/browser/cms-v525.spec.mjs --reporter=list"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1"
+  }
+}
