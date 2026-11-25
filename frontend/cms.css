@@ -640,3 +640,21 @@ body.cms-editor-active .cms-easy-mode .cms-editor-content {padding:16px 32px 28p
 .cms-easy-mode .cms-gallery-actions .cms-gallery-delete{color:#c75060}
 @media(max-width:960px){.cms-easy-mode .cms-gallery-list{grid-template-columns:1fr}}
 @media(max-width:600px){.cms-easy-mode .cms-gallery-heading{align-items:flex-start;flex-direction:column;gap:12px}.cms-easy-mode .cms-gallery-heading>button{width:100%}.cms-easy-mode .cms-gallery-card{gap:10px}.cms-easy-mode .cms-gallery-thumb{width:90px;max-height:125px}.cms-easy-mode .cms-gallery-actions button{padding:6px 7px}}
+
+
+/* V52.4 · Shared streamlined editorial fields for modules, patterns, and articles */
+.cms-easy-mode .cms-pattern-preview{align-self:start;gap:14px}
+.cms-easy-mode .cms-pattern-preview-card{display:grid;gap:10px;border:1px solid var(--line);border-radius:11px;background:var(--surface);padding:20px 18px;min-height:225px;align-content:start}
+.cms-easy-mode .cms-pattern-preview-card small{color:var(--blue);font-size:11px;letter-spacing:.04em;font-weight:780}
+.cms-easy-mode .cms-pattern-preview-card h3{font-size:20px;line-height:1.35;letter-spacing:-.03em;color:var(--ink-strong);margin:0;overflow-wrap:anywhere}
+.cms-easy-mode .cms-pattern-preview-card p{font-size:13px;line-height:1.6;color:var(--muted-strong);margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.cms-easy-mode #cms-preview-principle{padding-top:12px;border-top:1px solid var(--line);color:var(--ink);font-size:12px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.cms-easy-mode .cms-v51-studio{margin:0;border-top:1px solid var(--line);padding-top:20px}
+.cms-easy-mode .cms-v51-studio-head{margin-bottom:17px}
+.cms-easy-mode .cms-v51-studio-head h3{font-size:17px}
+.cms-easy-mode .cms-easy-fields .cms-field select{font-size:14px;min-height:44px;padding:9px 13px;line-height:1.5;border-radius:9px}
+.cms-easy-mode .cms-easy-advanced .cms-easy-extra .cms-field input,
+.cms-easy-mode .cms-easy-advanced .cms-easy-extra .cms-field textarea{font-size:13px;min-height:39px}
+.cms-easy-mode .cms-easy-advanced .cms-easy-extra .cms-field textarea{min-height:95px}
+body.cms-editor-active #cms-editor-body.cms-easy-mode .cms-editor-content{padding-top:22px}
+@media(max-width:880px){.cms-easy-mode .cms-pattern-preview-card{min-height:0}}
