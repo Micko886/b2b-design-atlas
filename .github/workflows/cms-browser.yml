@@ -1,0 +1,42 @@
+name: CMS Browser QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/cms.html'
+      - 'frontend/cms.js'
+      - 'frontend/cms.css'
+      - 'frontend/admin.css'
+      - 'tests/browser/**'
+      - 'package.json'
+      - '.github/workflows/cms-browser.yml'
+  pull_request:
+    paths:
+      - 'frontend/cms.html'
+      - 'frontend/cms.js'
+      - 'frontend/cms.css'
+      - 'frontend/admin.css'
+      - 'tests/browser/**'
+      - 'package.json'
+      - '.github/workflows/cms-browser.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cms-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser test dependencies
+        run: npm install --no-audit --no-fund
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Test CMS HTML, editor actions, image uploads and responsive layout
+        run: npm run test:cms:browser
