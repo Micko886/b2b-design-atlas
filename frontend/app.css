@@ -1122,3 +1122,13 @@ body{color:var(--ink);background:#fff;font-family:Inter,"Noto Sans CJK SC",ui-sa
 /* V51.4 · Published inline typography */
 .insight-prose-section code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.86em;border-radius:5px;padding:2px 6px;background:rgba(110,125,150,.12);overflow-wrap:anywhere}
 .insight-prose-section strong{font-weight:800}
+
+/* V51.20 · Public editorial blocks */
+.insight-block-heading{font-size:clamp(18px,2vw,24px);font-weight:760;line-height:1.35;letter-spacing:-.025em;margin:28px 0 12px}
+.insight-block-quote{border-left:3px solid #8299c1;background:rgba(108,139,186,.07);border-radius:0 10px 10px 0;padding:18px 22px;margin:20px 0;font-size:1.05em;line-height:1.9}
+.insight-block-table-scroll{overflow-x:auto;border:1px solid rgba(128,148,175,.2);border-radius:12px;margin:22px 0}
+.insight-block-table-scroll table{border-collapse:collapse;width:100%;min-width:400px;font-size:.9em;line-height:1.6}
+.insight-block-table-scroll td{padding:12px 15px;border-bottom:1px solid rgba(128,148,175,.18);border-right:1px solid rgba(128,148,175,.12);vertical-align:top}
+.insight-block-table-scroll tr:last-child td{border-bottom:0}
+.insight-block-table-scroll tr:first-child{background:rgba(128,148,175,.07);font-weight:690}
+.insight-block-link a{color:#547bb4;text-underline-offset:4px;text-decoration-thickness:1px;word-break:break-word}
