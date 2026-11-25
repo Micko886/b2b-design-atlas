@@ -60,7 +60,9 @@ class MediaWorkBenchV532(unittest.TestCase):
         older=self.listing(limit=24,offset=144)
         self.assertEqual(len(older["items"]),17)
         self.assertFalse(older["has_more"])
-        self.assertIn(ids[0],{x["id"] for x in older["items"]})
+        all_ids={item["id"] for page in range(7)
+                 for item in self.listing(limit=24,offset=page*24)["items"]}
+        self.assertEqual(all_ids,set(ids))
         matched=self.listing(q="concept-160.png")
         self.assertEqual(matched["total"],1)
         self.assertEqual(matched["items"][0]["file_name"],"concept-160.png")
