@@ -388,6 +388,10 @@ def cleaned(kind,slug,payload):
         if not isinstance(result["cover_image"],str) or not re.fullmatch(r"/api/media/[0-9a-f-]{36}",result["cover_image"]):
             user_auth.error(422,"文章封面只能选择已上传的媒体图片。")
     if kind=="article":
+        for metadata,max_chars in (("seo_title",100),("seo_description",300)):
+            v=result.get(metadata,"")
+            if v is not None and (not isinstance(v,str) or len(v)>max_chars):
+                user_auth.error(422,metadata+" 长度不合法。")
         for key,limit in (("tags",20),("takeaways",30)):
             value=result.get(key,[])
             if not isinstance(value,list) or len(value)>limit or any(
