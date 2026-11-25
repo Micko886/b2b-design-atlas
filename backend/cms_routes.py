@@ -84,7 +84,19 @@ SCHEMA = [
        action TEXT NOT NULL, actor_id TEXT NOT NULL,
        snapshot_json TEXT NOT NULL, created_at TEXT NOT NULL
     )""",
-    """CREATE INDEX IF NOT EXISTS atlas_cms_category_history_cat ON atlas_cms_category_history(category_id,created_at)"""
+    """CREATE INDEX IF NOT EXISTS atlas_cms_category_history_cat ON atlas_cms_category_history(category_id,created_at)""",
+    """CREATE TABLE IF NOT EXISTS atlas_cms_tags (
+       name TEXT PRIMARY KEY, description TEXT NOT NULL,
+       status TEXT NOT NULL CHECK(status IN ('active','deleted')),
+       created_by TEXT NOT NULL REFERENCES atlas_users(id),
+       updated_by TEXT NOT NULL REFERENCES atlas_users(id),
+       created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    )""",
+    """CREATE TABLE IF NOT EXISTS atlas_cms_tag_history (
+       id TEXT PRIMARY KEY, tag_name TEXT NOT NULL,
+       action TEXT NOT NULL, actor_id TEXT NOT NULL,
+       snapshot_json TEXT NOT NULL, created_at TEXT NOT NULL
+    )"""
 ]
 
 def utc_now():
@@ -228,6 +240,58 @@ def category_usage(category_id,base_articles,stored_rows):
                 used.add(row["slug"])
     return len(used)
 
+def normalize_editorial_tag(name):
+    if not isinstance(name,str):return ""
+    name=name.strip()
+    if not name or len(name)>32 or any(ord(ch)<32 for ch in name) or "<" in name or ">" in name:
+        return ""
+    return name
+
+def article_tag_usage(tag,base_articles,stored_rows):
+    """Distinct content resources using the exact tag across snapshots."""
+    matching=set()
+    target=tag.casefold()
+    for slug,payload in base_articles.items():
+        if isinstance(payload,dict) and any(
+            isinstance(v,str) and v.strip().casefold()==target
+            for v in payload.get("tags",[]) if isinstance(payload.get("tags",[]),list)
+        ):matching.add(slug)
+    for row in stored_rows:
+        for field in ("draft_json","published_json"):
+            try:p=parse_json(row[field]) if row[field] else None
+            except (TypeError,ValueError):continue
+            if isinstance(p,dict) and isinstance(p.get("tags"),list) and any(
+                isinstance(v,str) and v.strip().casefold()==target for v in p["tags"]
+            ):matching.add(row["slug"])
+    return len(matching)
+
+def merge_editorial_tags(base_articles,stored_rows,overrides):
+    """Referenced tags and manually curated tags, excluding soft-deleted unused tags."""
+    labels={}
+    for article in base_articles.values():
+        for t in article.get("tags",[]) if isinstance(article.get("tags"),list) else []:
+            label=normalize_editorial_tag(t)
+            if label:labels.setdefault(label.casefold(),label)
+    for row in stored_rows:
+        for field in ("draft_json","published_json"):
+            try:article=parse_json(row[field]) if row[field] else None
+            except (TypeError,ValueError):continue
+            if not isinstance(article,dict):continue
+            for t in article.get("tags",[]) if isinstance(article.get("tags"),list) else []:
+                label=normalize_editorial_tag(t)
+                if label:labels.setdefault(label.casefold(),label)
+    result={}
+    for key,label in labels.items():
+        result[key]={"name":label,"description":"","source":"content"}
+    for row in overrides:
+        key=row["name"].casefold()
+        if row["status"]=="deleted":
+            if key not in labels:result.pop(key,None)
+        else:
+            result[key]={"name":row["name"],"description":row["description"],"source":"cms"}
+    return sorted(({**value,"usage":article_tag_usage(value["name"],base_articles,stored_rows)}
+                   for value in result.values()),key=lambda x:(-x["usage"],x["name"].casefold()))
+
 def cleaned(kind,slug,payload):
     if not SLUG.fullmatch(slug):user_auth.error(400,"URL 标识只能使用小写英文、数字与短横线。")
     if not isinstance(payload,dict):user_auth.error(422,"内容必须是 JSON 对象。")
@@ -346,6 +410,14 @@ def validate_category_data(data:CategoryData):
         user_auth.error(422,"分类 ID 只能使用小写字母、数字和短横线。")
     if not data.name.strip():
         user_auth.error(422,"分类显示名称不能为空。")
+
+class TagData(BaseModel):
+    name: str = Field(min_length=1,max_length=32)
+    description: str = Field(default="",max_length=400)
+
+def validate_tag_data(data:TagData):
+    if not normalize_editorial_tag(data.name) or not data.name.strip():
+        user_auth.error(422,"标签名称必须为 1–32 个有效字符。")
 
 class MediaUpload(BaseModel):
     name: str = Field(min_length=1,max_length=160)
