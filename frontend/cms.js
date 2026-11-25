@@ -302,6 +302,52 @@ function formField(spec,values,editable){
  return '<div class="cms-field" data-json="'+(type==='json')+'" data-multiline="'+(type==='long')+'"><label for="'+inputName+'">'+h(label)+(required?' *':'')+'</label>'+input+(mediaField?'<button type="button" class="cms-field-media-pick" data-editor-pick-media="'+h(inputName)+'">从媒体库选择或上传图片</button>':'')+'</div>';
 }
 // V52.1 · A small, beginner-friendly site editor. Keep source fields, not a JSON textarea.
+function validSiteShot(url){
+ return typeof url==='string'&&((/^\/screenshots\/[a-zA-Z0-9_./-]{1,200}$/.test(url)&&!url.includes('..'))||/^\/api\/media\/[0-9a-f-]{36}$/.test(url));
+}
+function galleryValue(){
+ try{const items=JSON.parse($('#field-gallery')?.value||'[]');
+  return Array.isArray(items)?items.filter(x=>x&&validSiteShot(x.url)).slice(0,16):[];
+ }catch{return []}
+}
+function galleryCards(items){
+ if(!items.length)return '<p class="cms-gallery-empty">还没有其他页面截图。上传产品页、解决方案页、移动端等截图，案例详情页就能切换查看。</p>';
+ return items.map((x,i)=>'<article class="cms-gallery-card" data-gallery-index="'+i+'">'
+ +'<img class="cms-gallery-thumb" src="'+h(x.url)+'" alt="'+h(x.label||'页面截图')+'" loading="lazy">'
+ +'<div class="cms-gallery-info"><label>截图名称<input type="text" data-gallery-label maxlength="80" value="'+h(x.label||'')+'" placeholder="例如 产品详情页"></label>'
+ +'<div class="cms-gallery-actions"><button type="button" data-gallery-cover="'+i+'">设为封面</button>'
+ +'<button type="button" data-gallery-move="'+i+'" data-gallery-direction="-1"'+(i===0?' disabled':'')+' aria-label="前移截图">↑</button>'
+ +'<button type="button" data-gallery-move="'+i+'" data-gallery-direction="1"'+(i===items.length-1?' disabled':'')+' aria-label="后移截图">↓</button>'
+ +'<button type="button" data-gallery-remove="'+i+'" class="cms-gallery-delete">移除</button></div></div></article>').join('');
+}
+function renderGalleryCards(){
+ const list=$('#cms-gallery-list');if(!list)return;
+ const gallery=galleryValue();list.innerHTML=galleryCards(gallery);
+ const count=$('#cms-gallery-count');if(count)count.textContent=gallery.length+' 张';
+}
+function updateGallery(gallery){
+ const input=$('#field-gallery');if(!input)return;
+ input.value=JSON.stringify(gallery);renderGalleryCards();markDraftDirty();
+}
+function syncGalleryLabels(){
+ const gallery=galleryValue(),input=$('#field-gallery');if(!input)return;
+ for(const row of $('[data-gallery-index]')){
+  const idx=Number(row.dataset.galleryIndex);
+  if(gallery[idx])gallery[idx].label=row.querySelector('[data-gallery-label]')?.value.trim().slice(0,80)||'';
+ }
+ input.value=JSON.stringify(gallery);markDraftDirty();
+}
+function addGalleryImages(urls){
+ const gallery=galleryValue();let added=0;
+ for(const url of urls){
+  if(!validSiteShot(url)||gallery.some(x=>x.url===url))continue;
+  if(gallery.length>=16){message('最多可以添加 16 张页面截图。',false);break}
+  gallery.push({url,label:'页面截图 '+(gallery.length+1)});added++;
+ }
+ if(added){updateGallery(gallery);message('已添加 '+added+' 张页面截图，草稿会自动保存。')}
+ else message('这些图片已添加，或已达到 16 张上限。',false);
+ return added;
+}
 function siteEditorForm(values,editable){
  const disabled=editable?'':' disabled';
  const basic=[
@@ -332,6 +378,10 @@ function siteEditorForm(values,editable){
  +'<input id="field-screenshot_url" data-field="screenshot_url" data-type="text" type="hidden" value="'+h(raw)+'">'
  +(editable&&can('media')?'<button type="button" class="cms-easy-upload" data-editor-pick-media="field-screenshot_url">上传或更换图片</button>':'')
  +'<small>支持 JPG、PNG、WebP；已有图片也可从媒体库选用。</small></aside></div>'
+ +'<section class="cms-gallery-editor"><div class="cms-gallery-heading"><div><strong>页面截图 <span id="cms-gallery-count">'+(Array.isArray(values.gallery)?values.gallery.length:0)+' 张</span></strong><p>添加产品页、方案页等图片；可调整顺序、重命名或设为主封面。</p></div>'
+ +(editable&&can('media')?'<button type="button" data-gallery-add>＋ 添加截图</button>':'')+'</div>'
+ +'<input id="field-gallery" type="hidden" data-field="gallery" data-type="json" value="'+h(JSON.stringify(Array.isArray(values.gallery)?values.gallery:[]))+'">'
+ +'<div id="cms-gallery-list" class="cms-gallery-list">'+galleryCards(Array.isArray(values.gallery)?values.gallery.filter(x=>x&&validSiteShot(x.url)).slice(0,16):[])+'</div></section>'
  +'<details class="cms-easy-advanced"><summary>更多设置 <span>选填 · 业务方向、设计亮点</span></summary>'
  +'<div class="cms-easy-extra">'+extra.map(spec=>formField(spec,values,editable)).join('')+'</div></details>';
 }
