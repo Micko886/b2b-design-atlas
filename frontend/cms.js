@@ -10,7 +10,7 @@ const kinds={site:{title:'网站内容',label:'Websites',icon:'globe',public:'/a
  module:{title:'页面模块',label:'Sections',icon:'layers',public:'/api/module-library',url:'/sections/'},
  pattern:{title:'设计模式',label:'Patterns',icon:'shapes',public:'/assets/patterns.json',url:'/patterns/'},
  article:{title:'研究文章',label:'Insights',icon:'article',public:'/assets/articles.json',url:'/insights/'}};
-const state={kind:new URLSearchParams(location.search).get('kind')||'site',items:[],records:{},selected:null,csrf:'',user:null,dirty:false,q:'',status:'',busy:false,selectedSlugs:new Set(),taxonomy:{},tagSuggestions:[],mediaTarget:null,categoryRecords:[],categoryEditing:null,tagRecords:[],tagEditing:null,tagSearch:''};
+const state={kind:new URLSearchParams(location.search).get('kind')||'site',items:[],records:{},selected:null,csrf:'',user:null,dirty:false,q:'',status:'',busy:false,selectedSlugs:new Set(),taxonomy:{},tagSuggestions:[],mediaTarget:null,categoryRecords:[],categoryEditing:null,tagRecords:[],tagEditing:null,tagSearch:'',role:null,capabilities:[],scheduleItems:[],teamPeople:[],teamSelected:null};
 if(!kinds[state.kind])state.kind='site';
 const fieldSpecs={
  site:[
@@ -142,6 +142,24 @@ async function offerDraftRecovery(item){
    }else clearRecovery(key)
  }catch(_){}
 }
+function can(permission){return mode==='admin'&&state.capabilities.includes(permission)}
+function setCmsRole(){
+ const title={owner:'最高管理员',editor:'内容编辑',reviewer:'审核员'}[state.role]||'未授权';
+ $('#cms-role').textContent=(state.user?.display_name||'Atlas')+' · '+title;
+ $('#cms-new').hidden=!can('edit');
+ $('#cms-export').hidden=!can('export');
+ $('#cms-media-open').hidden=!can('media');
+ $('#cms-categories-open').hidden=!can('taxonomy');
+ $('#cms-tags-open').hidden=!can('taxonomy');
+ $('#cms-team-open').hidden=!can('team');
+ $('#cms-schedules-open').hidden=!can('view');
+ $('#cms-review-shortcut').hidden=!can('view');
+ $('.side-nav a[href="/admin"],.side-nav a[href="/admin#traffic"]').forEach(a=>a.hidden=!can('team'));
+ const options=[];
+ if(can('edit'))options.push(['submit','提交审核']);
+ if(can('review'))options.push(['publish','批量发布'],['archive','归档下线']);
+ $('#cms-bulk-action').innerHTML=options.map(([key,label])=>'<option value="'+key+'">'+label+'</option>').join('');
+}
 function btnDisable(value){state.busy=value;$$('#cms-editor-body button,#cms-new,#cms-refresh,#cms-export').forEach(x=>{if(!x.dataset.alwaysEnabled)x.disabled=value})}
 function setNotice(text){const el=$('#cms-notice');el.innerHTML='<div>'+icon(mode==='preview'?'lock':'check')+'<span>'+h(text)+'</span></div><span>'+(mode==='preview'?'PUBLIC PREVIEW':'ADMIN ONLY')+'</span>'}
 function listUrl(){const u=new URL(location.href);u.searchParams.set('kind',state.kind);return u.pathname+u.search}
@@ -232,7 +250,7 @@ function reviewBrief(item){
  +'<p class="cms-review-helper">退回操作会记录审核原因，已发布内容仍保持公开版本。</p></div>';
 }
 function renderForm(item){
- const isPreview=mode==='preview',values=item.payload||{},editable=!isPreview;
+ const isPreview=mode==='preview',values=item.payload||{},editable=can('edit');
  const specs=fieldSpecs[item.kind];
  const content='<div class="cms-editor-title"><div><div class="section-eyebrow">EDIT / '+kinds[item.kind].label.toUpperCase()+'</div><h2>'+h(values.name||values.title||item.slug)+'</h2><p>URL 标识：'+h(item.slug)+' · '+h(item.source==='cms'?'CMS 内容记录':'原始内容资料')+'</p></div>'
   +'<a target="_blank" rel="noopener" href="'+h(kinds[item.kind].url+item.slug)+'">'+icon('arrow-up-right')+' 查看前台</a></div>';
@@ -250,18 +268,32 @@ function renderForm(item){
  +(editable?'<div class="cms-form-actions">'
   +'<button class="primary" type="submit">'+icon('save')+' 保存草稿</button>'
   +'<button type="button" data-transition="submit" '+(s!=='draft'?'disabled':'')+'>'+icon('check')+' 提交审核</button>'
-  +'<button class="primary" type="button" data-transition="publish" '+(s!=='review'?'disabled':'')+'>'+icon('arrow-up-right')+' 审核并发布</button>'
-  +(s==='review'?'<button type="button" data-transition="reject" class="cms-review-reject">退回修改</button>':'')
-  +'<button class="warn" type="button" data-transition="archive" '+(s!=='published'?'disabled':'')+'>归档下线</button>'
-  +'<span class="cms-inline-hint">草稿不会覆盖已发布版本</span></div>':'')
+  +'<span class="cms-inline-hint">提交审核后才允许审核员发布</span></div>':'')
  +'</form></div>';
- const history=item.history||[];
+ const schedule=item.schedule||null;
+ const isPending=schedule?.status==='pending';
+ const reviewActions=can('review')?
+   '<section class="cms-v514-review-actions"><div class="cms-v514-review-heading"><div><span class="section-eyebrow">APPROVAL / RELEASE</span><h3>审核与发布控制</h3><p>只有审核员与最高管理员可批准、退回和安排发布。</p></div></div>'
+   +(s==='review'?'<div class="cms-v514-review-buttons">'
+    +'<button type="button" class="primary" data-transition="publish" '+(isPending?'disabled title="请先取消现有排期"':'')+'>审核并立即发布</button>'
+    +'<button type="button" data-transition="reject" class="cms-review-reject">退回修改</button></div>'
+    +'<div class="cms-v514-release-box"><label>预约发布时间（当前设备本地时间）<input id="cms-schedule-local" type="datetime-local" aria-label="选择计划发布时间"></label>'
+    +'<button type="button" data-schedule-save>保存发布排期</button>'
+    +(isPending?'<button type="button" data-schedule-cancel>取消排期</button>':'')
+    +'</div>'
+    +(isPending?'<p class="cms-v514-schedule-state">已预约 · '+h(schedule.publish_at)+' UTC · v'+schedule.revision+'</p>':'')
+    +(schedule?.status==='failed'||schedule?.status==='stale'?'<p class="cms-v514-schedule-error">'+h(schedule.error||'原排期已失效')+'</p>':'')
+    +'<small>仅针对已审核的当前版本。免费开发环境采用下一次目录访问触发到期发布。</small>'
+    :s==='published'?'<div class="cms-v514-review-buttons"><button type="button" class="warn" data-transition="archive">归档下线</button></div>'
+    :'<p>当前内容状态为 '+h(statusText[s]||s)+'，无法直接执行发布审核。</p>')
+   +'</section>':'';
+const history=item.history||[];
  const timeline=isPreview?'':('<div class="cms-timeline"><h3>版本与操作记录</h3>'+
  (history.length?history.slice(0,15).map(v=>'<div class="cms-timeline-row"><span class="cms-timeline-dot"></span><div class="cms-timeline-content"><b>v'+v.revision+' · '+h({create:'创建草稿',save:'保存草稿',submit:'提交审核',publish:'正式发布',archive:'归档下线',restore:'恢复旧稿',reject:'审核退回'}[v.action]||v.action)+'</b><span>'+h(v.created_at?.replace('T',' ').slice(0,19)||'')+'</span>'
- +(v.reason?'<em class="cms-review-reason">退回意见：'+h(v.reason)+'</em>':'')+'</div><button type="button" data-restore="'+v.revision+'">恢复草稿</button></div>').join(''):'<p style="color:var(--muted);font-size:11px">原始内容尚无 CMS 修改记录。首次保存后开始记录版本。</p>')
+ +(v.reason?'<em class="cms-review-reason">退回意见：'+h(v.reason)+'</em>':'')+'</div>'+(editable?'<button type="button" data-restore="'+v.revision+'">恢复草稿</button>':'')+'</div>').join(''):'<p style="color:var(--muted);font-size:11px">原始内容尚无 CMS 修改记录。首次保存后开始记录版本。</p>')
  +'</div>');
  const root=$('#cms-editor-body');
- root.innerHTML=content+steps+meta+reviewBrief(item)+form+timeline;root.hidden=false;
+ root.innerHTML=content+steps+meta+reviewBrief(item)+form+reviewActions+timeline;root.hidden=false;
  $('#cms-empty').hidden=true;
  state.dirty=false;autosavePaused=false;
 }
@@ -424,7 +456,7 @@ function articleStudio(v,editable){
  return '<section class="cms-v51-studio"><div class="cms-v51-studio-head"><div><span class="section-eyebrow">VISUAL EDITOR · V51</span><h3>结构化文章编辑器</h3><p>可视化编辑正文、标签和观点，保存后仍进入原有审核流程。</p></div><span class="cms-v51-studio-badge">所见即结构</span></div>'
  +'<div class="cms-v51-taxonomy"><label>文章标签 <small>每行一个关键词</small><textarea id="v51-tags" rows="3"'+disabled+'>'+h((v.tags||[]).join('\n'))+'</textarea></label>'
  +'<label>核心观点 <small>每行一条摘要</small><textarea id="v51-takeaways" rows="3"'+disabled+'>'+h((v.takeaways||[]).join('\n'))+'</textarea></label></div>'
- +'<div class="cms-v512-suggestions"><span>常用标签</span>'+(state.tagSuggestions.length?state.tagSuggestions.slice(0,12).map(tag=>'<button type="button" data-v512-tag="'+h(tag)+'">'+h(tag)+'</button>').join(''):'<small>暂无常用标签</small>')+'</div>'
+ +'<div class="cms-v512-suggestions"><span>常用标签</span>'+(state.tagSuggestions.length?state.tagSuggestions.slice(0,12).map(tag=>'<button type="button" data-v512-tag="'+h(tag)+'"'+(editable?'':' disabled')+'>'+h(tag)+'</button>').join(''):'<small>暂无常用标签</small>')+'</div>'
  +'<datalist id="v51-categories">'+categorySuggestions+'</datalist>'
  +'<div class="cms-v51-chapter-head"><strong>文章章节</strong>'+(editable?'<button type="button" data-v51-add>＋ 添加章节</button>':'')+'</div>'
  +'<div id="cms-v51-sections">'+(v.sections||[]).map((s,i)=>articleSection(s,i,editable)).join('')+'</div>'
@@ -497,7 +529,7 @@ function reindexSections(){
 }
 function updateBulkToolbar(){
  const bar=$('#cms-bulk-toolbar');if(!bar)return;
- bar.hidden=mode!=='admin';
+ bar.hidden=mode!=='admin'||!(can('edit')||can('review'));
  $('#cms-selected-count').textContent=state.selectedSlugs.size+' 项已选择';
  const visible=listFiltered().filter(x=>x.status!=='source');
  $('#cms-select-all').checked=visible.length>0&&visible.every(x=>state.selectedSlugs.has(x.slug));
@@ -506,6 +538,7 @@ async function runBulk(){
  if(mode!=='admin'||state.busy)return;
  if(state.dirty||autosavePaused){message('请先完成草稿保存，再执行批量审核。',false);return}
  const action=$('#cms-bulk-action').value;
+ if(!(action==='submit'?can('edit'):can('review'))){message('当前角色没有该批量操作权限。',false);return}
  const items=state.items.filter(x=>state.selectedSlugs.has(x.slug));
  if(!items.length){message('请先勾选需要操作的 CMS 内容',false);return}
  const allowed={submit:'draft',publish:'review',archive:'published'};
@@ -848,8 +881,11 @@ function boot(){
      if(mode==='admin'){
        const me=await api('/api/auth/me');
        if(!me.authenticated)throw Error('会话已过期，请登录');
-       state.csrf=me.csrf_token;state.user=me.user;try{await loadCmsTaxonomy()}catch(err){console.warn('分类列表读取失败',err.message)}
-       $('#cms-role').textContent=(me.user?.display_name||'已授权管理员')+' · 管理员';
+       state.csrf=me.csrf_token;state.user=me.user;
+       const role=await api('/api/admin/team/me');
+       state.role=role.role;state.capabilities=role.capabilities||[];
+       setCmsRole();
+       try{await loadCmsTaxonomy()}catch(err){console.warn('分类列表读取失败',err.message)}
      }
      await loadKind();
    }catch(e){setNotice('无法读取后台内容：'+e.message);$('#cms-items').innerHTML='<div class="cms-error">'+h(e.message)+'</div>'}
