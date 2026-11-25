@@ -190,6 +190,11 @@ def verify_links(kind,payload):
         user_auth.error(422,"关联的网站不存在或尚未发布。")
     if kind=="article" and payload.get("cover_site") and payload["cover_site"] not in current["sites"]:
         user_auth.error(422,"封面关联网站尚未发布。")
+    if kind=="article":
+        for chapter in payload.get("sections",[]):
+            paragraphs=chapter.get("paragraphs",[])
+            if not isinstance(paragraphs,list) or not any(isinstance(v,str) and v.strip() for v in paragraphs):
+                user_auth.error(422,"发布文章前，请为每个章节写入至少一段正文。")
     if kind=="pattern" and any(x not in current["modules"] for x in payload.get("modules",[])):
         user_auth.error(422,"设计模式关联了尚未发布的模块。")
 
@@ -247,7 +252,12 @@ def register_cms_routes(app: FastAPI):
         }
         if request.method=="GET" and path in routes:
             # Keep readonly public catalog accessible if no DB is configured.
-            return JSONResponse(public_payload(routes[path]),headers={"Cache-Control":"no-cache","X-Atlas-Catalog":"published"})
+            return JSONResponse(public_payload(routes[path]),headers={
+                "Cache-Control":"no-cache","X-Atlas-Catalog":"published",
+                "X-Content-Type-Options":"nosniff",
+                "Referrer-Policy":"strict-origin-when-cross-origin",
+                "X-Frame-Options":"DENY"
+            })
         return await call_next(request)
 
     @app.get("/api/admin/content", include_in_schema=False)
