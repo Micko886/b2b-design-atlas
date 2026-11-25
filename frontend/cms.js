@@ -675,7 +675,7 @@ async function runSeoAudit(){
 function renderForm(item){
  const isPreview=mode==='preview',values=item.payload||{},editable=can('edit');
  const specs=fieldSpecs[item.kind];
- const topbar='<div class="cms-edit-topbar"><button type="button" class="cms-edit-back" data-close-editor>← 返回列表</button><span class="cms-edit-context">'+h(kinds[item.kind].title)+' / '+h(item.slug)+'</span>'+(editable?'<div class="cms-edit-quick-actions"><button type="button" data-editor-save>保存修改</button><button type="button" data-editor-submit '+(item.status==='draft'?'':'disabled')+'>提交审核</button></div>':'')+'</div>';
+ const topbar='<div class="cms-edit-topbar"><button type="button" class="cms-edit-back" data-close-editor>← 返回列表</button><span class="cms-edit-context">'+h(kinds[item.kind].title)+' / '+h(item.slug)+'</span>'+(editable?'<div class="cms-edit-quick-actions"><button type="button" data-editor-save>保存草稿</button><button type="button" data-editor-submit '+(item.status==='draft'?'':'disabled title="先保存草稿，才能提交审核"')+'>提交审核</button></div>':'')+'</div>';
  const content='<div class="cms-editor-title"><div><div class="section-eyebrow">EDIT / '+kinds[item.kind].label.toUpperCase()+'</div><h2>'+h(values.name||values.title||item.slug)+'</h2><p>URL 标识：'+h(item.slug)+' · '+h(item.source==='cms'?'CMS 内容记录':'原始内容资料')+'</p></div>'
   +'<a target="_blank" rel="noopener" href="'+h(kinds[item.kind].url+item.slug)+'">'+icon('arrow-up-right')+' 查看前台</a></div>';
  const s=item.status;
