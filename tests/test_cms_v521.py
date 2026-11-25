@@ -81,6 +81,7 @@ class UnifiedNavigationContracts(unittest.TestCase):
         cls.cms=(STATIC/"cms.html").read_text(encoding="utf-8")
         cls.admin_js=(STATIC/"assets/admin.js").read_text(encoding="utf-8")
         cls.cms_js=(STATIC/"assets/cms.js").read_text(encoding="utf-8")
+        cls.app_js=(STATIC/"assets/app.js").read_text(encoding="utf-8")
         cls.admin_css=(STATIC/"assets/admin.css").read_text(encoding="utf-8")
         cls.cms_css=(STATIC/"assets/cms.css").read_text(encoding="utf-8")
 
@@ -119,7 +120,7 @@ class UnifiedNavigationContracts(unittest.TestCase):
         self.assertIn("X-CSRF-Token",self.admin_js)
 
     def test_no_remaining_single_element_for_each_crashes(self):
-        for file,script in (("cms",self.cms_js),("admin",self.admin_js)):
+        for file,script in (("cms",self.cms_js),("admin",self.admin_js),("public",self.app_js)):
             with self.subTest(file=file):
                 invalid=re.findall(r"(?<!\$)\$\([^)]*\)\.forEach",script)
                 self.assertEqual(invalid,[])
