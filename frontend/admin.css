@@ -478,3 +478,39 @@ html[data-theme=dark] .sector-bar>i{background:linear-gradient(90deg,#5976e7,#9a
 .atlas-growth-line-sessions{stroke:var(--blue)}
 .atlas-growth-line-signups{stroke:var(--teal)}
 .atlas-growth-line-saves{stroke:var(--orange)}
+
+/* V51.21 · One Control Room language across Overview and Content Studio */
+:root{--sidebar-width:252px}
+[hidden]{display:none!important}
+.atlas-v521-nav{padding:0 14px 20px}
+.atlas-v521-nav .nav-group-label{margin:12px 9px 11px;font-size:9px;letter-spacing:.14em;color:var(--muted);font-weight:850}
+.atlas-v521-nav .nav-group-label span{font-size:9px;letter-spacing:.065em;color:var(--muted)}
+.atlas-v521-nav .side-link{min-height:45px;height:auto;display:flex;align-items:center;gap:12px;padding:10px 12px;margin:2px 0;border-radius:10px;font-size:12px;font-weight:680;line-height:1.35}
+.atlas-v521-nav .side-link.active{color:var(--blue);background:var(--blue-soft);font-weight:820}
+.atlas-v521-nav .side-link.active:before{content:"";height:18px;width:3px;background:var(--blue);border-radius:9px;margin-left:-8px}
+.atlas-v521-nav .side-link>.icon{width:17px;height:17px}
+.atlas-v521-nav .atlas-side-button{width:100%;text-align:left;font:inherit;font-size:12px;font-weight:680;border:0;background:transparent;color:var(--muted-strong);cursor:pointer}
+.atlas-v521-nav .atlas-side-button:hover,.atlas-v521-nav .side-link:hover{background:var(--surface-hover);color:var(--blue)}
+.atlas-v521-nav .atlas-v521-front{margin-top:18px;border-top:1px solid var(--line);padding-top:16px;border-radius:0}
+.atlas-v521-settings{border:0;background:transparent}
+.atlas-v521-settings>summary{cursor:pointer;list-style:none;user-select:none}
+.atlas-v521-settings>summary::-webkit-details-marker{display:none}
+.atlas-settings-chevron{margin-left:auto;color:var(--muted);font-size:16px;transition:transform .2s}
+.atlas-v521-settings[open] .atlas-settings-chevron{transform:rotate(180deg)}
+.atlas-v521-tools{border-left:1px solid var(--line-strong);margin:3px 0 8px 22px;padding:4px 0 4px 13px}
+.atlas-v521-tools .side-link{min-height:35px;padding:8px 10px;font-size:11px;color:var(--muted-strong);font-weight:650;margin:0;border-radius:8px}
+.atlas-v521-sidebar-bottom{display:grid;gap:8px;padding:12px 15px 19px;border-top:1px solid var(--line)}
+.atlas-v521-sidebar-bottom .sidebar-account{margin:0;padding:8px;border:0;background:none;min-width:0}
+.atlas-v521-sidebar-bottom .sidebar-account strong{font-size:11px}
+.atlas-v521-sidebar-bottom .sidebar-account small{font-size:10px}
+.atlas-v521-footnote{margin:0 8px;font-size:10px;color:var(--muted);line-height:1.6}
+.atlas-header-account{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:9px;padding:8px 12px;font-size:11px;font-weight:750;color:var(--muted-strong);white-space:nowrap}
+.atlas-header-account:hover{color:var(--blue);border-color:var(--blue)}
+.atlas-v521-logout{background:transparent;border:1px solid var(--line-strong);border-radius:9px;padding:8px 12px;color:var(--muted-strong);font-size:11px;font-weight:780;white-space:nowrap}
+.atlas-v521-logout:hover{background:rgba(210,90,90,.075);border-color:#ce6b62;color:#ce6b62}
+.atlas-v521-logout:disabled{opacity:.5}
+.sidebar-brand{min-height:76px;padding-top:15px}
+.workspace-chip{margin-bottom:12px}
+.atlas-v521-nav .nav-group-later{margin-top:21px}
+@media(max-width:1050px){.atlas-v521-nav .side-link{padding:10px}.atlas-v521-sidebar-bottom .sidebar-account{padding:6px}}
+@media(max-width:620px){.masthead-right{gap:7px}.atlas-header-account{display:none}.atlas-v521-logout{padding:8px 9px}.atlas-v521-nav .side-link{font-size:13px}}
