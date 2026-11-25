@@ -167,7 +167,7 @@ function homeView(){
 function articleBy(id){return state.articles.find(a=>a.id===id)}
 function articleCat(id){return state.articleCategories.find(x=>x.id===id)}
 function articleLink(a){return '/insights/'+encodeURIComponent(a.id)}
-function articleImage(a){return site(a.cover_site)?.screenshot_url||'/screenshots/sites/vast.webp'}
+function articleImage(a){return /^\/api\/media\/[0-9a-f-]{36}$/.test(a.cover_image||'')?a.cover_image:(site(a.cover_site)?.screenshot_url||'/screenshots/sites/vast.webp')}
 function articleDate(a){return (a.published_at||'').replace(/-/g,'.')}
 function articleCard(a,index,small=false){
  const cat=articleCat(a.category),url=articleLink(a),k=key(a);
