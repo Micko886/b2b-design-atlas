@@ -84,10 +84,11 @@ def register_diff_routes(app:FastAPI):
         if not row and not source:user_auth.error(404,"内容不存在。")
         current=cms_routes.parse_json(row["draft_json"]) if row else source
         if not revision:
-            old=cms_routes.parse_json(row["published_json"]) if row and row["published_json"] else source or {}
+            old=cms_routes.published_baseline_for_editor(kind,slug,row,source)
         result=compare_payloads(kind,old or {},current or {})
         result.update({"kind":kind,"slug":slug,"current_revision":row["revision"] if row else 0,
                        "baseline_revision":revision or "published",
-                       "baseline_label":("历史 v"+str(revision)) if revision else "当前公开版本",
+                       "baseline_label":("历史 v"+str(revision)) if revision else
+                                        ("当前公开版本" if old is not None else "尚无公开版本"),
                        "revisions":revisions})
         return result
