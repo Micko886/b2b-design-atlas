@@ -160,9 +160,10 @@ def html_page(mode, template="admin.html"):
 
 def register_admin_routes(app: FastAPI):
     @app.get("/admin/preview", include_in_schema=False)
-    def preview_page():
-        """Visual design preview; contains no account or admin-only data."""
-        return html_page("preview")
+    def preview_page(request: Request):
+        """Retired public-lookalike admin page: route through real login gate."""
+        return RedirectResponse("/admin",status_code=302,
+                                headers={"Cache-Control":"no-store","X-Robots-Tag":"noindex"})
 
     @app.get("/admin", include_in_schema=False)
     def admin_page(request: Request):
@@ -185,16 +186,10 @@ def register_admin_routes(app: FastAPI):
         return html_page("admin")
 
     @app.get("/admin/content/preview", include_in_schema=False)
-    def content_preview_page():
-        """Only published public catalog content; no draft or account API."""
-        doc=(STATIC/"cms.html").read_text(encoding="utf-8").replace("__CMS_MODE__","preview")
-        return HTMLResponse(doc,headers={
-            "Cache-Control":"no-store","X-Robots-Tag":"noindex, nofollow",
-            "Content-Security-Policy":(
-                "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
-                "img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
-            )
-        })
+    def content_preview_page(request: Request):
+        """Retired public-lookalike CMS screen; use protected content studio."""
+        return RedirectResponse("/admin/content",status_code=302,
+                                headers={"Cache-Control":"no-store","X-Robots-Tag":"noindex"})
 
     @app.get("/admin/content", include_in_schema=False)
     def content_admin_page(request: Request):
@@ -214,7 +209,10 @@ def register_admin_routes(app: FastAPI):
         return HTMLResponse(doc,headers=headers)
 
     @app.get("/api/admin/preview", include_in_schema=False)
-    def preview_metrics(response: Response):
+    def preview_metrics(request: Request,response: Response):
+        """Legacy preview metadata is not public admin API anymore."""
+        session=user_auth.required(request)
+        if not admin_allowed(session):user_auth.error(403,"需要管理员权限。")
         response.headers["Cache-Control"] = "no-store"
         data = public_metrics()
         data["mode"] = "preview"
