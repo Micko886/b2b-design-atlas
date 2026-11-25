@@ -19,6 +19,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from app import seo_routes
 from app import user_auth
+from app import cms_access
 
 ROOT = Path(__file__).resolve().parents[1]
 STATIC = ROOT / "static"
@@ -201,7 +202,7 @@ def register_admin_routes(app: FastAPI):
         if not session:
             return RedirectResponse("/login?next=%2Fadmin%2Fcontent",status_code=302,
                                     headers={"Cache-Control":"no-store","X-Robots-Tag":"noindex"})
-        if not admin_allowed(session):
+        if not cms_access.can(session,'view'):
             return HTMLResponse("<h1>403 · 需要管理员权限</h1><p>此账户尚未获得后台管理授权。</p>"
                                 '<p><a href="/account">返回个人中心</a></p>',
                                 status_code=403,headers={"Cache-Control":"no-store","X-Robots-Tag":"noindex"})
