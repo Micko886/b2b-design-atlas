@@ -101,6 +101,19 @@ SCHEMA = [
        kind TEXT NOT NULL, slug TEXT NOT NULL, revision INTEGER NOT NULL,
        actor_id TEXT NOT NULL, reason TEXT NOT NULL, created_at TEXT NOT NULL,
        PRIMARY KEY(kind,slug,revision)
+    )""",
+    """CREATE TABLE IF NOT EXISTS atlas_cms_schedules(
+       kind TEXT NOT NULL,slug TEXT NOT NULL,revision INTEGER NOT NULL,
+       publish_at TEXT NOT NULL,status TEXT NOT NULL,
+       created_by TEXT NOT NULL,created_at TEXT NOT NULL,
+       updated_at TEXT NOT NULL,error TEXT NOT NULL DEFAULT '',
+       PRIMARY KEY(kind,slug)
+    )""",
+    """CREATE INDEX IF NOT EXISTS atlas_cms_schedule_due ON atlas_cms_schedules(status,publish_at)""",
+    """CREATE TABLE IF NOT EXISTS atlas_cms_schedule_history(
+       id TEXT PRIMARY KEY,kind TEXT NOT NULL,slug TEXT NOT NULL,
+       action TEXT NOT NULL,actor_id TEXT NOT NULL,
+       details TEXT NOT NULL,created_at TEXT NOT NULL
     )"""
 ]
 
@@ -152,6 +165,12 @@ def published_overrides(rows, archived_keys):
 
 def active_overrides():
     """Short shared cache keeps public pages quick while allowing editing."""
+    try:
+        from app.cms_schedule import publish_due
+        publish_due()
+    except Exception:
+        # The public catalog must remain available even if the scheduler fails.
+        pass
     with CACHE_LOCK:
         if time.monotonic() < CACHE["until"]:
             return dict(CACHE["items"])
@@ -454,6 +473,12 @@ class BulkChange(BaseModel):
     items: list[BulkItem] = Field(min_length=1,max_length=20)
 
 
+def invalidate_schedule(db,kind,slug):
+    db.execute("""UPDATE atlas_cms_schedules
+       SET status='stale',error='内容版本已更改，原排期不再有效。',updated_at=?
+       WHERE kind=? AND slug=? AND status='pending'""",
+       (utc_now(),kind,slug))
+
 def log_change(db,row,action,uid):
     db.execute("""INSERT INTO atlas_cms_history(id,kind,slug,revision,action,actor_id,created_at,snapshot_json)
                VALUES(?,?,?,?,?,?,?,?)""",
@@ -472,6 +497,9 @@ def cms_item(kind,slug,session):
                        ON n.kind=h.kind AND n.slug=h.slug AND n.revision=h.revision
                        WHERE h.kind=? AND h.slug=?
                        ORDER BY h.revision DESC LIMIT 35""",(kind,slug))
+        schedule=db.one("""SELECT publish_at,status,revision,error,created_by,
+                             updated_at FROM atlas_cms_schedules
+                           WHERE kind=? AND slug=?""",(kind,slug))
     base=base_item(kind,slug)
     if not row and not base:user_auth.error(404,"内容不存在。")
     return {
@@ -481,7 +509,7 @@ def cms_item(kind,slug,session):
         "payload":parse_json(row["draft_json"]) if row else base,
         "published":parse_json(row["published_json"]) if row and row["published_json"] else base if not row else None,
         "published_at":row["published_at"] if row else None,
-        "history":history
+        "history":history,"schedule":schedule
     }
 
 def register_cms_routes(app: FastAPI):
@@ -817,9 +845,11 @@ def register_cms_routes(app: FastAPI):
             tags=db.all("SELECT name,description,status,created_at,updated_at FROM atlas_cms_tags ORDER BY name")
             tag_history=db.all("SELECT * FROM atlas_cms_tag_history ORDER BY created_at")
             review_notes=db.all("SELECT kind,slug,revision,actor_id,reason,created_at FROM atlas_cms_review_notes ORDER BY created_at")
+            schedules=db.all("SELECT * FROM atlas_cms_schedules ORDER BY publish_at")
+            schedule_history=db.all("SELECT * FROM atlas_cms_schedule_history ORDER BY created_at")
         return JSONResponse({"version":3,"exported_at":utc_now(),"entries":entries,
              "history":history,"categories":categories,"category_history":category_history,
-             "tags":tags,"tag_history":tag_history,"review_notes":review_notes,
+             "tags":tags,"tag_history":tag_history,"review_notes":review_notes,"schedules":schedules,"schedule_history":schedule_history,
              "note":"CMS 内容及分类操作快照，不含账号、用户私人数据或媒体二进制文件。"},
             headers={"Cache-Control":"no-store","Content-Disposition":'attachment; filename="atlas-cms-export.json"'})
 
@@ -875,6 +905,7 @@ def register_cms_routes(app: FastAPI):
                     VALUES(?,?,?,NULL,'draft',1,?,?,?,?)""",
                     (kind,slug,encoded,uid,uid,now,now))
             log_change(db,{"kind":kind,"slug":slug,"revision":revision,"draft_json":encoded},"save",uid)
+            invalidate_schedule(db,kind,slug)
         return {"ok":True,"status":"draft","revision":revision}
 
     def transition(kind,slug,expected,action,session,reason=''):
@@ -909,6 +940,7 @@ def register_cms_routes(app: FastAPI):
               (next_status,published_json,published_at,published_by,revision,uid,now,kind,slug,expected))
             if result.rowcount!=1:user_auth.error(409,"版本已改变。")
             log_change(db,{"kind":kind,"slug":slug,"revision":revision,"draft_json":row["draft_json"]},action,uid)
+            invalidate_schedule(db,kind,slug)
             if action=="reject":
                 db.execute("""INSERT INTO atlas_cms_review_notes
                     (kind,slug,revision,actor_id,reason,created_at) VALUES(?,?,?,?,?,?)""",
@@ -957,4 +989,5 @@ def register_cms_routes(app: FastAPI):
                 (encoded,revision,uid,now,kind,slug,data.expected_revision))
             if result.rowcount!=1:user_auth.error(409,"版本冲突。")
             log_change(db,{"kind":kind,"slug":slug,"revision":revision,"draft_json":encoded},"restore",uid)
+            invalidate_schedule(db,kind,slug)
         return {"ok":True,"status":"draft","revision":revision}
