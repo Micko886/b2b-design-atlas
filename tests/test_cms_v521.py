@@ -153,8 +153,8 @@ class UnifiedNavigationContracts(unittest.TestCase):
     def test_updated_asset_versions(self):
         self.assertIn("admin.js?v=51.21",self.admin)
         self.assertIn("admin.css?v=51.21",self.admin)
-        self.assertIn("cms.js?v=5230",self.cms)
-        self.assertIn("cms.css?v=5230",self.cms)
+        self.assertIn("cms.js?v=5240",self.cms)
+        self.assertIn("cms.css?v=5240",self.cms)
 
 if __name__=="__main__":
     unittest.main()
