@@ -407,8 +407,9 @@ async function submitAuth(form){
   notify(register?'注册成功，已登录':'登录成功');
   const pending=state.pendingFavorite;state.pendingFavorite=null;
   const next=authDestination();
-  go(next);
-  if(pending)await toggleIn(pending.key,pending.collection);
+  if(next==='/admin'||next.startsWith('/admin/'))location.assign(next);
+  else go(next);
+  if(pending&&!next.startsWith('/admin'))await toggleIn(pending.key,pending.collection);
  }catch(e){if(err){err.textContent=e.message;err.hidden=false}else notify(e.message)}
  finally{if(button)button.disabled=false}
 }
