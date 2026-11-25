@@ -10,7 +10,7 @@ const kinds={site:{title:'网站内容',label:'Websites',icon:'globe',public:'/a
  module:{title:'页面模块',label:'Sections',icon:'layers',public:'/api/module-library',url:'/sections/'},
  pattern:{title:'设计模式',label:'Patterns',icon:'shapes',public:'/assets/patterns.json',url:'/patterns/'},
  article:{title:'研究文章',label:'Insights',icon:'article',public:'/assets/articles.json',url:'/insights/'}};
-const state={kind:new URLSearchParams(location.search).get('kind')||'site',items:[],records:{},selected:null,csrf:'',user:null,dirty:false,q:'',status:'',busy:false,selectedSlugs:new Set(),taxonomy:{}};
+const state={kind:new URLSearchParams(location.search).get('kind')||'site',items:[],records:{},selected:null,csrf:'',user:null,dirty:false,q:'',status:'',busy:false,selectedSlugs:new Set(),taxonomy:{},tagSuggestions:[]};
 if(!kinds[state.kind])state.kind='site';
 const fieldSpecs={
  site:[
@@ -297,6 +297,7 @@ function articleStudio(v,editable){
  return '<section class="cms-v51-studio"><div class="cms-v51-studio-head"><div><span class="section-eyebrow">VISUAL EDITOR · V51</span><h3>结构化文章编辑器</h3><p>可视化编辑正文、标签和观点，保存后仍进入原有审核流程。</p></div><span class="cms-v51-studio-badge">所见即结构</span></div>'
  +'<div class="cms-v51-taxonomy"><label>文章标签 <small>每行一个关键词</small><textarea id="v51-tags" rows="3"'+disabled+'>'+h((v.tags||[]).join('\n'))+'</textarea></label>'
  +'<label>核心观点 <small>每行一条摘要</small><textarea id="v51-takeaways" rows="3"'+disabled+'>'+h((v.takeaways||[]).join('\n'))+'</textarea></label></div>'
+ +'<div class="cms-v512-suggestions"><span>常用标签</span>'+(state.tagSuggestions.length?state.tagSuggestions.slice(0,12).map(tag=>'<button type="button" data-v512-tag="'+h(tag)+'">'+h(tag)+'</button>').join(''):'<small>暂无常用标签</small>')+'</div>'
  +'<datalist id="v51-categories">'+categorySuggestions+'</datalist>'
  +'<div class="cms-v51-chapter-head"><strong>文章章节</strong>'+(editable?'<button type="button" data-v51-add>＋ 添加章节</button>':'')+'</div>'
  +'<div id="cms-v51-sections">'+(v.sections||[]).map((s,i)=>articleSection(s,i,editable)).join('')+'</div>'
@@ -421,6 +422,7 @@ function boot(){
    const action=e.target.closest('[data-transition]');if(action){await transition(action.dataset.transition);return}
    const restore=e.target.closest('[data-restore]');if(restore){await restoreRevision(Number(restore.dataset.restore));return}
    const bulkCheck=e.target.closest('[data-bulk-select]');if(bulkCheck){const slug=bulkCheck.dataset.bulkSelect;if(bulkCheck.checked)state.selectedSlugs.add(slug);else state.selectedSlugs.delete(slug);updateBulkToolbar();return}
+   const tag=e.target.closest('[data-v512-tag]');if(tag){const field=$('#v51-tags');if(!field)return;const existing=linesFrom('#v51-tags');if(!existing.includes(tag.dataset.v512Tag)){field.value=[...existing,tag.dataset.v512Tag].join(String.fromCharCode(10));state.dirty=true;refreshArticlePreview()}return}
    if(e.target.closest('[data-v512-preview]')){toggleArticlePreview();return}
    if(e.target.closest('[data-v51-add]')){const root=$('#cms-v51-sections');root.insertAdjacentHTML('beforeend',articleSection({},root.children.length,true));reindexSections();state.dirty=true;refreshArticlePreview();return}
    if(e.target.closest('[data-v51-remove]')){const blocks=document.querySelectorAll('#cms-v51-sections [data-v51-section]');if(blocks.length<=1){message('至少保留一个章节',false);return}e.target.closest('[data-v51-section]').remove();reindexSections();state.dirty=true;return}
@@ -462,7 +464,7 @@ function boot(){
      if(mode==='admin'){
        const me=await api('/api/auth/me');
        if(!me.authenticated)throw Error('会话已过期，请登录');
-       state.csrf=me.csrf_token;state.user=me.user;try{const result=await api('/api/admin/content/taxonomy');state.taxonomy=result.categories||{}}catch{}
+       state.csrf=me.csrf_token;state.user=me.user;try{const result=await api('/api/admin/content/taxonomy');state.taxonomy=result.categories||{}state.tagSuggestions=result.article_tags||[];}catch{}
        $('#cms-role').textContent=(me.user?.display_name||'已授权管理员')+' · 管理员';
      }
      await loadKind();
