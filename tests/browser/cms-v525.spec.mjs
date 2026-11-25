@@ -16,7 +16,7 @@ function makeState(){
  return Object.fromEntries(Object.entries(samples).map(([kind,payload])=>
  [kind,{kind,slug:payload.id,status:'source',source:'repository',revision:0,payload:structuredClone(payload),history:[]}]));
 }
-async function mockCms(page){
+async function mockCms(page,role='owner'){
  const records=makeState(),uploads=[];
  await page.route('**/*',async route=>{
   const request=route.request(),url=new URL(request.url()),p=url.pathname,method=request.method();
@@ -38,8 +38,8 @@ async function mockCms(page){
   }
   let result=null,status=200,body={};
   try{body=JSON.parse(request.postData()||'{}')}catch{}
-  if(p==='/api/auth/me')result={authenticated:true,csrf_token:'isolated-qa-token',user:{id:'tester',display_name:'QA Tester'}};
-  else if(p==='/api/admin/team/me')result={role:'owner',capabilities:['view','edit','review','media','taxonomy','team','export']};
+  if(p==='/api/auth/me')result={authenticated:role!=='guest',csrf_token:'isolated-qa-token',user:{id:'tester',display_name:'QA Tester'}};
+  else if(p==='/api/admin/team/me')result={role,capabilities:role==='reviewer'?['view','review']:['view','edit','review','media','taxonomy','team','export']};
   else if(p==='/api/admin/content/taxonomy')result={categories:{article:['research']},article_tags:['design']};
   else if(p==='/api/admin/categories')result={items:[{id:'research',name:'Research'}]};
   else if(p==='/api/admin/tags')result={items:[{id:'design',name:'Design'}]};
@@ -138,4 +138,20 @@ test('content index shows records directly without dashboard-only clutter',async
  await expect(page.locator('#field-name')).toBeVisible();
  await page.locator('[data-close-editor]').click();
  await expect(page.locator('[data-pick="demo-site"]')).toBeVisible();
+});
+
+test('reviewer sees records but cannot edit or upload',async({page})=>{
+ await mockCms(page,'reviewer');
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await expect(page.locator('#field-name')).toBeDisabled();
+ await expect(page.locator('[data-editor-save]')).toHaveCount(0);
+ await expect(page.locator('[data-gallery-add]')).toHaveCount(0);
+});
+
+test('expired session shows a clear error instead of an editable list',async({page})=>{
+ await mockCms(page,'guest');
+ await page.goto(origin+'/admin/content?kind=site');
+ await expect(page.locator('#cms-notice')).toBeVisible();
+ await expect(page.locator('#cms-notice')).toContainText('无法读取后台内容');
+ await expect(page.locator('[data-editor-save]')).toHaveCount(0);
 });
