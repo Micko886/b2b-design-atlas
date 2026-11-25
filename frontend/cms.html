@@ -64,7 +64,7 @@
   </header>
   <main class="dashboard-content cms-content">
    <div class="page-head atlas-v521-page-head">
-    <div><div class="eyebrow"><span class="eyebrow-mark"></span> CONTENT / EDITORIAL LIBRARY</div><h1>内容管理</h1><p>在一处维护案例与文章。编辑保存草稿，审核通过后再发布。</p></div>
+    <div><div class="eyebrow"><span class="eyebrow-mark"></span> CONTENT / EDITORIAL LIBRARY</div><h1>内容工作台</h1><p>选择内容类型，打开记录编辑；保存草稿后提交审核，通过后发布到网站。所有修改都保留版本记录。</p></div>
     <div class="page-head-actions">
      <a id="cms-login-link" class="toolbar-button" href="/login?next=%2Fadmin%2Fcontent" hidden>后台登录</a>
      <button id="cms-refresh" class="toolbar-button"><svg class="icon"><use href="#i-refresh"></use></svg> 刷新</button>
@@ -81,16 +81,17 @@
    <div class="cms-metrics" id="cms-metrics">
     <div class="cms-metric"><span>全部内容</span><strong>—</strong></div><div class="cms-metric"><span>文件收录</span><strong>—</strong></div><div class="cms-metric"><span>草稿</span><strong>—</strong></div><div class="cms-metric"><span>待审核</span><strong>—</strong></div><div class="cms-metric"><span>后台已发布</span><strong>—</strong></div>
    </div>
+   <div class="cms-workflow-guide" aria-label="编辑发布流程"><strong>编辑流程</strong><span>1. 选择或新建内容</span><span>2. 编辑并保存草稿</span><span>3. 提交审核</span><span>4. 审核并发布</span></div>
    <div class="cms-split">
     <section class="cms-browser panel" aria-label="内容列表">
-     <div class="cms-browser-head"><div><span class="section-eyebrow">LIBRARY / <span id="cms-current-kind">WEBSITES</span></span><h2 id="cms-browser-title">网站内容</h2><p id="cms-browser-subtitle">从现有资料与已编辑内容中筛选</p></div><strong id="cms-count">—</strong></div>
+     <div class="cms-browser-head"><div><span class="section-eyebrow">LIBRARY / <span id="cms-current-kind">WEBSITES</span></span><h2 id="cms-browser-title">网站内容</h2><p id="cms-browser-subtitle">选择一条内容点击「打开编辑」，使用右侧工作区修改</p></div><strong id="cms-count">—</strong></div>
      <div class="cms-search-row"><label class="cms-search"><svg class="icon"><use href="#i-search"></use></svg><input id="cms-search" type="search" placeholder="搜索名称、行业或 URL…" aria-label="搜索内容"></label><select id="cms-status" aria-label="筛选内容状态"><option value="">全部状态</option><option value="source">文件收录</option><option value="draft">草稿</option><option value="review">待审核</option><option value="published">后台已发布</option><option value="archived">已归档</option></select></div>
      <div id="cms-bulk-toolbar" class="cms-v51-bulk" hidden><label><input type="checkbox" id="cms-select-all"> 全选当前列表</label><strong id="cms-selected-count">0 项已选择</strong><select id="cms-bulk-action" aria-label="批量操作"><option value="submit">提交审核</option><option value="publish">批量发布</option><option value="archive">归档下线</option></select><button type="button" id="cms-bulk-run" class="toolbar-button">应用操作</button></div>
      <div id="cms-items" class="cms-items"><div class="visual-loading">正在加载内容…</div></div>
      <div class="cms-browser-footer"><span id="cms-browser-footer">查看内容后编辑或审核</span><a href="/" target="_blank" rel="noopener">公开资源 ↗</a></div>
     </section>
     <section class="cms-editor panel" aria-label="内容编辑">
-     <div class="cms-editor-placeholder" id="cms-empty"><div class="cms-empty-symbol">✳</div><span class="section-eyebrow">EDITORIAL WORKSPACE</span><h2>选择一个案例，开始研究。</h2><p>左侧选择已有内容，可直接打开它的原始资料、编辑字段或检查历史版本。</p><div class="cms-placeholder-path"><span>01 · 选择案例</span><span>02 · 保存草稿</span><span>03 · 提交审核</span><span>04 · 正式发布</span></div></div>
+     <div class="cms-editor-placeholder" id="cms-empty"><div class="cms-empty-symbol">✳</div><span class="section-eyebrow">EDITORIAL WORKSPACE</span><h2>从左侧打开内容，开始编辑</h2><p>点击记录上的「打开编辑」，即可编辑标题、正文、图片等字段。先保存为草稿，再提交审核；图片可以在编辑器内通过媒体库上传并选用。</p><div class="cms-placeholder-path"><span>01 · 选择案例</span><span>02 · 保存草稿</span><span>03 · 提交审核</span><span>04 · 正式发布</span></div></div>
      <div id="cms-editor-body" hidden></div>
     </section>
    </div>
@@ -99,7 +100,7 @@
  </div>
 </div>
 <dialog id="cms-create-dialog" class="cms-dialog"><form id="cms-create-form" method="dialog"><div class="cms-dialog-head"><div><span class="section-eyebrow">NEW CONTENT</span><h2>创建一条内容</h2></div><button type="button" data-dialog-close aria-label="关闭">×</button></div><label>资源类型<select id="cms-create-kind" name="kind"><option value="site">Website · 网站</option><option value="module">Section · 页面模块</option><option value="pattern">Pattern · 设计模式</option><option value="article">Insight · 研究文章</option></select></label><label>URL 标识（英文小写）<input id="cms-create-slug" name="slug" required minlength="2" maxlength="111" pattern="[a-z0-9][a-z0-9-]*" placeholder="例如 new-industrial-website"></label><p>创建后 URL 标识不可更改。请使用简短、稳定的英文名称。</p><div class="cms-dialog-actions"><button type="button" class="cms-btn-secondary" data-dialog-close>取消</button><button type="submit" class="cms-btn-primary">创建草稿 ↗</button></div></form></dialog>
-<dialog id="cms-media-dialog" class="cms-dialog cms-v51-media-dialog"><div class="cms-dialog-head"><div><span class="section-eyebrow">ASSET LIBRARY / V51</span><h2>媒体资源库</h2><p>支持 JPG、PNG、WebP；大于 1.5MB 的图片在浏览器中自动缩放压缩，原图最大 12MB。</p></div><button type="button" data-media-close aria-label="关闭媒体资源库">×</button></div><div class="cms-v51-media-actions"><label class="cms-btn-primary">上传图片<input type="file" id="cms-media-file" accept="image/jpeg,image/png,image/webp" multiple hidden></label><span id="cms-media-status" role="status">媒体存储在 PostgreSQL 中</span></div><button type="button" id="cms-media-drop" class="cms-v513-dropzone" aria-label="拖放文件或点击选择图片">
+<dialog id="cms-media-dialog" class="cms-dialog cms-v51-media-dialog"><div class="cms-dialog-head"><div><span class="section-eyebrow">ASSET LIBRARY / V51</span><h2>媒体资源库</h2><p>支持 JPG、PNG、WebP；大于 1.5MB 的图片在浏览器中自动缩放压缩，原图最大 12MB。</p></div><button type="button" data-media-close aria-label="关闭媒体资源库">×</button></div><div class="cms-v51-media-actions"><button type="button" id="cms-media-select" class="cms-btn-primary">选择图片上传</button><input type="file" id="cms-media-file" accept="image/jpeg,image/png,image/webp" multiple class="cms-upload-input" aria-label="选择要上传的图片"><span id="cms-media-status" role="status" aria-live="polite">请选择图片，单张上传最大 1.5MB（较大原图自动优化）。</span></div><button type="button" id="cms-media-drop" class="cms-v513-dropzone" aria-label="拖放文件或点击选择图片">
   <svg class="icon" aria-hidden="true"><use href="#i-download"></use></svg>
   <strong>拖拽图片到这里上传</strong><span>或点击选择图片 · JPG / PNG / WebP · 自动优化超过 1.5MB 的文件</span>
  </button><div id="cms-media-grid" class="cms-v51-media-grid"></div><div class="cms-dialog-actions"><button class="cms-btn-secondary" type="button" data-media-close>关闭</button></div></dialog>
