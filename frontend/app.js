@@ -14,6 +14,13 @@ let currentScreens=[], currentScreen=0, toastTimer=0, searchTimer=0, noteTimer=0
 function read(k,v){try{let r=JSON.parse(localStorage.getItem(k));return r===null?v:r}catch{return v}}
 function store(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
 function h(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function formatArticleInline(value){
+ const escaped=h(value);
+ return escaped
+  .replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>')
+  .replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<em>$2</em>')
+  .replace(/`([^`\n]+)`/g,'<code>$1</code>');
+}
 function img(v){return h(v||'/screenshots/sites/vast.webp')}
 function safeHex(c){return /^#[0-9a-fA-F]{6}$/.test(c||'')?c:'#E0E2E6'}
 function site(id){return state.sites.find(x=>x.id===id)}
@@ -217,7 +224,7 @@ function insightArticle(a){
  const cat=articleCat(a.category),url=articleLink(a);
  const related=[...state.articles.filter(x=>x.id!==a.id&&x.category===a.category),...state.articles.filter(x=>x.id!==a.id&&x.category!==a.category)].slice(0,3);
  const index=state.articles.findIndex(x=>x.id===a.id),prev=state.articles[index-1],next=state.articles[index+1];
- const sections=a.sections.map((s,i)=>`<section class="insight-prose-section" id="insight-section-${i+1}"><span class="insight-prose-number">${String(i+1).padStart(2,'0')} / ${String(a.sections.length).padStart(2,'0')}</span><h2>${h(s.title)}</h2>${s.paragraphs.map(p=>`<p>${h(p)}</p>`).join('')}${/^\/api\/media\/[0-9a-f-]{36}$/.test(s.image||'')?`<figure class="insight-inline-figure"><img loading="lazy" src="${h(s.image)}" alt="${h(s.image_caption||s.title||'文章配图')}">${s.image_caption?`<figcaption>${h(s.image_caption)}</figcaption>`:''}</figure>`:''}${s.bullets?.length?`<ul>${s.bullets.map(item=>`<li>${h(item)}</li>`).join('')}</ul>`:''}${s.callout?`<div class="insight-prose-callout">${h(s.callout)}</div>`:''}</section>`).join('');
+ const sections=a.sections.map((s,i)=>`<section class="insight-prose-section" id="insight-section-${i+1}"><span class="insight-prose-number">${String(i+1).padStart(2,'0')} / ${String(a.sections.length).padStart(2,'0')}</span><h2>${h(s.title)}</h2>${s.paragraphs.map(p=>`<p>${formatArticleInline(p)}</p>`).join('')}${/^\/api\/media\/[0-9a-f-]{36}$/.test(s.image||'')?`<figure class="insight-inline-figure"><img loading="lazy" src="${h(s.image)}" alt="${h(s.image_caption||s.title||'文章配图')}">${s.image_caption?`<figcaption>${h(s.image_caption)}</figcaption>`:''}</figure>`:''}${s.bullets?.length?`<ul>${s.bullets.map(item=>`<li>${h(item)}</li>`).join('')}</ul>`:''}${s.callout?`<div class="insight-prose-callout">${h(s.callout)}</div>`:''}</section>`).join('');
  return `<div class="shell insight-article">
  <nav class="insight-breadcrumb" aria-label="当前位置"><a href="/" data-link="/">首页</a><span>/</span><a href="/insights" data-link="/insights">资讯与研究</a><span>/</span><a href="/insights?category=${h(a.category)}" data-link="/insights?category=${h(a.category)}">${h(cat?.name||a.category)}</a></nav>
  <header class="insight-article-header"><a href="/insights?category=${h(a.category)}" data-link="/insights?category=${h(a.category)}" class="insight-article-category">${h(cat?.name||a.category)}</a><h1>${h(a.title)}</h1><p>${h(a.subtitle)}</p><div class="insight-article-meta"><span class="insight-author-avatar">BA</span><span> B2B Atlas 编辑部</span><i></i><time datetime="${h(a.published_at)}">${h(articleDate(a))}</time><i></i><span>阅读约 ${a.reading_minutes} 分钟</span><button type="button" class="detail-bookmark-button" data-action="save" data-key="${h(key(a))}" aria-pressed="${saved(key(a))}">${bookmarkIcon(saved(key(a)))} ${saved(key(a))?'已收藏':'收藏文章'}</button><button data-action="share-article" type="button"><span aria-hidden="true">↗</span> 复制文章链接</button></div></header>
