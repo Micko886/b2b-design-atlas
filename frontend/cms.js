@@ -277,6 +277,7 @@ function renderForm(item){
    +(s==='review'?'<div class="cms-v514-review-buttons">'
     +'<button type="button" class="primary" data-transition="publish" '+(isPending?'disabled title="请先取消现有排期"':'')+'>审核并立即发布</button>'
     +'<button type="button" data-transition="reject" class="cms-review-reject">退回修改</button></div>'
+    +'<label class="cms-v514-reason">审核意见（退回时必填）<textarea id="cms-review-reason" maxlength="400" rows="3" placeholder="说明需要修改的内容、引用或设计问题"></textarea></label>'
     +'<div class="cms-v514-release-box"><label>预约发布时间（当前设备本地时间）<input id="cms-schedule-local" type="datetime-local" aria-label="选择计划发布时间"></label>'
     +'<button type="button" data-schedule-save>保存发布排期</button>'
     +(isPending?'<button type="button" data-schedule-cancel>取消排期</button>':'')
@@ -294,6 +295,7 @@ const history=item.history||[];
  +'</div>');
  const root=$('#cms-editor-body');
  root.innerHTML=content+steps+meta+reviewBrief(item)+form+reviewActions+timeline;root.hidden=false;
+ syncScheduleEditor(item);
  $('#cms-empty').hidden=true;
  state.dirty=false;autosavePaused=false;
 }
@@ -345,7 +347,7 @@ async function transition(action){
  const item=state.selected;
  let reason='';
  if(action==='reject'){
-   reason=prompt('请填写退回原因（至少 4 个字符），审核记录会保留。')||'';
+   reason=$('#cms-review-reason')?.value?.trim()||'';
    if(reason.trim().length<4){message('退回原因至少 4 个字符。',false);return}
  }
  if(action==='archive'&&!confirm('确定归档「'+(item.payload.name||item.payload.title||item.slug)+'」？该页面将从前台列表移除。'))return;
@@ -777,6 +779,134 @@ async function deleteTag(){
  }catch(err){message(err.message,false)}
  finally{$('#cms-tag-delete').disabled=false}
 }
+// V51.14 · Schedule queue and owner-controlled editorial permissions.
+function datetimeLocal(iso){
+ const d=new Date(iso);if(!Number.isFinite(d.valueOf()))return '';
+ const pad=x=>String(x).padStart(2,'0');
+ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
+}
+function syncScheduleEditor(item){
+ const input=$('#cms-schedule-local');if(!input)return;
+ input.min=datetimeLocal(new Date(Date.now()+61000).toISOString());
+ if(item.schedule?.status==='pending')input.value=datetimeLocal(item.schedule.publish_at);
+}
+async function saveSchedule(){
+ if(!can('review')||state.busy||!state.selected)return;
+ const item=state.selected;
+ if(state.dirty||autosavePaused){message('需要先完成草稿保存才能设置发布排期。',false);return}
+ if(item.status!=='review'){message('只有待审核内容可安排发布。',false);return}
+ const input=$('#cms-schedule-local');
+ if(!input?.value){message('请先选择发布的本地日期和时间。',false);return}
+ const date=new Date(input.value);
+ if(!Number.isFinite(date.getTime())){message('发布时间无效。',false);return}
+ btnDisable(true);
+ try{
+   const schedule=await api('/api/admin/content/'+item.kind+'/'+item.slug+'/schedule',{
+     method:'POST',body:JSON.stringify({expected_revision:item.revision,publish_at:date.toISOString()})});
+   item.schedule={...schedule,revision:item.revision};
+   renderForm(item);syncScheduleEditor(item);
+   message('发布排期已保存 · '+datetimeLocal(schedule.publish_at));
+ }catch(e){message(e.message,false)}
+ finally{btnDisable(false)}
+}
+async function cancelSchedule(){
+ if(!can('review')||state.busy||!state.selected)return;
+ const item=state.selected;
+ if(!confirm('确定取消当前待发布排期？已审核的草稿仍保留。'))return;
+ btnDisable(true);
+ try{
+   await api('/api/admin/content/'+item.kind+'/'+item.slug+'/schedule',{method:'DELETE'});
+   item.schedule={...item.schedule,status:'cancelled'};
+   renderForm(item);
+   message('已取消发布排期');
+ }catch(e){message(e.message,false)}
+ finally{btnDisable(false)}
+}
+function paintScheduleQueue(){
+ const box=$('#cms-schedule-items');
+ const rows=state.scheduleItems||[];
+ $('#cms-schedule-count').textContent=rows.length+' 条排期记录';
+ const labels={pending:'等待发布',published:'按计划发布',cancelled:'已取消',stale:'版本已失效',failed:'校验失败'};
+ box.innerHTML=rows.length?rows.map(item=>
+   '<div class="cms-v514-schedule-item" role="listitem"><div class="cms-v514-schedule-item-top">'
+    +'<strong>'+h(item.slug)+'</strong><span data-schedule-status="'+h(item.status)+'">'+h(labels[item.status]||item.status)+'</span></div>'
+    +'<p>'+h(kinds[item.kind]?.label||item.kind)+' · '+h(item.publish_at)+' UTC · v'+item.revision+'</p>'
+    +(item.error?'<small>'+h(item.error)+'</small>':'')
+    +'<button type="button" data-v514-schedule-open="'+h(item.kind)+':'+h(item.slug)+'">打开内容</button></div>').join('')
+    :'<p class="cms-loading">暂无发布排期。可先提交内容审核，再预约发布时间。</p>';
+}
+async function refreshSchedules(){
+ if(mode!=='admin'||!can('view'))return;
+ try{
+   const res=await api('/api/admin/schedules');
+   state.scheduleItems=res.items||[];
+   paintScheduleQueue();
+   $('#cms-schedule-note').textContent=res.execution_note||'到期检查随公开目录访问执行。';
+ }catch(e){$('#cms-schedule-items').innerHTML='<div class="cms-error">'+h(e.message)+'</div>'}
+}
+async function openScheduleQueue(){
+ if(!can('view'))return;
+ $('#cms-schedules-dialog').showModal();
+ await refreshSchedules();
+}
+function paintTeam(){
+ const root=$('#cms-team-people');
+ const term=String($('#cms-team-search')?.value||'').trim().toLowerCase();
+ const rows=state.teamPeople.filter(person=>!term||(
+   person.id+' '+person.email+' '+person.display_name
+ ).toLowerCase().includes(term));
+ const label={owner:'最高管理员',editor:'内容编辑',reviewer:'审核员'};
+ root.innerHTML=rows.length?rows.map(p=>
+   '<button type="button" class="cms-v514-person '+(p.id===state.teamSelected?'active':'')+'" data-v514-team-id="'+h(p.id)+'">'
+    +'<span><strong>'+h(p.display_name||p.email)+'</strong><small>'+h(p.email)+' · '+h(p.id)+'</small></span>'
+    +'<b>'+h(label[p.role]||'普通用户')+'</b></button>').join('')
+    :'<p class="cms-loading">没有匹配的已注册账号。</p>';
+}
+function chooseTeamPerson(id=null){
+ const person=state.teamPeople.find(p=>p.id===id);
+ state.teamSelected=person?.id||null;
+ $('#cms-team-person-name').textContent=person?.display_name||'选择一个用户';
+ $('#cms-team-person-id').textContent=person?person.email+' · ID '+person.id:'从左侧选择已注册账号';
+ $('#cms-team-role').value=person?.role==='reviewer'?'reviewer':'editor';
+ const locked=!person||person.role==='owner';
+ $('#cms-team-role').disabled=locked;
+ $('#cms-team-grant').disabled=locked;
+ $('#cms-team-revoke').disabled=locked||!person?.role;
+ $('#cms-team-info').textContent=person?.role==='owner'
+   ?'最高管理员由部署环境固定授权，无法在此撤销。'
+   :person?'按用户 ID 保存权限，授权立即影响下一次服务器操作。':'编辑可修改草稿；审核员仅能审核、发布、退回与排期。';
+ paintTeam();
+}
+async function refreshTeam(){
+ const res=await api('/api/admin/team');
+ state.teamPeople=res.people||[];
+ chooseTeamPerson(state.teamSelected);
+}
+async function openTeam(){
+ if(!can('team'))return;
+ $('#cms-team-dialog').showModal();
+ try{await refreshTeam()}catch(e){message(e.message,false)}
+}
+async function grantTeamRole(e){
+ e.preventDefault();if(!can('team')||!state.teamSelected)return;
+ const id=state.teamSelected,role=$('#cms-team-role').value;
+ $('#cms-team-grant').disabled=true;
+ try{
+   await api('/api/admin/team/role',{method:'PUT',
+     body:JSON.stringify({user_id:id,role})});
+   await refreshTeam();message('角色已更新：'+role);
+ }catch(e){message(e.message,false)}
+ finally{$('#cms-team-grant').disabled=false}
+}
+async function revokeTeamRole(){
+ if(!can('team')||!state.teamSelected)return;
+ if(!confirm('确定撤销此用户的内容后台权限？'))return;
+ const id=state.teamSelected;
+ try{
+   await api('/api/admin/team/role/'+encodeURIComponent(id),{method:'DELETE'});
+   await refreshTeam();message('后台角色已撤销');
+ }catch(e){message(e.message,false)}
+}
 function boot(){
  setTheme(theme());
  $('#cms-new').hidden=mode!=='admin';$('#cms-export').hidden=mode!=='admin';$('#cms-media-open').hidden=mode!=='admin';$('#cms-categories-open').hidden=mode!=='admin';$('#cms-tags-open').hidden=mode!=='admin';$('#cms-review-shortcut').hidden=mode!=='admin';
@@ -785,6 +915,20 @@ function boot(){
  setNotice(mode==='admin'?'管理员工作区：编辑先保存草稿，审核通过后才会进入公开目录。':'只读预览：这里展示公开网站资料，不会提供编辑或发布权限。');
  if(mode==='preview')$('#cms-state').innerHTML='<span class="status-led"></span> PUBLIC PREVIEW';
  document.addEventListener('click',async e=>{
+   if(e.target.closest('[data-schedule-save]')){await saveSchedule();return}
+   if(e.target.closest('[data-schedule-cancel]')){await cancelSchedule();return}
+   const queueEntry=e.target.closest('[data-v514-schedule-open]');
+   if(queueEntry){
+     const [kind,...slugParts]=queueEntry.dataset.v514ScheduleOpen.split(':');
+     const slug=slugParts.join(':');
+     $('#cms-schedules-dialog').close();
+     if(kind!==state.kind)await changeKind(kind);
+     await selectItem(slug);return
+   }
+   const teamEntry=e.target.closest('[data-v514-team-id]');
+   if(teamEntry){chooseTeamPerson(teamEntry.dataset.v514TeamId);return}
+   const close=e.target.closest('[data-v514-close]');
+   if(close){$('#cms-'+close.dataset.v514Close+'-dialog').close();return}
    const themeButton=e.target.closest('[data-set-theme]');if(themeButton){setTheme(themeButton.dataset.setTheme);return}
    const type=e.target.closest('[data-kind-link]');if(type){e.preventDefault();await changeKind(type.dataset.kindLink);return}
    const choice=e.target.closest('[data-pick]');if(choice){if(state.busy)return;await selectItem(choice.dataset.pick);return}
@@ -843,6 +987,12 @@ function boot(){
  $('#cms-tag-delete').addEventListener('click',deleteTag);
  $('#cms-tag-search').addEventListener('input',e=>{state.tagSearch=e.target.value;drawTags()});
  $('#cms-review-shortcut').addEventListener('click',()=>{$('#cms-status').value='review';state.status='review';drawItems();$('#cms-items').scrollIntoView({block:'nearest',behavior:'smooth'});message('已筛选当前内容类型的待审核记录')});
+ $('#cms-schedules-open').addEventListener('click',openScheduleQueue);
+ $('#cms-schedule-refresh').addEventListener('click',refreshSchedules);
+ $('#cms-team-open').addEventListener('click',openTeam);
+ $('#cms-team-search').addEventListener('input',paintTeam);
+ $('#cms-team-form').addEventListener('submit',grantTeamRole);
+ $('#cms-team-revoke').addEventListener('click',revokeTeamRole);
  $('#cms-categories-open').addEventListener('click',openCategoryManager);
  $('#cms-v515-add').addEventListener('click',()=>chooseCategory());
  $('#cms-v515-form').addEventListener('submit',saveCategory);
