@@ -1053,6 +1053,27 @@ function boot(){
    if(e.target.closest('[data-v515-close]')){$('#cms-categories-dialog').close();return}
    if(e.target.closest('[data-autosave-retry]')){if(autosavePaused){message('已暂停覆盖：请备份当前内容并刷新记录。',false);return}await persistDraft(false);return}
    const tag=e.target.closest('[data-v512-tag]');if(tag){const field=$('#v51-tags');if(!field)return;const existing=linesFrom('#v51-tags');if(!existing.includes(tag.dataset.v512Tag)){field.value=[...existing,tag.dataset.v512Tag].join(String.fromCharCode(10));markDraftDirty();refreshArticlePreview()}return}
+   const convert=e.target.closest('[data-block-convert]');
+   if(convert){convertLegacyChapter(convert.closest('[data-v51-section]'));return}
+   const addBlock=e.target.closest('[data-block-add]');
+   if(addBlock){const mode=addBlock.closest('[data-blocks-mode]'),list=mode.querySelector('[data-block-list]');
+     const type=mode.querySelector('[data-block-add-type]').value;
+     list.insertAdjacentHTML('beforeend',articleBlock({type},list.children.length,true));
+     reindexBlocks(list);markDraftDirty();refreshArticlePreview();return}
+   const removeBlock=e.target.closest('[data-block-remove]');
+   if(removeBlock){const el=removeBlock.closest('[data-cms-block]'),list=el.parentElement;
+     if(list.children.length<=1){message('每章至少保留一个内容块',false);return}
+     el.remove();reindexBlocks(list);markDraftDirty();refreshArticlePreview();return}
+   const moveBlock=e.target.closest('[data-block-move]');
+   if(moveBlock){const el=moveBlock.closest('[data-cms-block]'),n=Number(moveBlock.dataset.blockMove);
+     const near=n<0?el.previousElementSibling:el.nextElementSibling;
+     if(near){if(n<0)near.before(el);else near.after(el);
+       reindexBlocks(el.parentElement);markDraftDirty();refreshArticlePreview()}
+     return}
+   const blockFormat=e.target.closest('[data-block-format]');
+   if(blockFormat){applyBlockFormat(blockFormat);return}
+   const blockPick=e.target.closest('[data-block-pick-image]');
+   if(blockPick){state.mediaTarget=blockPick.closest('[data-cms-block]');await openMedia();return}
    const formatter=e.target.closest('[data-v514-format]');if(formatter){applyArticleFormat(formatter);return}
    if(e.target.closest('[data-v512-preview]')){toggleArticlePreview();return}
    if(e.target.closest('[data-v51-add]')){const root=$('#cms-v51-sections');root.insertAdjacentHTML('beforeend',articleSection({blocks:[{type:'paragraph',text:''}]},root.children.length,true));reindexSections();markDraftDirty();refreshArticlePreview();return}
@@ -1060,7 +1081,8 @@ function boot(){
    const move=e.target.closest('[data-v51-move]');if(move){const block=move.closest('[data-v51-section]'),target=Number(move.dataset.v51Move)<0?block.previousElementSibling:block.nextElementSibling;if(target){if(Number(move.dataset.v51Move)<0)target.before(block);else target.after(block);reindexSections();markDraftDirty()}return}
    const useInline=e.target.closest('[data-v513-use-inline]');
    if(useInline&&state.mediaTarget){
-     state.mediaTarget.querySelector('[data-v513-image]').value=useInline.dataset.v513UseInline;
+     const input=state.mediaTarget.querySelector('[data-block-image],[data-v513-image]');
+     if(input)input.value=useInline.dataset.v513UseInline;
      state.mediaTarget=null;$('#cms-media-dialog').close();markDraftDirty();refreshArticlePreview();
      message('图片已加入章节，保存草稿后生效');return;
    }
@@ -1126,6 +1148,7 @@ function boot(){
    if(mode!=='admin'||!e.dataTransfer?.files?.length)return;
    uploadMedia(e.dataTransfer.files);
  });
+ installBlockDrag();
  $('#cms-bulk-run').addEventListener('click',runBulk);
  $('#cms-select-all').addEventListener('change',e=>{for(const item of listFiltered()){if(item.status==='source')continue;if(e.target.checked)state.selectedSlugs.add(item.slug);else state.selectedSlugs.delete(item.slug)}drawItems()});
 
