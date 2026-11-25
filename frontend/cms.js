@@ -464,7 +464,7 @@ function boot(){
      if(mode==='admin'){
        const me=await api('/api/auth/me');
        if(!me.authenticated)throw Error('会话已过期，请登录');
-       state.csrf=me.csrf_token;state.user=me.user;try{const result=await api('/api/admin/content/taxonomy');state.taxonomy=result.categories||{}state.tagSuggestions=result.article_tags||[];}catch{}
+       state.csrf=me.csrf_token;state.user=me.user;try{const result=await api('/api/admin/content/taxonomy');state.taxonomy=result.categories||{};state.tagSuggestions=result.article_tags||[];}catch{}
        $('#cms-role').textContent=(me.user?.display_name||'已授权管理员')+' · 管理员';
      }
      await loadKind();
