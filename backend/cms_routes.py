@@ -341,6 +341,12 @@ class CategoryData(BaseModel):
     name: str = Field(min_length=1,max_length=80)
     description: str = Field(default="",max_length=400)
 
+def validate_category_data(data:CategoryData):
+    if len(data.id)>48 or not SLUG.fullmatch(data.id):
+        user_auth.error(422,"分类 ID 只能使用小写字母、数字和短横线。")
+    if not data.name.strip():
+        user_auth.error(422,"分类显示名称不能为空。")
+
 class MediaUpload(BaseModel):
     name: str = Field(min_length=1,max_length=160)
     mime: Literal["image/jpeg","image/png","image/webp"]
@@ -421,6 +427,7 @@ def register_cms_routes(app: FastAPI):
     @app.post("/api/admin/categories",include_in_schema=False,status_code=201)
     def create_category(data:CategoryData,request:Request):
         session=require_admin(request,mutate=True);ensure_cms()
+        validate_category_data(data)
         if data.id in {x["id"] for x in base_article_categories()}:
             user_auth.error(409,"该分类 ID 已经存在，可直接编辑名称。")
         with user_auth.db() as db:
@@ -432,12 +439,13 @@ def register_cms_routes(app: FastAPI):
                 VALUES(?,?,?,'active',?,?,?,?)""",
                 (data.id,data.name.strip(),data.description.strip(),session["user_id"],session["user_id"],now,now))
             db.execute("INSERT INTO atlas_cms_category_history(id,category_id,action,actor_id,snapshot_json,created_at) VALUES(?,?,?,?,?,?)",
-                (str(uuid.uuid4()),data.id,"create",session["user_id"],json.dumps(data.model_dump(),ensure_ascii=False),now))
+                (str(uuid.uuid4()),data.id,"create",session["user_id"],json.dumps(data.dict(),ensure_ascii=False),now))
         return {"ok":True,"id":data.id}
 
     @app.put("/api/admin/categories/{category_id}",include_in_schema=False)
     def edit_category(category_id:str,data:CategoryData,request:Request):
         session=require_admin(request,mutate=True);ensure_cms()
+        validate_category_data(data)
         if category_id!=data.id:user_auth.error(422,"分类 ID 不可更改。")
         if category_id not in {x["id"] for x in base_article_categories()}:
             with user_auth.db() as db:
@@ -453,7 +461,7 @@ def register_cms_routes(app: FastAPI):
                 updated_by=excluded.updated_by,updated_at=excluded.updated_at""",
                 (category_id,data.name.strip(),data.description.strip(),session["user_id"],session["user_id"],now,now))
             db.execute("INSERT INTO atlas_cms_category_history(id,category_id,action,actor_id,snapshot_json,created_at) VALUES(?,?,?,?,?,?)",
-                (str(uuid.uuid4()),category_id,"edit",session["user_id"],json.dumps(data.model_dump(),ensure_ascii=False),now))
+                (str(uuid.uuid4()),category_id,"edit",session["user_id"],json.dumps(data.dict(),ensure_ascii=False),now))
         return {"ok":True,"id":category_id}
 
     @app.delete("/api/admin/categories/{category_id}",include_in_schema=False)
@@ -634,8 +642,11 @@ def register_cms_routes(app: FastAPI):
         with user_auth.db() as db:
             entries=db.all("SELECT * FROM atlas_cms_entries ORDER BY kind,slug")
             history=db.all("SELECT * FROM atlas_cms_history ORDER BY created_at")
-        return JSONResponse({"version":1,"exported_at":utc_now(),"entries":entries,
-             "history":history,"note":"仅 CMS 内容快照，不含登录凭证或用户私人数据。"},
+            categories=db.all("SELECT id,name,description,status,created_at,updated_at FROM atlas_cms_categories ORDER BY created_at")
+            category_history=db.all("SELECT * FROM atlas_cms_category_history ORDER BY created_at")
+        return JSONResponse({"version":2,"exported_at":utc_now(),"entries":entries,
+             "history":history,"categories":categories,"category_history":category_history,
+             "note":"CMS 内容及分类操作快照，不含账号、用户私人数据或媒体二进制文件。"},
             headers={"Cache-Control":"no-store","Content-Disposition":'attachment; filename="atlas-cms-export.json"'})
 
     @app.get("/api/admin/content/{kind}/{slug}",include_in_schema=False)
