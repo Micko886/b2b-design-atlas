@@ -16,7 +16,7 @@ function makeState(){
  return Object.fromEntries(Object.entries(samples).map(([kind,payload])=>
  [kind,{kind,slug:payload.id,status:'source',source:'repository',revision:0,payload:structuredClone(payload),history:[]}]));
 }
-async function mockCms(page,role='owner'){
+async function mockCms(page,role='owner',forcedErrors={}){
  const records=makeState(),uploads=[];
  await page.route('**/*',async route=>{
   const request=route.request(),url=new URL(request.url()),p=url.pathname,method=request.method();
@@ -61,7 +61,7 @@ async function mockCms(page,role='owner'){
    if(m&&records[m[1]]){
     const x=records[m[1]];
     if(method==='PUT'){x.payload=body.payload;x.status='draft';x.source='cms';x.revision++;result={revision:x.revision,status:x.status}}
-    else if(method==='POST'){x.status={submit:'review',publish:'published',reject:'draft',archive:'archived'}[m[3]]||x.status;x.revision++;result={revision:x.revision,status:x.status}}
+    else if(method==='POST'){if(forcedErrors[m[3]]){status=forcedErrors[m[3]].status;result={detail:forcedErrors[m[3]].detail}}else{x.status={submit:'review',publish:'published',reject:'draft',archive:'archived'}[m[3]]||x.status;x.revision++;result={revision:x.revision,status:x.status}}}
     else result=x;
    }else{status=404;result={detail:'Mock API endpoint not covered: '+method+' '+p}}
   }
@@ -203,4 +203,71 @@ test('V52.7 preview remains within mobile viewport',async({page})=>{
  await page.locator('[data-editor-tab="preview"]').click();
  await expect(page.locator('.cms-public-card-sample')).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
+
+test('V52.8 preview mirrors public research layout and website metadata',async({page})=>{
+ const {records}=await mockCms(page);
+ records.site.payload.focus='Industrial sourcing';
+ records.site.payload.model='B2B platform';
+ records.site.payload.visual_style='Clean editorial';
+ await page.setViewportSize({width:1160,height:900});
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await page.locator('[data-editor-tab="preview"]').click();
+ await expect(page.locator('.cms-public-specs')).toContainText('业务方向');
+ await expect(page.locator('.cms-public-specs')).toContainText('Industrial sourcing');
+ await expect(page.locator('.cms-public-style-tags')).toContainText('Clean editorial');
+ await expect(page.locator('.cms-public-gallery-note')).toContainText('原有研究截图');
+ const layout=await page.evaluate(()=>{
+  const image=document.querySelector('.cms-public-gallery').getBoundingClientRect();
+  const info=document.querySelector('.cms-public-detail-info').getBoundingClientRect();
+  return {imageLeft:image.left,infoLeft:info.left};
+ });
+ expect(layout.imageLeft).toBeLessThan(layout.infoLeft);
+ await page.setViewportSize({width:390,height:800});
+ const mobile=await page.evaluate(()=>{
+  const image=document.querySelector('.cms-public-gallery').getBoundingClientRect();
+  const info=document.querySelector('.cms-public-detail-info').getBoundingClientRect();
+  return {imageTop:image.top,infoTop:info.top,scrollWidth:document.documentElement.scrollWidth,width:innerWidth};
+ });
+ expect(mobile.imageTop).toBeLessThan(mobile.infoTop);
+ expect(mobile.scrollWidth).toBeLessThanOrEqual(mobile.width+1);
+});
+
+test('V52.8 publish 422 error persists and supports safe server refresh',async({page})=>{
+ const {records}=await mockCms(page,'owner',{publish:{status:422,detail:'关联的网站不存在或尚未发布。'}});
+ records.site.status='review';records.site.revision=3;records.site.source='cms';
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await expect(page.locator('[data-editor-submit]')).toBeDisabled();
+ await page.locator('[data-transition="publish"]').click();
+ await expect(page.locator('#cms-transition-feedback')).toBeVisible();
+ await expect(page.locator('#cms-transition-feedback')).toContainText('关联的网站不存在或尚未发布');
+ await expect(page.locator('[data-editor-submit]')).toBeDisabled();
+ expect(records.site.status).toBe('review');
+ await page.locator('[data-review-reload]').click();
+ await expect(page.locator('#cms-transition-feedback')).toBeHidden();
+ await expect(page.locator('.cms-easy-header-side .cms-item-state')).toContainText('待审核');
+});
+
+test('V52.8 stale review revision 409 fails closed without a second publish',async({page})=>{
+ const {records}=await mockCms(page,'owner',{publish:{status:409,detail:'版本已更新，请重新打开内容。'}});
+ records.site.status='review';records.site.revision=3;records.site.source='cms';
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await page.locator('[data-transition="publish"]').click();
+ await expect(page.locator('#cms-transition-feedback')).toContainText('内容版本已经变化');
+ await expect(page.locator('#cms-transition-feedback')).toContainText('版本已更新');
+ expect(records.site.revision).toBe(3);
+ expect(records.site.status).toBe('review');
+});
+
+test('V52.8 rejection requires a reason and retains the draft for correction',async({page})=>{
+ const {records}=await mockCms(page);
+ records.site.status='review';records.site.revision=4;records.site.source='cms';
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await page.locator('[data-transition="reject"]').click();
+ await expect(page.locator('#cms-transition-feedback')).toContainText('退回原因至少 4 个字符');
+ expect(records.site.status).toBe('review');
+ await page.locator('#cms-review-reason').fill('请核对行业资料与官网地址');
+ await page.locator('[data-transition="reject"]').click();
+ await expect(page.locator('.cms-easy-header-side .cms-item-state')).toContainText('草稿');
+ expect(records.site.status).toBe('draft');
 });
