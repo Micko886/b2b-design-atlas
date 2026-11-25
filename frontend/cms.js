@@ -549,7 +549,7 @@ function renderForm(item){
  const content='<div class="cms-editor-title"><div><div class="section-eyebrow">EDIT / '+kinds[item.kind].label.toUpperCase()+'</div><h2>'+h(values.name||values.title||item.slug)+'</h2><p>URL 标识：'+h(item.slug)+' · '+h(item.source==='cms'?'CMS 内容记录':'原始内容资料')+'</p></div>'
   +'<a target="_blank" rel="noopener" href="'+h(kinds[item.kind].url+item.slug)+'">'+icon('arrow-up-right')+' 查看前台</a></div>';
  const s=item.status;
- const siteHeader='<div class="cms-easy-header"><div class="cms-easy-heading"><span class="cms-easy-kicker">网站案例 / 编辑</span><h2>'+h(values.name||item.slug)+'</h2><p>修改内容并保存为草稿，审核通过后才会展示在前台。</p></div>'
+ const siteHeader='<div class="cms-easy-header"><div class="cms-easy-heading"><span class="cms-easy-kicker">'+h(kinds[item.kind].title)+' / 编辑</span><h2>'+h(values.name||values.title||item.slug)+'</h2><p>编辑并保存草稿，审核通过后才会更新前台。</p></div>'
   +'<div class="cms-easy-header-side">'+stateClasses(s)
   +'<a class="cms-easy-public-link" target="_blank" rel="noopener" href="'+h(kinds[item.kind].url+item.slug)+'">查看前台 ↗</a></div></div>';
  const statuses=['draft','review','published'];
@@ -557,18 +557,11 @@ function renderForm(item){
  const steps='<div class="cms-steps">'+['内容准备','保存草稿','提交审核','正式发布'].map((title,i)=>'<span class="cms-step '+(i===index+1?'current':i<index+1?'passed':'')+'"><span>'+String(i+1).padStart(2,'0')+'</span>'+title+'</span>'+(i<3?'<span class="cms-step-line"></span>':'')).join('')+'</div>';
  const meta='<div class="cms-editor-meta">'+stateClasses(s)+'<span>修订版本 <strong>v'+item.revision+'</strong></span><span>内容来源：'+h(item.source==='cms'?'PostgreSQL CMS':'项目内容文件')+'</span>'+(item.published_at?'<span>发布时间：'+h(item.published_at.slice(0,16))+'</span>':'')+'</div>';
  const mediaHint=item.kind==='site'?'':mode==='admin'&&can('media')?'<div class="cms-editor-media-hint"><span>需要上传或更换图片？</span><button type="button" data-editor-open-media>打开媒体库 / 上传图片</button></div>':'';
- const form='<div class="cms-editor-content">'+mediaHint+(isPreview?'<div class="cms-readonly-banner">当前是公开设计预览。字段来自公开目录，无法在这里保存或发布。正式操作请使用管理员账户。</div>':item.source==='repository'&&item.kind!=='site'?'<div class="cms-readonly-banner">这条资料来自现有案例库。修改字段或首次保存后，将生成可审核的独立草稿；未审核的内容不会影响前台。</div>':'')+
- '<form id="cms-edit-form" class="cms-form">'+(item.kind==='site'?'':'<div class="cms-form-group-label"><span>编辑内容 · 标题、图片与正文</span><small>修改后自动保存草稿，正式发布需审核</small></div>')
- +(editable&&item.kind!=='site'?'<div class="cms-autosave-strip"><span class="cms-autosave-led"></span><span id="cms-autosave-status" role="status" aria-live="polite">修改后自动保存 · 也可以点击右上角「保存修改」</span><button type="button" data-autosave-retry>立即保存</button></div>':'')
- +(item.kind==='site'?siteEditorForm(values,editable):specs.filter(spec=>!(item.kind==='article'&&['tags','takeaways','sections'].includes(spec[0]))).map(spec=>formField(spec,values,editable)).join(''))
- +(editable&&item.kind==='site'?'<div class="cms-easy-save-note"><span class="cms-autosave-led" aria-hidden="true"></span><span id="cms-autosave-status" role="status" aria-live="polite">修改后自动保存草稿</span><button type="button" data-autosave-retry>重试保存</button></div>':'')
- +(item.kind==='article'?articleStudio(values,editable):'')
- +(item.kind==='site'?'':'<details class="cms-json-advanced"><summary>高级 · 查看完整 JSON 结构</summary><div class="cms-field" data-json="true"><label>只读数据结构</label><textarea disabled spellcheck="false">'+h(JSON.stringify(values,null,2))+'</textarea></div></details>')
- +(editable&&item.kind!=='site'?'<div class="cms-form-actions">'
-  +'<button class="primary" type="submit">'+icon('save')+' 保存草稿</button>'
-  +'<button type="button" data-transition="submit" '+(s!=='draft'?'disabled':'')+'>'+icon('check')+' 提交审核</button>'
-  +'<span class="cms-inline-hint">提交审核后才允许审核员发布</span></div>':'')
- +'</form></div>';
+ const form='<div class="cms-editor-content"><form id="cms-edit-form" class="cms-form">'
+  +(item.kind==='site'?siteEditorForm(values,editable):simpleEditorForm(item.kind,values,editable))
+  +(item.kind==='article'?articleStudio(values,editable):'')
+  +(editable?'<div class="cms-easy-save-note"><span class="cms-autosave-led" aria-hidden="true"></span><span id="cms-autosave-status" role="status" aria-live="polite">修改后自动保存草稿</span><button type="button" data-autosave-retry>重试保存</button></div>':'')
+  +'</form></div>';
  const schedule=item.schedule||null;
  const isPending=schedule?.status==='pending';
  const reviewActions=can('review')?
@@ -599,8 +592,8 @@ const history=item.history||[];
   +'<button type="button" data-editor-tab="review" role="tab">'+(item.kind==='site'?'审核发布':'审核与发布')+'</button>'
   +'<button type="button" data-editor-tab="history" role="tab">版本记录</button></div>';
  const seoPanel=item.kind==='article'?seoStudio(values):'';
- root.classList.toggle('cms-easy-mode',item.kind==='site');
- root.innerHTML=topbar+(item.kind==='site'?siteHeader:content+steps+meta)+tabs
+ root.classList.toggle('cms-easy-mode',true);
+ root.innerHTML=topbar+siteHeader+tabs
   +'<div data-editor-pane="content">'+form+'</div>'
   +(item.kind==='article'?'<div data-editor-pane="seo" hidden>'+seoPanel+'</div>':'')
   +'<div data-editor-pane="review" hidden>'+reviewBrief(item)+reviewActions
