@@ -155,3 +155,52 @@ test('expired session shows a clear error instead of an editable list',async({pa
  await expect(page.locator('#cms-notice')).toContainText('无法读取后台内容');
  await expect(page.locator('[data-editor-save]')).toHaveCount(0);
 });
+
+test('V52.7 site preview uses unsaved form data without publishing',async({page})=>{
+ const {records}=await mockCms(page);
+ const media='/api/media/11111111-1111-4111-8111-111111111111';
+ records.site.payload.gallery=[{url:media,label:'产品页面'}];
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await page.locator('[data-editor-tab="preview"]').click();
+ await expect(page.locator('.cms-public-card-sample')).toBeVisible();
+ await expect(page.locator('.cms-public-detail-sample')).toContainText('Atlas Demo');
+ await expect(page.locator('[data-preview-photo]')).toHaveCount(2);
+ await page.locator('[data-preview-photo="1"]').click();
+ await expect(page.locator('#cms-preview-hero')).toHaveAttribute('src',media);
+ await expect(page.locator('[data-preview-photo="1"]')).toHaveAttribute('aria-pressed','true');
+ await page.locator('[data-editor-tab="content"]').click();
+ await page.locator('#field-summary').fill('<img src=x onerror=alert(1)> Unsaved summary');
+ await page.locator('[data-editor-tab="preview"]').click();
+ await expect(page.locator('.cms-public-detail-sample')).toContainText('Unsaved summary');
+ await expect(page.locator('#cms-private-preview-state')).toContainText('未保存');
+ await expect(page.locator('#cms-private-preview img[src="x"]')).toHaveCount(0);
+ expect(records.site.payload.summary).toBe('A design reference');
+});
+
+test('V52.7 reviewer sees readable original-versus-proposed changes',async({page})=>{
+ const {records}=await mockCms(page);
+ records.site.status='review';
+ records.site.source='cms';
+ records.site.revision=2;
+ records.site.published=structuredClone(records.site.payload);
+ records.site.payload={...records.site.payload,summary:'New review description',
+  name:'Atlas Demo Updated',gallery:[{url:'/api/media/11111111-1111-4111-8111-111111111111',label:'Product page'}]};
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await expect(page.locator('.cms-review-inline')).toBeVisible();
+ const inline=page.locator('.cms-review-inline');
+ await expect(inline).toContainText('A design reference');
+ await expect(inline).toContainText('New review description');
+ await expect(inline).toContainText('页面截图');
+ await page.locator('[data-editor-tab-link="preview"]').click();
+ await expect(page.locator('.cms-public-detail-sample h2')).toContainText('Atlas Demo Updated');
+ expect(records.site.status).toBe('review');
+});
+
+test('V52.7 preview remains within mobile viewport',async({page})=>{
+ await mockCms(page);
+ await page.setViewportSize({width:320,height:800});
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await page.locator('[data-editor-tab="preview"]').click();
+ await expect(page.locator('.cms-public-card-sample')).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
