@@ -39,7 +39,7 @@ async function mockCms(page,role='owner',forcedErrors={}){
   let result=null,status=200,body={};
   try{body=JSON.parse(request.postData()||'{}')}catch{}
   if(p==='/api/auth/me')result={authenticated:role!=='guest',csrf_token:'isolated-qa-token',user:{id:'tester',display_name:'QA Tester'}};
-  else if(p==='/api/admin/team/me')result={role,capabilities:role==='reviewer'?['view','review']:['view','edit','review','media','taxonomy','team','export']};
+  else if(p==='/api/admin/team/me')result={role,capabilities:role==='reviewer'?['view','review']:role==='editor'?['view','edit','media']:['view','edit','review','media','taxonomy','team','export']};
   else if(p==='/api/admin/content/taxonomy')result={categories:{article:['research']},article_tags:['design']};
   else if(p==='/api/admin/categories')result={items:[{id:'research',name:'Research'}]};
   else if(p==='/api/admin/tags')result={items:[{id:'design',name:'Design'}]};
@@ -270,4 +270,60 @@ test('V52.8 rejection requires a reason and retains the draft for correction',as
  await page.locator('[data-transition="reject"]').click();
  await expect(page.locator('.cms-easy-header-side .cms-item-state')).toContainText('草稿');
  expect(records.site.status).toBe('draft');
+});
+
+test('V53.0 unified review inbox opens all four types',async({page})=>{
+ const {records}=await mockCms(page);
+ for(const record of Object.values(records)){record.status='review';record.revision=2;record.source='cms'}
+ await page.goto(origin+'/admin/content?workspace=review');
+ await expect(page.locator('#cms-review-dialog')).toHaveJSProperty('open',true);
+ await expect(page.locator('#cms-review-queue-status')).toContainText('待审核 4 条');
+ await expect(page.locator('[data-review-open-kind]')).toHaveCount(4);
+ await page.locator('[data-review-open-kind="module"]').click();
+ await expect(page.locator('#cms-review-dialog')).toHaveJSProperty('open',false);
+ await expect(page.locator('.cms-easy-heading h2')).toContainText('Hero module');
+ await expect(page.locator('[data-editor-tab="review"]')).toHaveAttribute('aria-selected','true');
+ await expect(page).toHaveURL(/kind=module.*edit=demo-module/);
+});
+
+test('V53.0 media and settings are separate role-gated entries',async({page})=>{
+ await mockCms(page);
+ await page.goto(origin+'/admin/content?workspace=media');
+ await expect(page.locator('#cms-media-dialog')).toHaveJSProperty('open',true);
+ await expect(page.locator('#cms-media-status')).toContainText('媒体库暂无图片');
+ await page.locator('[data-media-close]').first().click();
+ await page.locator('#cms-settings-open').click();
+ await expect(page.locator('#cms-settings-dialog')).toHaveJSProperty('open',true);
+ await expect(page.locator('.cms-v530-tool:not([hidden])')).toHaveCount(4);
+ await expect(page.locator('#cms-tools-menu')).toBeVisible();
+ await page.locator('[data-v530-close="settings"]').first().click();
+ await expect(page.locator('#cms-settings-dialog')).toHaveJSProperty('open',false);
+});
+
+test('V53.0 low-privilege roles cannot open settings',async({page})=>{
+ const {records}=await mockCms(page,'reviewer');
+ for(const record of Object.values(records))record.status='review';
+ await page.goto(origin+'/admin/content?workspace=settings');
+ await expect(page.locator('#cms-settings-open')).toBeHidden();
+ await expect(page.locator('#cms-media-open')).toBeHidden();
+ await expect(page.locator('#cms-tools-menu')).toBeHidden();
+ await expect(page.locator('#cms-review-shortcut')).toBeVisible();
+ await expect(page.locator('#cms-settings-dialog')).toHaveJSProperty('open',false);
+ await page.locator('#cms-review-shortcut').click();
+ await expect(page.locator('#cms-review-dialog')).toHaveJSProperty('open',true);
+ await expect(page.locator('[data-review-open-kind]')).toHaveCount(4);
+});
+
+test('V53.0 admin and CMS navigation share six labels',async({page})=>{
+ await mockCms(page);
+ await page.goto(origin+'/admin/content?kind=site');
+ const cms=await page.locator('.atlas-v530-nav').innerText();
+ const admin=readFileSync(resolve(root,'frontend/admin.html'),'utf8');
+ const adminNav=admin.split('atlas-v530-nav',2)[1].split('</nav>',1)[0];
+ for(const label of ['工作台','内容管理','媒体资源','审核发布','运营中心','系统设置']){
+  expect(cms).toContain(label);
+  expect(adminNav).toContain('<span>'+label+'</span>');
+ }
+ await page.setViewportSize({width:320,height:760});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });
