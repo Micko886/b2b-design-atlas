@@ -909,7 +909,7 @@ async function revokeTeamRole(){
 }
 function boot(){
  setTheme(theme());
- $('#cms-new').hidden=mode!=='admin';$('#cms-export').hidden=mode!=='admin';$('#cms-media-open').hidden=mode!=='admin';$('#cms-categories-open').hidden=mode!=='admin';$('#cms-tags-open').hidden=mode!=='admin';$('#cms-review-shortcut').hidden=mode!=='admin';
+ $('#cms-new').hidden=mode!=='admin';$('#cms-export').hidden=mode!=='admin';$('#cms-media-open').hidden=mode!=='admin';$('#cms-categories-open').hidden=mode!=='admin';$('#cms-tags-open').hidden=mode!=='admin';$('#cms-review-shortcut').hidden=mode!=='admin';$('#cms-schedules-open').hidden=mode!=='admin';$('#cms-team-open').hidden=mode!=='admin';
  $('#cms-login-link').hidden=mode!=='preview';
  $('#cms-role').textContent=mode==='admin'?'管理员 · 内容维护':'公开只读预览';
  setNotice(mode==='admin'?'管理员工作区：编辑先保存草稿，审核通过后才会进入公开目录。':'只读预览：这里展示公开网站资料，不会提供编辑或发布权限。');
