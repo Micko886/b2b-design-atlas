@@ -298,9 +298,9 @@ async function runSeoAudit(){
    let data;
    if(can('edit')){
      const payload=takeFields();
-     data=await api('/api/admin/content/seo/check',{method:'POST',
+     data=await api('/api/admin/seo/check',{method:'POST',
        body:JSON.stringify({slug:state.selected.slug,payload})});
-   }else data=await api('/api/admin/content/'+state.selected.slug+'/seo');
+   }else data=await api('/api/admin/seo/article/'+state.selected.slug);
    root.innerHTML='<div class="cms-seo-score"><strong>'+data.score+'<small> / 100</small></strong><span>内容质量提示 · '+data.checks.length+' 项</span></div>'
      +'<div class="cms-seo-checks">'+data.checks.map(item=>
        '<div class="cms-seo-check" data-seo-status="'+h(item.status)+'"><span class="cms-seo-dot"></span>'
