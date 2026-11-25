@@ -143,6 +143,14 @@ async function offerDraftRecovery(item){
  }catch(_){}
 }
 function can(permission){return mode==='admin'&&state.capabilities.includes(permission)}
+function markWorkspace(name){
+ for(const element of $('[data-workspace-link]')){
+   const active=element.dataset.workspaceLink===name;
+   element.classList.toggle('active',active);
+   if(active)element.setAttribute('aria-current','page');
+   else element.removeAttribute('aria-current');
+ }
+}
 function setEditorTab(tab){
  const root=$('#cms-editor-body');if(!root||root.hidden)return;
  const options=Array.from(root.querySelectorAll('[data-editor-tab]'));
@@ -538,6 +546,7 @@ async function changeKind(kind){
  if(state.busy){message('草稿正在保存，请完成后切换内容类型。',false);return}
  if(state.dirty&&!confirm('当前修改尚未保存，确定切换？'))return;
  state.kind=kind;state.selected=null;state.dirty=false;state.records={};state.q='';state.status='';state.selectedSlugs.clear();
+ markWorkspace('content');
  $('#cms-search').value='';$('#cms-status').value='';
  $('#cms-empty').hidden=false;$('#cms-editor-body').hidden=true;
  $('#cms-empty').innerHTML='<div class="cms-empty-symbol">✳</div><span class="section-eyebrow">EDITORIAL WORKSPACE</span><h2>选择一个案例，开始研究。</h2><p>选择左侧内容后，可以在这里编辑、审阅和发布。</p>';
@@ -1240,6 +1249,7 @@ async function refreshSchedules(){
 }
 async function openScheduleQueue(){
  if(!can('view'))return;
+ markWorkspace('schedule');
  $('#cms-schedules-dialog').showModal();
  await refreshSchedules();
 }
@@ -1398,7 +1408,7 @@ function boot(){
  });
  document.addEventListener('input',e=>{if(e.target.closest('#cms-edit-form')){markDraftDirty();refreshArticlePreview();refreshSeoSnippet()}});
  $('#cms-search').addEventListener('input',e=>{state.q=e.target.value;drawItems()});
- $('#cms-status').addEventListener('change',e=>{state.status=e.target.value;drawItems()});
+ $('#cms-status').addEventListener('change',e=>{state.status=e.target.value;markWorkspace(state.status==='review'?'review':'content');drawItems()});
  $('#cms-refresh').addEventListener('click',async()=>{
   if(state.dirty&&!confirm('当前草稿还有未保存的修改。确认重新读取服务器内容吗？'))return;
   try{await loadKind(true);message('内容列表已刷新')}catch(e){message(e.message,false)}
@@ -1419,13 +1429,14 @@ function boot(){
  $('#cms-review-shortcut').addEventListener('click',async()=>{
    if(!can('view'))return;
    if(state.dirty&&!confirm('当前草稿尚未保存，确定切换到审核队列吗？'))return;
-   $('#cms-status').value='review';state.status='review';drawItems();
+   $('#cms-status').value='review';state.status='review';markWorkspace('review');drawItems();
    closeMobile();$('#cms-items').scrollIntoView({block:'nearest',behavior:'smooth'});
    const first=listFiltered()[0];
    if(first){await selectItem(first.slug);setEditorTab('review')}
    else message('当前类型没有待审核内容');
  });
  $('#cms-schedules-open').addEventListener('click',openScheduleQueue);
+ $('#cms-schedules-dialog').addEventListener('close',()=>markWorkspace(state.status==='review'?'review':'content'));
  $('#cms-schedule-refresh').addEventListener('click',refreshSchedules);
  $('#cms-calendar-status').addEventListener('change',()=>{paintCalendar();paintScheduleQueue()});
  $('#cms-calendar-today').addEventListener('click',()=>{calendarCursor=new Date();paintCalendar()});
@@ -1489,7 +1500,7 @@ function boot(){
      }
      const routeParams=new URLSearchParams(location.search);
      if(routeParams.get('status')==='review'){
-       state.status='review';$('#cms-status').value='review';
+       state.status='review';$('#cms-status').value='review';markWorkspace('review');
      }
      await loadKind();
      if(routeParams.get('workspace')==='schedule'&&can('view'))await openScheduleQueue();
