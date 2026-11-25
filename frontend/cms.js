@@ -396,7 +396,7 @@ function siteEditorForm(values,editable){
  const raw=String(values.screenshot_url||'');
  const picture=/^\/screenshots\/[a-zA-Z0-9_./-]{1,200}$/.test(raw)&&!raw.includes('..')||
    /^\/api\/media\/[0-9a-f-]{36}$/.test(raw);
- return '<section class="cms-easy-intro"><div><h3>基本信息</h3><p>左侧修改内容，右侧选择封面图片。更改会自动保存为草稿。</p></div></section>'
+ return '<section class="cms-easy-intro"><div><h3>编辑案例</h3><p>填写名称、网址、行业和简介，再选一张封面图即可。其他内容均为选填。</p></div></section>'
  +'<div class="cms-easy-layout"><div class="cms-easy-fields">'
  +basic.map(spec=>formField(spec,values,editable)).join('')
  +'<datalist id="cms-site-sector-options"><option value="工业制造"><option value="工业软件"><option value="机器人"><option value="新能源"><option value="医疗科技"><option value="航空航天"></datalist>'
@@ -406,11 +406,11 @@ function siteEditorForm(values,editable){
  +'<input id="field-screenshot_url" data-field="screenshot_url" data-type="text" type="hidden" value="'+h(raw)+'">'
  +(editable&&can('media')?'<button type="button" class="cms-easy-upload" data-editor-pick-media="field-screenshot_url">上传或更换图片</button>':'')
  +'<small>支持 JPG、PNG、WebP；已有图片也可从媒体库选用。</small></aside></div>'
- +'<section class="cms-gallery-editor"><div class="cms-gallery-heading"><div><strong>页面截图 <span id="cms-gallery-count">'+(Array.isArray(values.gallery)?values.gallery.length:0)+' 张</span></strong><p>添加产品页、方案页等图片；可调整顺序、重命名或设为主封面。</p></div>'
+ +'<details class="cms-easy-advanced cms-easy-gallery"><summary>添加更多页面截图 <span>选填 · 默认只展示一张案例封面</span></summary><section class="cms-gallery-editor"><div class="cms-gallery-heading"><div><strong>页面截图 <span id="cms-gallery-count">'+(Array.isArray(values.gallery)?values.gallery.length:0)+' 张</span></strong><p>添加产品页、方案页等图片；可调整顺序、重命名或设为主封面。</p></div>'
  +(editable&&can('media')?'<button type="button" data-gallery-add>＋ 添加截图</button>':'')+'</div>'
  +'<input id="field-gallery" type="hidden" data-field="gallery" data-type="json" value="'+h(JSON.stringify(Array.isArray(values.gallery)?values.gallery:[]))+'">'
- +'<div id="cms-gallery-list" class="cms-gallery-list">'+galleryCards(Array.isArray(values.gallery)?values.gallery.filter(x=>x&&validSiteShot(x.url)).slice(0,16):[])+'</div></section>'
- +'<details class="cms-easy-advanced"><summary>更多设置 <span>选填 · 业务方向、设计亮点</span></summary>'
+ +'<div id="cms-gallery-list" class="cms-gallery-list">'+galleryCards(Array.isArray(values.gallery)?values.gallery.filter(x=>x&&validSiteShot(x.url)).slice(0,16):[])+'</div></section></details>'
+ +'<details class="cms-easy-advanced"><summary>更多设置 <span>选填 · 业务信息与设计亮点</span></summary>'
  +'<div class="cms-easy-extra">'+extra.map(spec=>formField(spec,values,editable)).join('')+'</div></details>';
 }
 // V52.4: Plain-language editors share the same focused layout without modifying CMS payload schemas.
