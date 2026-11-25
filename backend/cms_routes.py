@@ -96,6 +96,11 @@ SCHEMA = [
        id TEXT PRIMARY KEY, tag_name TEXT NOT NULL,
        action TEXT NOT NULL, actor_id TEXT NOT NULL,
        snapshot_json TEXT NOT NULL, created_at TEXT NOT NULL
+    )""",
+    """CREATE TABLE IF NOT EXISTS atlas_cms_review_notes (
+       kind TEXT NOT NULL, slug TEXT NOT NULL, revision INTEGER NOT NULL,
+       actor_id TEXT NOT NULL, reason TEXT NOT NULL, created_at TEXT NOT NULL,
+       PRIMARY KEY(kind,slug,revision)
     )"""
 ]
 
@@ -404,6 +409,14 @@ class Draft(BaseModel):
 class Change(BaseModel):
     expected_revision: int = Field(ge=0)
 
+class RejectDecision(BaseModel):
+    expected_revision: int = Field(ge=1)
+    reason: str = Field(min_length=4,max_length=400)
+
+def validate_review_reason(reason):
+    if not isinstance(reason,str) or len(reason.strip())<4:
+        user_auth.error(422,"退回原因至少需要 4 个字符。")
+
 class Restore(BaseModel):
     expected_revision: int = Field(ge=0)
     revision: int = Field(ge=1)
@@ -454,8 +467,12 @@ def cms_item(kind,slug,session):
     ensure_cms()
     with user_auth.db() as db:
         row=db.one("SELECT * FROM atlas_cms_entries WHERE kind=? AND slug=?",(kind,slug))
-        history=db.all("""SELECT revision,action,actor_id,created_at FROM atlas_cms_history
-                       WHERE kind=? AND slug=? ORDER BY revision DESC LIMIT 35""",(kind,slug))
+        history=db.all("""SELECT h.revision,h.action,h.actor_id,h.created_at,
+                       COALESCE(n.reason,'') AS reason
+                       FROM atlas_cms_history h LEFT JOIN atlas_cms_review_notes n
+                       ON n.kind=h.kind AND n.slug=h.slug AND n.revision=h.revision
+                       WHERE h.kind=? AND h.slug=?
+                       ORDER BY h.revision DESC LIMIT 35""",(kind,slug))
     base=base_item(kind,slug)
     if not row and not base:user_auth.error(404,"内容不存在。")
     return {
@@ -798,9 +815,10 @@ def register_cms_routes(app: FastAPI):
             category_history=db.all("SELECT * FROM atlas_cms_category_history ORDER BY created_at")
             tags=db.all("SELECT name,description,status,created_at,updated_at FROM atlas_cms_tags ORDER BY name")
             tag_history=db.all("SELECT * FROM atlas_cms_tag_history ORDER BY created_at")
+            review_notes=db.all("SELECT kind,slug,revision,actor_id,reason,created_at FROM atlas_cms_review_notes ORDER BY created_at")
         return JSONResponse({"version":3,"exported_at":utc_now(),"entries":entries,
              "history":history,"categories":categories,"category_history":category_history,
-             "tags":tags,"tag_history":tag_history,
+             "tags":tags,"tag_history":tag_history,"review_notes":review_notes,
              "note":"CMS 内容及分类操作快照，不含账号、用户私人数据或媒体二进制文件。"},
             headers={"Cache-Control":"no-store","Content-Disposition":'attachment; filename="atlas-cms-export.json"'})
 
@@ -858,7 +876,7 @@ def register_cms_routes(app: FastAPI):
             log_change(db,{"kind":kind,"slug":slug,"revision":revision,"draft_json":encoded},"save",uid)
         return {"ok":True,"status":"draft","revision":revision}
 
-    def transition(kind,slug,expected,action,session):
+    def transition(kind,slug,expected,action,session,reason=''):
         ensure_cms();uid=session["user_id"];now=utc_now()
         with user_auth.db() as db:
             row=db.one("SELECT * FROM atlas_cms_entries WHERE kind=? AND slug=?",(kind,slug))
@@ -867,6 +885,13 @@ def register_cms_routes(app: FastAPI):
             if action=="submit":
                 if row["status"]!="draft":user_auth.error(409,"只有草稿可以提交审核。")
                 next_status="review";published_json=row["published_json"];published_at=row["published_at"];published_by=row["published_by"]
+            elif action=="reject":
+                if row["status"]!="review":user_auth.error(409,"只有待审核的内容可退回修改。")
+                validate_review_reason(reason)
+                next_status="draft"
+                published_json=row["published_json"]
+                published_at=row["published_at"]
+                published_by=row["published_by"]
             elif action=="publish":
                 if row["status"]!="review":user_auth.error(409,"内容必须先提交审核，才能发布。")
                 draft=parse_json(row["draft_json"])
@@ -883,6 +908,10 @@ def register_cms_routes(app: FastAPI):
               (next_status,published_json,published_at,published_by,revision,uid,now,kind,slug,expected))
             if result.rowcount!=1:user_auth.error(409,"版本已改变。")
             log_change(db,{"kind":kind,"slug":slug,"revision":revision,"draft_json":row["draft_json"]},action,uid)
+            if action=="reject":
+                db.execute("""INSERT INTO atlas_cms_review_notes
+                    (kind,slug,revision,actor_id,reason,created_at) VALUES(?,?,?,?,?,?)""",
+                    (kind,slug,revision,uid,reason.strip(),now))
         invalidate()
         return {"ok":True,"status":next_status,"revision":revision}
 
@@ -890,6 +919,12 @@ def register_cms_routes(app: FastAPI):
     def submit_content(kind:KIND,slug:str,data:Change,request:Request):
         session=require_admin(request,mutate=True)
         return transition(kind,slug,data.expected_revision,"submit",session)
+
+    @app.post("/api/admin/content/{kind}/{slug}/reject",include_in_schema=False)
+    def reject_content(kind:KIND,slug:str,data:RejectDecision,request:Request):
+        session=require_admin(request,mutate=True)
+        validate_review_reason(data.reason)
+        return transition(kind,slug,data.expected_revision,"reject",session)
 
     @app.post("/api/admin/content/{kind}/{slug}/publish",include_in_schema=False)
     def publish_content(kind:KIND,slug:str,data:Change,request:Request):
