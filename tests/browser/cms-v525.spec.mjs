@@ -351,6 +351,8 @@ test('V53.0 low-privilege roles cannot open settings',async({page})=>{
 test('V53.0 admin and CMS navigation share six labels',async({page})=>{
  await mockCms(page);
  await page.goto(origin+'/admin/content?kind=site');
+ await expect(page.locator('#cms-role')).toContainText('最高管理员');
+ await expect(page.locator('#cms-settings-open')).toBeVisible();
  const cms=await page.locator('.atlas-v530-nav').innerText();
  const admin=readFileSync(resolve(root,'frontend/admin.html'),'utf8');
  const adminNav=admin.split('atlas-v530-nav',2)[1].split('</nav>',1)[0];
