@@ -332,7 +332,7 @@ function updateGallery(gallery){
 }
 function syncGalleryLabels(){
  const gallery=galleryValue(),input=$('#field-gallery');if(!input)return;
- for(const row of $('[data-gallery-index]')){
+ for(const row of document.querySelectorAll('[data-gallery-index]')){
   const idx=Number(row.dataset.galleryIndex);
   if(gallery[idx])gallery[idx].label=row.querySelector('[data-gallery-label]')?.value.trim().slice(0,80)||'';
  }
