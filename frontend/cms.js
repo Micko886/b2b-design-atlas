@@ -227,7 +227,12 @@ function drawItems(){
    +stateClasses(item.status)+'</button></div>';
  }).join(''):'<div class="cms-loading">没有符合条件的内容。可清除筛选或创建新内容。</div>';
  $('#cms-count').textContent=items.length+' ITEMS';
- $('#cms-browser-footer').textContent=items.length+' / '+state.items.length+' 条记录';updateBulkToolbar();
+ $('#cms-browser-footer').textContent=items.length+' / '+state.items.length+' 条记录';
+  // Bulk actions are progressive enhancement: never discard a loaded content list if toolbar rendering fails.
+  try{updateBulkToolbar()}catch(error){
+    console.error('[CMS] bulk toolbar rendering failed; content list remains available',error);
+    const toolbar=$('#cms-bulk-toolbar');if(toolbar)toolbar.hidden=true;
+  }
 }
 async function loadKind(keep=false){
  showKind();
@@ -1504,7 +1509,7 @@ function boot(){
      }
      await loadKind();
      if(routeParams.get('workspace')==='schedule'&&can('view'))await openScheduleQueue();
-   }catch(e){setNotice('无法读取后台内容：'+e.message);$('#cms-items').innerHTML='<div class="cms-error">'+h(e.message)+'</div>'}
+   }catch(e){console.error('[CMS] initial content load failed',e);setNotice('无法读取后台内容：'+e.message);$('#cms-items').innerHTML='<div class="cms-error">'+h(e.message)+'</div>'}
  })();
 }
 boot();
