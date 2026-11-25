@@ -1680,7 +1680,7 @@ async function openReviewRecord(kind,slug){
 }
 async function openScheduleQueue(){
  if(!can('view'))return;
- markWorkspace('schedule');
+ markWorkspace('operations');
  $('#cms-schedules-dialog').showModal();
  await refreshSchedules();
 }
