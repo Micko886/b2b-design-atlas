@@ -337,8 +337,8 @@ def register_cms_routes(app: FastAPI):
         if len(contents)>1500000 or not contents:
             user_auth.error(413,"单张图片最大 1.5MB。")
         detected = (
-            "image/png" if contents.startswith(b"\\x89PNG\\r\\n\\x1a\\n") else
-            "image/jpeg" if contents.startswith(b"\\xff\\xd8\\xff") and contents.endswith(b"\\xff\\xd9") else
+            "image/png" if contents.startswith(b"\x89PNG\r\n\x1a\n") else
+            "image/jpeg" if contents.startswith(b"\xff\xd8\xff") and contents.endswith(b"\xff\xd9") else
             "image/webp" if contents[:4]==b"RIFF" and contents[8:12]==b"WEBP" else None
         )
         if detected!=data.mime:
