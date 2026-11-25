@@ -10,7 +10,7 @@ const kinds={site:{title:'网站内容',label:'Websites',icon:'globe',public:'/a
  module:{title:'页面模块',label:'Sections',icon:'layers',public:'/api/module-library',url:'/sections/'},
  pattern:{title:'设计模式',label:'Patterns',icon:'shapes',public:'/assets/patterns.json',url:'/patterns/'},
  article:{title:'研究文章',label:'Insights',icon:'article',public:'/assets/articles.json',url:'/insights/'}};
-const state={kind:new URLSearchParams(location.search).get('kind')||'site',items:[],records:{},selected:null,csrf:'',user:null,dirty:false,q:'',status:'',busy:false,selectedSlugs:new Set(),taxonomy:{},tagSuggestions:[]};
+const state={kind:new URLSearchParams(location.search).get('kind')||'site',items:[],records:{},selected:null,csrf:'',user:null,dirty:false,q:'',status:'',busy:false,selectedSlugs:new Set(),taxonomy:{},tagSuggestions:[],mediaTarget:null};
 if(!kinds[state.kind])state.kind='site';
 const fieldSpecs={
  site:[
@@ -179,7 +179,9 @@ function takeFields(){
      title:block.querySelector('[data-v51-title]').value.trim(),
      paragraphs:block.querySelector('[data-v51-paragraphs]').value.split(new RegExp(String.fromCharCode(10)+'\\s*'+String.fromCharCode(10))).map(x=>x.trim()).filter(Boolean),
      bullets:block.querySelector('[data-v51-bullets]').value.split(String.fromCharCode(10)).map(x=>x.trim()).filter(Boolean),
-     callout:block.querySelector('[data-v51-callout]').value.trim()
+     callout:block.querySelector('[data-v51-callout]').value.trim(),
+     image:block.querySelector('[data-v513-image]').value.trim(),
+     image_caption:block.querySelector('[data-v513-caption]').value.trim()
    }));
    if(!base.sections.length)throw Error('请至少保留一个文章章节。');
  }
@@ -289,6 +291,9 @@ function articleSection(section={},index=0,editable=true){
  +'<label>正文段落 <small>空行分隔不同段落</small><textarea data-v51-paragraphs rows="7"'+disabled+' placeholder="每段正文直接输入，不再编写 JSON">'+h((section.paragraphs||[]).join('\n\n'))+'</textarea></label>'
  +'<label>要点列表 <small>每行一个要点</small><textarea data-v51-bullets rows="3"'+disabled+' placeholder="要点 1\n要点 2">'+h((section.bullets||[]).join('\n'))+'</textarea></label>'
  +'<label>重点提示<textarea data-v51-callout rows="2"'+disabled+' placeholder="可选的重点结论">'+h(section.callout||'')+'</textarea></label>'
+ +'<div class="cms-v513-image-row"><label>章节配图<input data-v513-image value="'+h(section.image||'')+'" readonly placeholder="尚未选择图片"></label>'
+ +(editable?'<button type="button" data-v513-pick-image>选择图片</button><button type="button" data-v513-clear-image>移除配图</button>':'')+'</div>'
+ +'<label>配图说明<input data-v513-caption value="'+h(section.image_caption||'')+'" maxlength="240"'+disabled+' placeholder="填写图片来源或说明"></label>'
  +'</div>';
 }
 function articleStudio(v,editable){
@@ -307,6 +312,11 @@ function articleStudio(v,editable){
  +'<p id="cms-v512-preview-error" hidden role="alert"></p><div id="cms-v512-preview-content"></div></section></section>';
 }
 // V51.2: Private, unsaved preview. All user content is HTML-escaped.
+function sectionImageMarkup(s){
+ if(!s.image||!/^\/api\/media\/[0-9a-f-]{36}$/.test(s.image))return '';
+ return '<figure class="cms-v513-figure"><img src="'+h(s.image)+'" alt="'+h(s.image_caption||s.title||'配图')+'">'
+   +(s.image_caption?'<figcaption>'+h(s.image_caption)+'</figcaption>':'')+'</figure>';
+}
 function previewMarkup(article){
  const sections=Array.isArray(article.sections)?article.sections:[];
  const tags=Array.isArray(article.tags)?article.tags:[];
@@ -319,6 +329,7 @@ function previewMarkup(article){
    +sections.map((s,i)=>'<section><h2>'+h(s.title||'章节 '+(i+1))+'</h2>'
      +(Array.isArray(s.paragraphs)?s.paragraphs:[]).map(p=>'<p>'+h(p)+'</p>').join('')
      +(Array.isArray(s.bullets)&&s.bullets.length?'<ul>'+s.bullets.map(x=>'<li>'+h(x)+'</li>').join('')+'</ul>':'')
+     +sectionImageMarkup(s)
      +(s.callout?'<blockquote>'+h(s.callout)+'</blockquote>':'')+'</section>').join('')
    +'</article>';
 }
@@ -383,7 +394,7 @@ async function refreshMedia(){
      +'<strong title="'+h(item.file_name)+'">'+h(item.file_name)+'</strong>'
      +'<small>'+(item.byte_size/1024).toFixed(0)+' KB · '+h(item.created_at.slice(0,10))+'</small>'
      +'<button type="button" data-v51-copy-media="'+h(item.url)+'">复制图片地址</button>'
-     +(state.selected?.kind==='article'?'<button type="button" data-v51-use-media="'+h(item.url)+'">设为当前文章封面</button>':'')
+     +(state.mediaTarget?'<button type="button" data-v513-use-inline="'+h(item.url)+'">插入当前章节</button>':state.selected?.kind==='article'?'<button type="button" data-v51-use-media="'+h(item.url)+'">设为当前文章封面</button>':'')
      +'<button type="button" data-v51-delete-media="'+h(item.id)+'" class="cms-v51-delete">删除图片</button></div>').join('')
      :'<p class="cms-loading">暂无上传图片。可以上传 JPG、PNG 或 WebP。</p>';
  }catch(e){message(e.message,false)}
@@ -427,6 +438,12 @@ function boot(){
    if(e.target.closest('[data-v51-add]')){const root=$('#cms-v51-sections');root.insertAdjacentHTML('beforeend',articleSection({},root.children.length,true));reindexSections();state.dirty=true;refreshArticlePreview();return}
    if(e.target.closest('[data-v51-remove]')){const blocks=document.querySelectorAll('#cms-v51-sections [data-v51-section]');if(blocks.length<=1){message('至少保留一个章节',false);return}e.target.closest('[data-v51-section]').remove();reindexSections();state.dirty=true;return}
    const move=e.target.closest('[data-v51-move]');if(move){const block=move.closest('[data-v51-section]'),target=Number(move.dataset.v51Move)<0?block.previousElementSibling:block.nextElementSibling;if(target){if(Number(move.dataset.v51Move)<0)target.before(block);else target.after(block);reindexSections();state.dirty=true}return}
+   const useInline=e.target.closest('[data-v513-use-inline]');
+   if(useInline&&state.mediaTarget){
+     state.mediaTarget.querySelector('[data-v513-image]').value=useInline.dataset.v513UseInline;
+     state.mediaTarget=null;$('#cms-media-dialog').close();state.dirty=true;refreshArticlePreview();
+     message('图片已加入章节，保存草稿后生效');return;
+   }
    const deleteMedia=e.target.closest('[data-v51-delete-media]');
    if(deleteMedia){
      if(!confirm('确定删除这张媒体图片？仍被草稿或文章引用的图片会受到保护。'))return;
@@ -434,9 +451,13 @@ function boot(){
      catch(err){message(err.message,false)}
      return;
    }
+   const pickInline=e.target.closest('[data-v513-pick-image]');
+   if(pickInline){state.mediaTarget=pickInline.closest('[data-v51-section]');await openMedia();return}
+   const clearInline=e.target.closest('[data-v513-clear-image]');
+   if(clearInline){clearInline.closest('[data-v51-section]').querySelector('[data-v513-image]').value='';state.dirty=true;refreshArticlePreview();return}
    const useMedia=e.target.closest('[data-v51-use-media]');if(useMedia){const target=$('#field-cover_image');if(target){target.value=useMedia.dataset.v51UseMedia;state.dirty=true;$('#cms-media-dialog').close();message('封面已选择，请保存草稿')}return}
    const copy=e.target.closest('[data-v51-copy-media]');if(copy){try{await navigator.clipboard.writeText(location.origin+copy.dataset.v51CopyMedia);message('图片地址已复制')}catch{message('请从媒体列表中手动复制地址',false)}return}
-   if(e.target.closest('[data-media-close]')){$('#cms-media-dialog').close();return}
+   if(e.target.closest('[data-media-close]')){state.mediaTarget=null;$('#cms-media-dialog').close();return}
    if(e.target.closest('[data-dialog-close]')){$('#cms-create-dialog').close();return}
  });
  document.addEventListener('input',e=>{if(e.target.closest('#cms-edit-form')){state.dirty=true;refreshArticlePreview()}});
@@ -446,7 +467,7 @@ function boot(){
  $('#cms-export').addEventListener('click',exportCms);
  $('#cms-new').addEventListener('click',()=>{updateCreateFields();$('#cms-create-dialog').showModal()});
  $('#cms-create-kind').addEventListener('change',updateCreateFields);
- $('#cms-media-open').addEventListener('click',openMedia);
+ $('#cms-media-open').addEventListener('click',()=>{state.mediaTarget=null;openMedia()});
  $('#cms-media-file').addEventListener('change',e=>{uploadMedia(e.target.files);e.target.value=''});
  $('#cms-bulk-run').addEventListener('click',runBulk);
  $('#cms-select-all').addEventListener('change',e=>{for(const item of listFiltered()){if(item.status==='source')continue;if(e.target.checked)state.selectedSlugs.add(item.slug);else state.selectedSlugs.delete(item.slug)}drawItems()});
