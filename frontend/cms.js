@@ -276,12 +276,15 @@ async function loadKind(keep=false){
  if(keep&&state.selected){const target=items.find(x=>x.slug===state.selected.slug);if(target)await selectItem(target.slug)}
 }
 function formField(spec,values,editable){
- const [name,label,type,required]=spec,value=values[name]??(type==='json'?[]:type==='bool'?false:'');
+ const [name,label,type,required]=spec,value=values[name]??((type==='json'||type==='lines')?[]:type==='bool'?false:'');
  const inputName='field-'+name,disabled=editable?'':' disabled';
  const mediaField=(name==='cover_image'||name==='screenshot_url')&&editable&&can('media');
  const attr='id="'+inputName+'" data-field="'+h(name)+'" data-type="'+h(type)+'"';
  let input='';
- if(name==='category'&&state.kind==='article'){
+ if(name==='sector'&&state.kind==='site'&&type==='text'){
+   input='<input '+attr+disabled+' list="cms-site-sector-options" type="text" value="'+h(value)+'"'+(required?' required':'')+' placeholder="例如 工业制造">';
+ }
+ else if(name==='category'&&state.kind==='article'){
    const items=state.categoryRecords.length?state.categoryRecords.map(x=>({id:x.id,name:x.name})):
      (state.taxonomy.article||[]).map(id=>({id,name:id}));
    if(value&&!items.some(x=>x.id===value))items.unshift({id:value,name:value+'（待核对）'});
@@ -292,9 +295,54 @@ function formField(spec,values,editable){
  else if(type==='json'){
    const pretty=typeof value==='string'?value:JSON.stringify(value,null,2);
    input='<textarea '+attr+disabled+' rows="7" spellcheck="false">'+h(pretty)+'</textarea>';
- }else if(type==='long')input='<textarea '+attr+disabled+' rows="4"'+(required?' required':'')+'>'+h(value)+'</textarea>';
+ }else if(type==='lines')input='<textarea '+attr+disabled+' rows="4" placeholder="每行写一条设计亮点">'+h(Array.isArray(value)?value.join('\n'):String(value||''))+'</textarea>';
+ else if(type==='long')input='<textarea '+attr+disabled+' rows="4"'+(required?' required':'')+'>'+h(value)+'</textarea>';
  else input='<input '+attr+(name==='category'&&state.kind==='article'?' list="v51-categories"':'')+disabled+' type="'+(type==='url'?'url':type==='number'?'number':'text')+'" value="'+h(value)+'"'+(required?' required':'')+'>';
  return '<div class="cms-field" data-json="'+(type==='json')+'" data-multiline="'+(type==='long')+'"><label for="'+inputName+'">'+h(label)+(required?' *':'')+'</label>'+input+(mediaField?'<button type="button" class="cms-field-media-pick" data-editor-pick-media="'+h(inputName)+'">从媒体库选择或上传图片</button>':'')+'</div>';
+}
+// V52.1 · A small, beginner-friendly site editor. Keep source fields, not a JSON textarea.
+function siteEditorForm(values,editable){
+ const disabled=editable?'':' disabled';
+ const basic=[
+   ['name','网站名称','text',true],
+   ['url','网站网址','url',true],
+   ['sector','所属行业','text',true],
+   ['summary','案例简介','long',true]
+ ];
+ const extra=[
+   ['focus','业务方向','text'],
+   ['model','业务模式','text'],
+   ['takeaway','值得借鉴的设计','long'],
+   ['visual_style','视觉风格','text'],
+   ['domain','网站域名','text'],
+   ['design_strengths','设计亮点（每行一条）','lines'],
+   ['featured','设为精选案例','bool']
+ ];
+ const raw=String(values.screenshot_url||'');
+ const picture=/^\/screenshots\/[a-zA-Z0-9_./-]{1,200}$/.test(raw)&&!raw.includes('..')||
+   /^\/api\/media\/[0-9a-f-]{36}$/.test(raw);
+ return '<section class="cms-easy-intro"><h3>编辑网站案例</h3><p>只需修改下面的内容。保存后先存在后台，审核发布才会更新前台。</p></section>'
+ +'<div class="cms-easy-layout"><div class="cms-easy-fields">'
+ +basic.map(spec=>formField(spec,values,editable)).join('')
+ +'<datalist id="cms-site-sector-options"><option value="工业制造"><option value="工业软件"><option value="机器人"><option value="新能源"><option value="医疗科技"><option value="航空航天"></datalist>'
+ +'</div><aside class="cms-easy-visual"><strong>案例封面</strong><p>这张图片会用于网站案例展示。</p>'
+ +'<div class="cms-easy-shot"><img id="cms-site-image" src="'+(picture?h(raw):'')+'" alt="案例封面预览"'+(picture?'':' hidden')+'>'
+ +'<div id="cms-site-image-empty"'+(picture?' hidden':'')+'>还没有设置封面图片</div></div>'
+ +'<input id="field-screenshot_url" data-field="screenshot_url" data-type="text" type="hidden" value="'+h(raw)+'">'
+ +(editable&&can('media')?'<button type="button" class="cms-easy-upload" data-editor-pick-media="field-screenshot_url">上传或更换图片</button>':'')
+ +'<small>支持 JPG、PNG、WebP；已有图片也可从媒体库选用。</small></aside></div>'
+ +'<details class="cms-easy-advanced"><summary>更多设置（可选）<span>业务信息、设计亮点、精选展示</span></summary>'
+ +'<div class="cms-easy-extra">'+extra.map(spec=>formField(spec,values,editable)).join('')+'</div></details>';
+}
+function syncSiteImage(){
+ if(state.selected?.kind!=='site')return;
+ const field=$('#field-screenshot_url'),img=$('#cms-site-image'),empty=$('#cms-site-image-empty');
+ if(!field||!img||!empty)return;
+ const value=field.value.trim();
+ const safe=(/^\/screenshots\/[a-zA-Z0-9_./-]{1,200}$/.test(value)&&!value.includes('..'))||
+   /^\/api\/media\/[0-9a-f-]{36}$/.test(value);
+ img.hidden=!safe;empty.hidden=Boolean(safe);
+ if(safe&&img.getAttribute('src')!==value)img.src=value;
 }
 function reviewBrief(item){
  if(mode!=='admin'||item.status!=='review')return '';
@@ -371,7 +419,7 @@ async function runSeoAudit(){
 function renderForm(item){
  const isPreview=mode==='preview',values=item.payload||{},editable=can('edit');
  const specs=fieldSpecs[item.kind];
- const topbar='<div class="cms-edit-topbar"><button type="button" class="cms-edit-back" data-close-editor>← 返回内容列表</button><span class="cms-edit-context">'+h(kinds[item.kind].title)+' / '+h(item.slug)+'</span>'+(editable?'<div class="cms-edit-quick-actions"><button type="button" data-editor-save>保存草稿</button><button type="button" data-editor-submit '+(item.status==='draft'?'':'disabled')+'>提交审核</button></div>':'')+'</div>';
+ const topbar='<div class="cms-edit-topbar"><button type="button" class="cms-edit-back" data-close-editor>← 返回列表</button><span class="cms-edit-context">'+h(kinds[item.kind].title)+' / '+h(item.slug)+'</span>'+(editable?'<div class="cms-edit-quick-actions"><button type="button" data-editor-save>保存修改</button><button type="button" data-editor-submit '+(item.status==='draft'?'':'disabled')+'>提交审核</button></div>':'')+'</div>';
  const content='<div class="cms-editor-title"><div><div class="section-eyebrow">EDIT / '+kinds[item.kind].label.toUpperCase()+'</div><h2>'+h(values.name||values.title||item.slug)+'</h2><p>URL 标识：'+h(item.slug)+' · '+h(item.source==='cms'?'CMS 内容记录':'原始内容资料')+'</p></div>'
   +'<a target="_blank" rel="noopener" href="'+h(kinds[item.kind].url+item.slug)+'">'+icon('arrow-up-right')+' 查看前台</a></div>';
  const s=item.status;
@@ -379,14 +427,14 @@ function renderForm(item){
  const index=s==='source'||s==='public'?-1:statuses.indexOf(s);
  const steps='<div class="cms-steps">'+['内容准备','保存草稿','提交审核','正式发布'].map((title,i)=>'<span class="cms-step '+(i===index+1?'current':i<index+1?'passed':'')+'"><span>'+String(i+1).padStart(2,'0')+'</span>'+title+'</span>'+(i<3?'<span class="cms-step-line"></span>':'')).join('')+'</div>';
  const meta='<div class="cms-editor-meta">'+stateClasses(s)+'<span>修订版本 <strong>v'+item.revision+'</strong></span><span>内容来源：'+h(item.source==='cms'?'PostgreSQL CMS':'项目内容文件')+'</span>'+(item.published_at?'<span>发布时间：'+h(item.published_at.slice(0,16))+'</span>':'')+'</div>';
- const mediaHint=mode==='admin'&&can('media')?'<div class="cms-editor-media-hint"><span>需要上传或更换图片？</span><button type="button" data-editor-open-media>打开媒体库 / 上传图片</button></div>':'';
- const form='<div class="cms-editor-content">'+mediaHint+(isPreview?'<div class="cms-readonly-banner">当前是公开设计预览。字段来自公开目录，无法在这里保存或发布。正式操作请使用管理员账户。</div>':item.source==='repository'?'<div class="cms-readonly-banner">这条资料来自现有案例库。修改字段或首次保存后，将生成可审核的独立草稿；未审核的内容不会影响前台。</div>':'')+
- '<form id="cms-edit-form" class="cms-form"><div class="cms-form-group-label"><span>编辑内容 · 标题、图片与正文</span><small>修改后自动保存草稿，正式发布需审核</small></div>'
- +(editable?'<div class="cms-autosave-strip"><span class="cms-autosave-led"></span><span id="cms-autosave-status" role="status" aria-live="polite">已加载 · 修改后 3 秒自动保存草稿</span><button type="button" data-autosave-retry>立即保存</button></div>':'')
- +specs.filter(spec=>!(item.kind==='article'&&['tags','takeaways','sections'].includes(spec[0]))).map(spec=>formField(spec,values,editable)).join('')
+ const mediaHint=item.kind==='site'?'':mode==='admin'&&can('media')?'<div class="cms-editor-media-hint"><span>需要上传或更换图片？</span><button type="button" data-editor-open-media>打开媒体库 / 上传图片</button></div>':'';
+ const form='<div class="cms-editor-content">'+mediaHint+(isPreview?'<div class="cms-readonly-banner">当前是公开设计预览。字段来自公开目录，无法在这里保存或发布。正式操作请使用管理员账户。</div>':item.source==='repository'&&item.kind!=='site'?'<div class="cms-readonly-banner">这条资料来自现有案例库。修改字段或首次保存后，将生成可审核的独立草稿；未审核的内容不会影响前台。</div>':'')+
+ '<form id="cms-edit-form" class="cms-form">'+(item.kind==='site'?'':'<div class="cms-form-group-label"><span>编辑内容 · 标题、图片与正文</span><small>修改后自动保存草稿，正式发布需审核</small></div>')
+ +(editable?'<div class="cms-autosave-strip"><span class="cms-autosave-led"></span><span id="cms-autosave-status" role="status" aria-live="polite">修改后自动保存 · 也可以点击右上角「保存修改」</span>'+(item.kind==='site'?'':'<button type="button" data-autosave-retry>立即保存</button>')+'</div>':'')
+ +(item.kind==='site'?siteEditorForm(values,editable):specs.filter(spec=>!(item.kind==='article'&&['tags','takeaways','sections'].includes(spec[0]))).map(spec=>formField(spec,values,editable)).join(''))
  +(item.kind==='article'?articleStudio(values,editable):'')
- +'<details class="cms-json-advanced"><summary>高级 · 查看完整 JSON 结构</summary><div class="cms-field" data-json="true"><label>只读数据结构</label><textarea disabled spellcheck="false">'+h(JSON.stringify(values,null,2))+'</textarea></div></details>'
- +(editable?'<div class="cms-form-actions">'
+ +(item.kind==='site'?'':'<details class="cms-json-advanced"><summary>高级 · 查看完整 JSON 结构</summary><div class="cms-field" data-json="true"><label>只读数据结构</label><textarea disabled spellcheck="false">'+h(JSON.stringify(values,null,2))+'</textarea></div></details>')
+ +(editable&&item.kind!=='site'?'<div class="cms-form-actions">'
   +'<button class="primary" type="submit">'+icon('save')+' 保存草稿</button>'
   +'<button type="button" data-transition="submit" '+(s!=='draft'?'disabled':'')+'>'+icon('check')+' 提交审核</button>'
   +'<span class="cms-inline-hint">提交审核后才允许审核员发布</span></div>':'')
@@ -421,7 +469,7 @@ const history=item.history||[];
   +'<button type="button" data-editor-tab="review" role="tab">审核与发布</button>'
   +'<button type="button" data-editor-tab="history" role="tab">版本记录</button></div>';
  const seoPanel=item.kind==='article'?seoStudio(values):'';
- root.innerHTML=topbar+content+steps+meta+tabs
+ root.innerHTML=topbar+content+(item.kind==='site'?'':steps)+meta+tabs
   +'<div data-editor-pane="content">'+form+'</div>'
   +(item.kind==='article'?'<div data-editor-pane="seo" hidden>'+seoPanel+'</div>':'')
   +'<div data-editor-pane="review" hidden>'+reviewBrief(item)+reviewActions
@@ -453,7 +501,8 @@ function takeFields(){
    const name=el.dataset.field,type=el.dataset.type,value=el.value;
    if(type==='json'){
      try{base[name]=JSON.parse(value)}catch{throw Error('「'+name+'」需要填写有效 JSON。')}
-   }else if(type==='bool')base[name]=value==='true';
+   }else if(type==='lines')base[name]=value.split('\n').map(x=>x.trim()).filter(Boolean);
+   else if(type==='bool')base[name]=value==='true';
    else if(type==='number')base[name]=value===''?0:Number(value);
    else base[name]=value.trim();
  }
@@ -967,7 +1016,7 @@ async function uploadMedia(files){
  await refreshMedia();
  if(uploaded===1&&lastUrl&&state.mediaField){
    const target=document.getElementById(state.mediaField);
-   if(target){target.value=lastUrl;state.mediaField=null;$('#cms-media-dialog').close();markDraftDirty();refreshArticlePreview();message('图片已关联到当前字段，请保存草稿')}
+   if(target){target.value=lastUrl;state.mediaField=null;$('#cms-media-dialog').close();markDraftDirty();syncSiteImage();refreshArticlePreview();message('图片已关联到当前字段，请保存草稿')}
  }
  if(uploaded===1&&lastUrl&&state.mediaTarget){
    const target=state.mediaTarget.querySelector('[data-block-image],[data-v513-image]');
@@ -1455,7 +1504,7 @@ function boot(){
    if(pickInline){state.mediaField=null;state.mediaTarget=pickInline.closest('[data-v51-section]');await openMedia();return}
    const clearInline=e.target.closest('[data-v513-clear-image]');
    if(clearInline){clearInline.closest('[data-v51-section]').querySelector('[data-v513-image]').value='';markDraftDirty();refreshArticlePreview();return}
-   const useMedia=e.target.closest('[data-v51-use-media]');if(useMedia){const target=state.mediaField?document.getElementById(state.mediaField):null;if(target){target.value=useMedia.dataset.v51UseMedia;state.mediaField=null;markDraftDirty();refreshArticlePreview();$('#cms-media-dialog').close();message('图片已选择，请保存草稿')}return}
+   const useMedia=e.target.closest('[data-v51-use-media]');if(useMedia){const target=state.mediaField?document.getElementById(state.mediaField):null;if(target){target.value=useMedia.dataset.v51UseMedia;state.mediaField=null;markDraftDirty();syncSiteImage();refreshArticlePreview();$('#cms-media-dialog').close();message('图片已选择，请保存草稿')}return}
    const copy=e.target.closest('[data-v51-copy-media]');if(copy){try{await navigator.clipboard.writeText(location.origin+copy.dataset.v51CopyMedia);message('图片地址已复制')}catch{message('请从媒体列表中手动复制地址',false)}return}
    if(e.target.closest('[data-media-close]')){state.mediaTarget=null;state.mediaField=null;$('#cms-media-dialog').close();return}
    if(e.target.closest('[data-dialog-close]')){$('#cms-create-dialog').close();return}
