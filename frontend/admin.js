@@ -255,7 +255,7 @@
   function renderTraffic(d){
     state.traffic=d;
     setText('#atlas-traffic-summary','已统计 '+d.since+' 至 '+d.through+'（UTC） · '+d.collected_since);
-    $('[data-traffic-days]').forEach(b=>{b.classList.toggle('active',Number(b.dataset.trafficDays)===state.trafficDays);b.setAttribute('aria-pressed',String(Number(b.dataset.trafficDays)===state.trafficDays))});
+    $$('[data-traffic-days]').forEach(b=>{b.classList.toggle('active',Number(b.dataset.trafficDays)===state.trafficDays);b.setAttribute('aria-pressed',String(Number(b.dataset.trafficDays)===state.trafficDays))});
     const t=d.totals||{};
     const stats=[
       ['page_views','浏览次数',state.trafficDays+' 天真实记录','globe'],
