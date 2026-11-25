@@ -1116,3 +1116,5 @@ body{color:var(--ink);background:#fff;font-family:Inter,"Noto Sans CJK SC",ui-sa
 @media(max-width:1120px){.discovery-advanced-fields{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:790px){.discovery-advanced-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.discovery-advanced>summary small{display:none}}
 @media(max-width:480px){.discovery-advanced-inner{padding:12px}.discovery-advanced-fields{grid-template-columns:1fr}.discovery-advanced-fields select{width:100%}.discovery-active>button{max-width:100%}}
+
+.insight-inline-figure{margin:28px 0}.insight-inline-figure img{display:block;max-width:100%;width:100%;height:auto;max-height:680px;object-fit:contain;border-radius:12px}.insight-inline-figure figcaption{font-size:12px;line-height:1.7;color:var(--muted);margin-top:9px;text-align:center}
