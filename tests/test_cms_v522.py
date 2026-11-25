@@ -40,10 +40,10 @@ class FocusedEditorContracts(unittest.TestCase):
         self.assertIn("body.cms-editor-active .atlas-v521-page-head",self.css)
         self.assertIn("body.cms-editor-active .atlas-v521-quicknav",self.css)
         self.assertIn(".cms-easy-mode .cms-easy-layout",self.css)
-        self.assertIn("item.kind==='site'?siteHeader:content+steps+meta",self.js)
-        self.assertIn("item.kind==='site'?'':'<div class=\"cms-form-group-label\"",self.js)
+        self.assertIn("root.innerHTML=topbar+siteHeader+tabs",self.js)
+        self.assertIn("function simpleEditorForm(kind,values,editable)",self.js)
         self.assertIn("item.kind==='site'?siteEditorForm(values,editable)",self.js)
-        self.assertIn("item.kind==='site'?'':'<details class=\"cms-json-advanced\"",self.js)
+        self.assertNotIn("root.innerHTML=topbar+(item.kind==='site'?siteHeader:content+steps+meta)",self.js)
         self.assertIn("type==='lines')base[name]=value.split('\\n')",self.js)
 
     def test_website_auto_save_and_status_update_remain_connected(self):
