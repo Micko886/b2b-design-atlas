@@ -8,8 +8,8 @@
   <title>运营总览 · B2B Atlas Control Room</title>
   <meta name="description" content="B2B Atlas 内容运营工作台——公开内容总览与管理员运营数据。">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%232a55e8'/%3E%3Cpath d='M10 22l10-13 10 13-10 9z' fill='none' stroke='white' stroke-width='3'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="/assets/admin.css?v=51.12">
-  <script src="/assets/admin.js?v=51.12" defer></script>
+  <link rel="stylesheet" href="/assets/admin.css?v=51.21">
+  <script src="/assets/admin.js?v=51.21" defer></script>
 </head>
 <body data-admin-mode="__ADMIN_MODE__">
 <a href="#main" class="sr-only skip-link">跳转到内容</a>
@@ -47,39 +47,42 @@
   <div class="sidebar-brand">
    <div class="brand-symbol" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
    <div class="brand-wordmark"><strong>B2B Atlas</strong><small>CONTROL ROOM</small></div>
-   <span class="brand-version">V51.12</span>
+   <span class="brand-version">V51.21</span>
   </div>
   <div class="workspace-chip"><span class="workspace-chip-icon">A</span><span><strong>Atlas Workspace</strong><small>Content operations</small></span><svg class="icon"><use href="#i-chevron-right"></use></svg></div>
-  <nav class="side-nav" aria-label="工作台导航">
-   <span class="nav-group-label">WORKSPACE <span>01</span></span>
-   <a class="side-link active" href="#overview" data-nav-section="overview"><svg class="icon"><use href="#i-grid"></use></svg><span>运营总览</span><span class="nav-indicator"></span></a>
-   <a class="side-link" id="open-content-studio" href="/admin/content/preview"><svg class="icon"><use href="#i-layers"></use></svg><span>内容管理</span></a>
-   <a class="side-link" href="#distribution" data-nav-section="distribution"><svg class="icon"><use href="#i-chart"></use></svg><span>内容分析</span></a>
-   <a class="side-link" href="#traffic" data-nav-section="traffic"><svg class="icon"><use href="#i-chart"></use></svg><span>真实运营分析</span><span class="nav-dot"></span></a>
-   <a class="side-link" href="#quality" data-nav-section="quality"><svg class="icon"><use href="#i-quality"></use></svg><span>研究质检</span><span class="nav-dot"></span></a>
-   <a class="side-link" href="#review-queue" data-nav-section="review-queue"><svg class="icon"><use href="#i-filter"></use></svg><span>内容检查</span></a>
-   <span class="nav-group-label nav-group-later">PUBLIC LIBRARY <span>02</span></span>
-   <a class="side-link secondary" href="/websites" target="_blank" rel="noopener"><svg class="icon"><use href="#i-globe"></use></svg><span>Websites</span><svg class="icon nav-ext"><use href="#i-arrow-up-right"></use></svg></a>
-   <a class="side-link secondary" href="/sections" target="_blank" rel="noopener"><svg class="icon"><use href="#i-layers"></use></svg><span>Sections</span><svg class="icon nav-ext"><use href="#i-arrow-up-right"></use></svg></a>
-   <a class="side-link secondary" href="/patterns" target="_blank" rel="noopener"><svg class="icon"><use href="#i-shapes"></use></svg><span>Patterns</span><svg class="icon nav-ext"><use href="#i-arrow-up-right"></use></svg></a>
-   <a class="side-link secondary" href="/insights" target="_blank" rel="noopener"><svg class="icon"><use href="#i-article"></use></svg><span>Insights</span><svg class="icon nav-ext"><use href="#i-arrow-up-right"></use></svg></a>
+  <nav class="side-nav atlas-v521-nav" aria-label="统一管理导航">
+   <span class="nav-group-label">主要工作区 <span>WORKSPACE</span></span>
+   <a class="side-link active" href="#overview" data-nav-section="overview"><svg class="icon"><use href="#i-grid"></use></svg><span>运营概览</span></a>
+   <a class="side-link" id="open-content-studio" href="/admin/content"><svg class="icon"><use href="#i-layers"></use></svg><span>内容管理</span></a>
+   <a class="side-link" href="/admin/content?kind=article&status=review"><svg class="icon"><use href="#i-check"></use></svg><span>审核队列</span></a>
+   <a class="side-link" href="/admin/content?workspace=schedule"><svg class="icon"><use href="#i-calendar"></use></svg><span>发布日历</span></a>
+   <a class="side-link" href="#traffic" data-nav-section="traffic"><svg class="icon"><use href="#i-chart"></use></svg><span>数据分析</span></a>
+   <span class="nav-group-label nav-group-later">深入分析 <span>INSIGHTS</span></span>
+   <details class="atlas-v521-settings">
+     <summary class="side-link"><svg class="icon"><use href="#i-filter"></use></svg><span>更多运营报告</span><span class="atlas-settings-chevron">⌄</span></summary>
+     <div class="atlas-v521-tools">
+       <a class="side-link" href="#distribution" data-nav-section="distribution">内容分布</a>
+       <a class="side-link" href="#quality" data-nav-section="quality">研究质量</a>
+       <a class="side-link" href="#review-queue" data-nav-section="review-queue">内容检查</a>
+     </div>
+   </details>
+   <a class="side-link atlas-v521-front" href="/" target="_blank" rel="noopener"><svg class="icon"><use href="#i-arrow-up-right"></use></svg><span>查看网站前台</span></a>
   </nav>
-  <div class="sidebar-bottom">
-   <div class="sidebar-help"><div class="sidebar-help-icon"><svg class="icon"><use href="#i-sparkle"></use></svg></div><strong>让好内容持续增长。</strong><p>每一份研究资料都有来处，也有持续完善的空间。</p><a href="#quality" data-nav-section="quality">查看内容质量 <span>↗</span></a></div>
-   <div class="sidebar-account"><div class="account-avatar" id="sidebar-avatar">A</div><div><strong id="sidebar-user">Atlas Workspace</strong><small id="sidebar-user-role">只读运营预览</small></div><div class="sidebar-account-dot"></div></div>
-  </div>
+  <div class="sidebar-bottom atlas-v521-sidebar-bottom"><div class="sidebar-account">
+    <div class="account-avatar" id="sidebar-avatar">A</div><div><strong id="sidebar-user">Atlas Workspace</strong><small id="sidebar-user-role">正在验证身份</small></div><div class="sidebar-account-dot"></div>
+   </div><p class="atlas-v521-footnote">数据来自线上服务，后台需要管理员登录。</p></div>
  </aside>
  <div id="sidebar-backdrop" class="sidebar-backdrop" hidden></div>
  <div class="main-frame">
   <header class="masthead">
-   <div class="masthead-left"><button class="icon-button mobile-trigger" id="mobile-nav" type="button" aria-label="打开后台导航" aria-expanded="false"><svg class="icon"><use href="#i-menu"></use></svg></button><span class="masthead-breadcrumb">Workspace</span><svg class="icon breadcrumb-arrow"><use href="#i-chevron-right"></use></svg><strong>Overview</strong></div>
+   <div class="masthead-left"><button class="icon-button mobile-trigger" id="mobile-nav" type="button" aria-label="打开后台导航" aria-expanded="false"><svg class="icon"><use href="#i-menu"></use></svg></button><span class="masthead-breadcrumb">Control Room</span><svg class="icon breadcrumb-arrow"><use href="#i-chevron-right"></use></svg><strong>运营概览</strong></div>
    <div class="masthead-right">
     <span class="save-state" id="connection-state"><span class="status-led"></span> LIVE CATALOG</span>
     <div class="theme-switch" role="group" aria-label="界面主题">
       <button type="button" data-set-theme="light" aria-label="切换白天模式" aria-pressed="true" title="白天模式"><svg class="icon"><use href="#i-sun"></use></svg><span>白天</span></button>
       <button type="button" data-set-theme="dark" aria-label="切换黑夜模式" aria-pressed="false" title="黑夜模式"><svg class="icon"><use href="#i-moon"></use></svg><span>黑夜</span></button>
     </div>
-    <a class="main-top-avatar" href="/" title="打开 B2B Atlas 前台" aria-label="打开 B2B Atlas 前台">A</a>
+    <a class="atlas-header-account" href="/account">个人账户</a><button type="button" id="admin-logout" class="atlas-v521-logout" hidden>退出登录</button>
    </div>
   </header>
   <main id="main" class="dashboard-content" tabindex="-1">
@@ -153,7 +156,7 @@
      </div>
 
      <div class="atlas-growth-head">
-       <div><span class="section-eyebrow">ACQUISITION / ENGAGEMENT / CONVERSION · V51.12</span>
+       <div><span class="section-eyebrow">ACQUISITION / ENGAGEMENT / CONVERSION · V51.21</span>
          <h2>渠道归因与用户行为</h2><p>按匿名会话追踪引荐来源、UTM 营销活动、浏览深度和已验证的注册收藏转化。</p></div>
        <div class="atlas-growth-actions">
          <label>流量渠道
