@@ -29,6 +29,31 @@ class FocusedEditorContracts(unittest.TestCase):
         self.assertIn("cms-split.cms-editing .cms-browser{display:none}",self.css)
         self.assertIn("cms-split:not(.cms-editing) .cms-editor{display:none}",self.css)
 
+    def test_website_editor_starts_with_fields_and_image_not_dashboard(self):
+        for required in ("function siteEditorForm(values,editable)",
+                         "cms-easy-layout","cms-easy-visual","cms-easy-header",
+                         "cms-easy-advanced","cms-easy-mode",
+                         "document.body.classList.toggle('cms-editor-active'",
+                         "syncSiteTitle()"):
+            with self.subTest(required=required):
+                self.assertIn(required,self.js)
+        self.assertIn("body.cms-editor-active .atlas-v521-page-head",self.css)
+        self.assertIn("body.cms-editor-active .atlas-v521-quicknav",self.css)
+        self.assertIn(".cms-easy-mode .cms-easy-layout",self.css)
+        self.assertIn("item.kind==='site'?siteHeader:content+steps+meta",self.js)
+        self.assertIn("item.kind==='site'?'':'<div class=\"cms-form-group-label\"",self.js)
+        self.assertIn("item.kind==='site'?siteEditorForm(values,editable)",self.js)
+        self.assertIn("item.kind==='site'?'':'<details class=\"cms-json-advanced\"",self.js)
+        self.assertIn("type==='lines')base[name]=value.split('\\n')",self.js)
+
+    def test_website_auto_save_and_status_update_remain_connected(self):
+        self.assertIn("id=\"cms-autosave-status\"",self.js)
+        self.assertIn("cms-easy-save-note",self.js)
+        self.assertIn("function markDraftDirty()",self.js)
+        self.assertIn("persistDraft(true)",self.js)
+        self.assertIn(".cms-easy-header-side .cms-item-state",self.js)
+        self.assertIn("syncSiteImage();refreshArticlePreview()",self.js)
+
     def test_media_file_chooser_is_a_real_button(self):
         self.assertIn('id="cms-media-select"',self.html)
         self.assertIn('id="cms-media-file"',self.html)
