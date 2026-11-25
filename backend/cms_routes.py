@@ -430,6 +430,23 @@ def cleaned(kind,slug,payload):
             if not isinstance(value,str) or (value and not allowed):
                 user_auth.error(422,"截图只能引用站内截图或已上传的媒体图片。")
             if ".." in value:user_auth.error(422,"截图路径不合法。")
+    if kind=="site" and "gallery" in result:
+        gallery=result["gallery"]
+        if not isinstance(gallery,list) or len(gallery)>16:
+            user_auth.error(422,"网站截图最多可添加 16 张。")
+        seen=set()
+        for screenshot in gallery:
+            if not isinstance(screenshot,dict):
+                user_auth.error(422,"页面截图格式不正确。")
+            url=screenshot.get("url")
+            label=screenshot.get("label","")
+            if not isinstance(url,str) or not isinstance(label,str) or len(label)>80:
+                user_auth.error(422,"页面截图标题或地址不正确。")
+            valid=(re.fullmatch(r"/screenshots/[a-zA-Z0-9_./-]{1,200}",url) and ".." not in url) or \
+                  re.fullmatch(r"/api/media/[0-9a-f-]{36}",url)
+            if not valid or url in seen:
+                user_auth.error(422,"页面截图只能选择站内图片，且不能重复。")
+            seen.add(url)
     if kind=="pattern" and "modules" in result:
         if not isinstance(result["modules"],list) or len(result["modules"])>30 or any(not isinstance(x,str) or not SLUG.fullmatch(x) for x in result["modules"]):
             user_auth.error(422,"关联模块 ID 格式无效。")
@@ -443,12 +460,19 @@ def verify_links(kind,payload):
         user_auth.error(422,"文章分类未创建或已停用，请先在分类管理中维护。")
     if kind=="article" and payload.get("cover_site") and payload["cover_site"] not in current["sites"]:
         user_auth.error(422,"封面关联网站尚未发布。")
-    if kind in ("site","module") and payload.get("screenshot_url","").startswith("/api/media/"):
-        media_id=payload["screenshot_url"].rsplit("/",1)[-1]
-        ensure_cms()
-        with user_auth.db() as db:
-            if not db.one("SELECT id FROM atlas_cms_media WHERE id=?",(media_id,)):
-                user_auth.error(422,"该截图图片已不存在，请重新从媒体库选择。")
+    if kind in ("site","module"):
+        references=[payload.get("screenshot_url","")]
+        if kind=="site":
+            references += [shot.get("url","") for shot in payload.get("gallery",[])
+                           if isinstance(shot,dict)]
+        media_ids={u.rsplit("/",1)[-1] for u in references
+                   if isinstance(u,str) and u.startswith("/api/media/")}
+        if media_ids:
+            ensure_cms()
+            with user_auth.db() as db:
+                for media_id in media_ids:
+                    if not db.one("SELECT id FROM atlas_cms_media WHERE id=?",(media_id,)):
+                        user_auth.error(422,"页面截图已不存在，请重新从媒体库选择。")
     if kind=="article":
         referenced=[payload.get("cover_image","")]
         referenced += [s.get("image","") for s in payload.get("sections",[]) if isinstance(s,dict)]
@@ -783,6 +807,8 @@ def register_cms_routes(app: FastAPI):
                 except (TypeError,ValueError):continue
                 if not isinstance(document,dict):continue
                 media_urls=[document.get("cover_image",""),document.get("screenshot_url","")]
+                if isinstance(document.get("gallery"),list):
+                    media_urls.extend(shot.get("url","") for shot in document["gallery"] if isinstance(shot,dict))
                 if isinstance(document.get("sections"),list):
                     for chapter in document["sections"]:
                         if not isinstance(chapter,dict):continue
