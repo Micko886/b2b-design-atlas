@@ -203,6 +203,17 @@ def cleaned(kind,slug,payload):
         if not isinstance(result["cover_image"],str) or not re.fullmatch(r"/api/media/[0-9a-f-]{36}",result["cover_image"]):
             user_auth.error(422,"文章封面只能选择已上传的媒体图片。")
     if kind=="article":
+        for key,limit in (("tags",20),("takeaways",30)):
+            value=result.get(key,[])
+            if not isinstance(value,list) or len(value)>limit or any(
+                not isinstance(s,str) or not s.strip() or len(s)>180 for s in value
+            ):
+                user_auth.error(422,key+" 必须是有效文本列表。")
+        if result.get("reading_minutes") is not None:
+            minutes=result["reading_minutes"]
+            if not isinstance(minutes,int) or isinstance(minutes,bool) or not 1<=minutes<=240:
+                user_auth.error(422,"阅读时间必须为 1 至 240 分钟。")
+    if kind=="article":
         if len(result["sections"])>40:user_auth.error(422,"文章章节最多 40 个。")
         for s in result["sections"]:
             if not isinstance(s,dict) or not isinstance(s.get("title"),str):
@@ -224,6 +235,12 @@ def verify_links(kind,payload):
         user_auth.error(422,"关联的网站不存在或尚未发布。")
     if kind=="article" and payload.get("cover_site") and payload["cover_site"] not in current["sites"]:
         user_auth.error(422,"封面关联网站尚未发布。")
+    if kind=="article" and payload.get("cover_image"):
+        media_id=payload["cover_image"].rsplit("/",1)[-1]
+        ensure_cms()
+        with user_auth.db() as db:
+            if not db.one("SELECT id FROM atlas_cms_media WHERE id=?",(media_id,)):
+                user_auth.error(422,"封面图片不存在，请重新从媒体库选择。")
     if kind=="article":
         for chapter in payload.get("sections",[]):
             paragraphs=chapter.get("paragraphs",[])
@@ -317,6 +334,11 @@ def register_cms_routes(app: FastAPI):
         for kind,collection in KIND_CATALOG.items():
             attr="family" if kind=="pattern" else "sector" if kind=="site" else "category"
             values={str(v.get(attr,"")).strip() for v in current[collection].values() if isinstance(v,dict)}
+            # Article categories are stable IDs in the public dataset; include
+            # them even when they have no current articles.
+            if kind=="article":
+                configured=seo_routes.read_json(seo_routes.STATIC/"assets"/"articles.json",{})
+                values.update(x["id"] for x in configured.get("categories",[]) if isinstance(x,dict) and x.get("id"))
             result[kind]=sorted(x for x in values if x)[:120]
         return {"categories":result}
 
@@ -349,6 +371,25 @@ def register_cms_routes(app: FastAPI):
             db.execute("INSERT INTO atlas_cms_media(id,file_name,mime_type,content_b64,byte_size,sha256,uploaded_by,created_at) VALUES(?,?,?,?,?,?,?,?)",
                        (mid,file_name or "image",detected,data.content,len(contents),hashlib.sha256(contents).hexdigest(),session["user_id"],utc_now()))
         return {"id":mid,"url":"/api/media/"+mid,"name":file_name,"mime":detected,"size":len(contents)}
+
+    @app.delete("/api/admin/media/{media_id}",include_in_schema=False)
+    def delete_media(media_id:str,request:Request):
+        require_admin(request,mutate=True);ensure_cms()
+        try: uuid.UUID(media_id)
+        except ValueError: user_auth.error(404,"图片不存在。")
+        target="/api/media/"+media_id
+        with user_auth.db() as db:
+            if not db.one("SELECT id FROM atlas_cms_media WHERE id=?",(media_id,)):
+                user_auth.error(404,"图片不存在。")
+            # Check all CMS drafts and published snapshots. Archive/history
+            # retains immutable audit snapshots, but active references forbid deletion.
+            refs=db.all("SELECT kind,slug,draft_json,published_json FROM atlas_cms_entries")
+            for row in refs:
+                for field in ("draft_json","published_json"):
+                    if target in (row[field] or ""):
+                        user_auth.error(409,"该图片仍被内容引用，请先替换并保存对应文章。")
+            db.execute("DELETE FROM atlas_cms_media WHERE id=?",(media_id,))
+        return {"ok":True}
 
     @app.get("/api/media/{media_id}",include_in_schema=False)
     def serve_media(media_id:str):
