@@ -725,10 +725,13 @@ async function openMedia(){
 async function refreshMedia(){
  try{
    const res=await api('/api/admin/media');
+   state.mediaRecords=res.items||[];
    $('#cms-media-grid').innerHTML=res.items.length?res.items.map(item=>'<div class="cms-v51-media-item">'
      +'<img src="'+h(item.url)+'" alt="'+h(item.file_name)+'" loading="lazy">'
      +'<strong title="'+h(item.file_name)+'">'+h(item.file_name)+'</strong>'
      +'<small>'+(item.byte_size/1024).toFixed(0)+' KB · '+h(item.created_at.slice(0,10))+'</small>'
+     +'<small class="cms-v519-usage">'+(item.usage_count?'<strong>引用 '+item.usage_count+' 篇</strong> · '+h((item.used_by||[]).map(x=>x.slug).join('、')):'未被 CMS 内容引用')+'</small>'
+     +(can('media')?'<button type="button" data-media-crop="'+h(item.id)+'">裁剪 / 设置焦点</button>':'')
      +'<button type="button" data-v51-copy-media="'+h(item.url)+'">复制图片地址</button>'
      +(state.mediaTarget?'<button type="button" data-v513-use-inline="'+h(item.url)+'">插入当前章节</button>':state.selected?.kind==='article'?'<button type="button" data-v51-use-media="'+h(item.url)+'">设为当前文章封面</button>':'')
      +'<button type="button" data-v51-delete-media="'+h(item.id)+'" class="cms-v51-delete">删除图片</button></div>').join('')
@@ -763,7 +766,8 @@ async function optimizeMediaFile(original){
  }finally{if(typeof bitmap.close==='function')bitmap.close()}
 }
 async function uploadMedia(files){
- if(mode!=='admin')return;
+ if(mode!=='admin'||!can('media'))return 0;
+ let uploaded=0;
  for(const original of [...files].slice(0,10)){
    try{
      $('#cms-media-status').textContent='正在处理 '+original.name;
@@ -774,11 +778,13 @@ async function uploadMedia(files){
        reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.readAsDataURL(file);
      });
      await api('/api/admin/media',{method:'POST',body:JSON.stringify({name:file.name,mime:file.type,content:base64})});
+     uploaded++;
      message((file!==original?'已优化并上传：':'媒体已保存：')+file.name);
    }catch(err){message(err.message,false)}
  }
  $('#cms-media-status').textContent='媒体安全保存在 PostgreSQL';
  await refreshMedia();
+ return uploaded;
 }
 
 // V51.5 · Manage article categories separately from individual articles.
