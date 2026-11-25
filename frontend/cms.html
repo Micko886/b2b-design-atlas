@@ -5,9 +5,9 @@
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#f5f7fb">
 <title>内容管理 · B2B Atlas Control Room</title>
-<link rel="stylesheet" href="/assets/admin.css?v=5130">
-<link rel="stylesheet" href="/assets/cms.css?v=5130">
-<script defer src="/assets/cms.js?v=5130"></script>
+<link rel="stylesheet" href="/assets/admin.css?v=5140">
+<link rel="stylesheet" href="/assets/cms.css?v=5140">
+<script defer src="/assets/cms.js?v=5140"></script>
 </head>
 <body data-cms-mode="__CMS_MODE__">
 <svg xmlns="http://www.w3.org/2000/svg" class="icon-sprite" aria-hidden="true">
@@ -33,7 +33,7 @@
 </svg>
 <div class="dashboard-layout cms-layout">
  <aside class="sidebar" id="cms-sidebar">
-  <div class="sidebar-brand"><div class="brand-symbol" aria-hidden="true"><span></span><span></span><span></span><span></span></div><div class="brand-wordmark"><strong>B2B Atlas</strong><small>CONTROL ROOM</small></div><span class="brand-version">V51.13</span></div>
+  <div class="sidebar-brand"><div class="brand-symbol" aria-hidden="true"><span></span><span></span><span></span><span></span></div><div class="brand-wordmark"><strong>B2B Atlas</strong><small>CONTROL ROOM</small></div><span class="brand-version">V51.14</span></div>
   <div class="workspace-chip"><span class="workspace-chip-icon">A</span><span><strong>Atlas Workspace</strong><small>Content Studio</small></span></div>
   <nav class="side-nav" aria-label="内容管理导航">
    <span class="nav-group-label">MANAGEMENT <span>01</span></span>
@@ -56,7 +56,7 @@
    <div class="masthead-right"><span class="save-state" id="cms-state"><span class="status-led"></span> CONTENT WORKFLOW</span><div class="theme-switch" role="group" aria-label="界面主题"><button data-set-theme="light" type="button" title="白天模式" aria-pressed="true"><svg class="icon"><use href="#i-sun"></use></svg><span>白天</span></button><button data-set-theme="dark" type="button" title="黑夜模式" aria-pressed="false"><svg class="icon"><use href="#i-moon"></use></svg><span>黑夜</span></button></div><a class="main-top-avatar" href="/account" title="个人中心">A</a></div>
   </header>
   <main class="dashboard-content cms-content">
-   <div class="page-head"><div><div class="eyebrow"><span class="eyebrow-mark"></span> CONTENT GOVERNANCE / EDITORIAL WORKFLOW</div><h1>内容管理<span class="title-spark">✳</span></h1><p>把内容维护、研究审核和发布版本，整合到一个工作区。</p></div><div class="page-head-actions"><a id="cms-login-link" class="toolbar-button" href="/login?next=%2Fadmin%2Fcontent" hidden>管理员登录 ↗</a><button id="cms-refresh" class="toolbar-button"><svg class="icon"><use href="#i-refresh"></use></svg>刷新</button><button id="cms-export" class="toolbar-button"><svg class="icon"><use href="#i-download"></use></svg>导出内容</button><a class="toolbar-button" href="/admin#traffic">运营数据 ↗</a><button id="cms-categories-open" class="toolbar-button">文章分类</button><button id="cms-tags-open" class="toolbar-button">标签管理</button><button id="cms-review-shortcut" class="toolbar-button">待审核内容</button><button id="cms-media-open" class="toolbar-button">媒体资源</button><button id="cms-new" class="toolbar-button toolbar-button-primary"><svg class="icon"><use href="#i-plus"></use></svg>新建内容</button></div></div>
+   <div class="page-head"><div><div class="eyebrow"><span class="eyebrow-mark"></span> CONTENT GOVERNANCE / EDITORIAL WORKFLOW</div><h1>内容管理<span class="title-spark">✳</span></h1><p>把内容维护、研究审核和发布版本，整合到一个工作区。</p></div><div class="page-head-actions"><a id="cms-login-link" class="toolbar-button" href="/login?next=%2Fadmin%2Fcontent" hidden>管理员登录 ↗</a><button id="cms-refresh" class="toolbar-button"><svg class="icon"><use href="#i-refresh"></use></svg>刷新</button><button id="cms-export" class="toolbar-button"><svg class="icon"><use href="#i-download"></use></svg>导出内容</button><a class="toolbar-button" href="/admin#traffic">运营数据 ↗</a><button id="cms-categories-open" class="toolbar-button">文章分类</button><button id="cms-tags-open" class="toolbar-button">标签管理</button><button id="cms-review-shortcut" class="toolbar-button">待审核内容</button><button id="cms-schedules-open" class="toolbar-button">发布排期</button><button id="cms-team-open" class="toolbar-button">团队权限</button><button id="cms-media-open" class="toolbar-button">媒体资源</button><button id="cms-new" class="toolbar-button toolbar-button-primary"><svg class="icon"><use href="#i-plus"></use></svg>新建内容</button></div></div>
    <div id="cms-notice" class="notice-strip"><div><svg class="icon"><use href="#i-lock"></use></svg><span>正在连接内容管理服务…</span></div><span>SECURE STUDIO</span></div>
    <div class="cms-metrics" id="cms-metrics">
     <div class="cms-metric"><span>全部内容</span><strong>—</strong></div><div class="cms-metric"><span>文件收录</span><strong>—</strong></div><div class="cms-metric"><span>草稿</span><strong>—</strong></div><div class="cms-metric"><span>待审核</span><strong>—</strong></div><div class="cms-metric"><span>后台已发布</span><strong>—</strong></div>
@@ -114,6 +114,37 @@
   </form>
  </div>
  <div class="cms-dialog-actions"><button type="button" class="cms-btn-secondary" data-v513-close-tags>完成</button></div>
+</dialog>
+<dialog id="cms-schedules-dialog" class="cms-dialog cms-v514-dialog" aria-label="内容发布排期">
+  <div class="cms-dialog-head"><div><span class="section-eyebrow">PUBLISHING CALENDAR / SCHEDULE</span>
+    <h2>发布排期中心</h2><p>统一查看待发布、已发布、失败与取消的排期。可直接打开对应内容进行调整。</p></div>
+    <button type="button" data-v514-close="schedules" aria-label="关闭">×</button></div>
+  <div class="cms-v514-dialog-tools"><span id="cms-schedule-count">加载中…</span><button type="button" id="cms-schedule-refresh" class="cms-btn-secondary">刷新排期</button></div>
+  <div id="cms-schedule-items" class="cms-v514-schedule-list" role="list"><p class="cms-loading">正在读取发布计划…</p></div>
+  <p id="cms-schedule-note" class="cms-v514-note">免费开发环境按公开目录请求触发到期检查，休眠期间无法保证准点执行。</p>
+  <div class="cms-dialog-actions"><button type="button" class="cms-btn-secondary" data-v514-close="schedules">完成</button></div>
+</dialog>
+<dialog id="cms-team-dialog" class="cms-dialog cms-v514-dialog" aria-label="后台团队权限">
+  <div class="cms-dialog-head"><div><span class="section-eyebrow">WORKSPACE ACCESS / TEAM</span>
+    <h2>团队角色与权限</h2><p>最高管理员由部署环境授权；普通账户可按用户 ID 分配“编辑”或“审核员”，所有变更留痕。</p></div>
+    <button type="button" data-v514-close="team" aria-label="关闭">×</button></div>
+  <div class="cms-v514-team-layout">
+    <div class="cms-v514-team-browser"><label>搜索已注册用户<input id="cms-team-search" type="search" placeholder="昵称、邮箱或用户 ID"></label>
+      <div id="cms-team-people" class="cms-v514-team-list"><p class="cms-loading">正在读取团队…</p></div></div>
+    <form id="cms-team-form" class="cms-v514-team-form">
+      <span class="section-eyebrow">ACCOUNT ACCESS</span>
+      <h3 id="cms-team-person-name">选择一个用户</h3>
+      <p id="cms-team-person-id" class="cms-v514-person-id">从左侧选择已注册账号</p>
+      <label>分配角色<select id="cms-team-role">
+        <option value="editor">内容编辑 · 创建 / 修改 / 提交审核</option>
+        <option value="reviewer">内容审核 · 退回 / 发布 / 排期</option>
+      </select></label>
+      <button type="submit" id="cms-team-grant" class="cms-btn-primary" disabled>保存权限</button>
+      <button type="button" id="cms-team-revoke" class="cms-btn-secondary" disabled>撤销后台权限</button>
+      <p id="cms-team-info" class="cms-v514-note">团队分工按角色限制服务器操作，界面隐藏不能代替权限校验。</p>
+    </form>
+  </div>
+  <div class="cms-dialog-actions"><button type="button" class="cms-btn-secondary" data-v514-close="team">完成</button></div>
 </dialog>
 <div id="cms-toast" class="toast" role="status" aria-live="polite"></div>
 </body></html>
