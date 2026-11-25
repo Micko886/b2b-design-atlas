@@ -318,9 +318,9 @@ function articleStudio(v,editable){
 function inlineArticleText(value){
  const escaped=h(value);
  return escaped
-  .replace(/\\*\\*([^*\\n]+)\\*\\*/g,'<strong>$1</strong>')
-  .replace(/(^|[^*])\\*([^*\\n]+)\\*/g,'$1<em>$2</em>')
-  .replace(/`([^`\\n]+)`/g,'<code>$1</code>');
+  .replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>')
+  .replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<em>$2</em>')
+  .replace(/`([^`\n]+)`/g,'<code>$1</code>');
 }
 function applyArticleFormat(button){
  const field=button.closest('[data-v51-section]')?.querySelector('[data-v51-paragraphs]');
