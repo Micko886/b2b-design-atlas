@@ -502,20 +502,24 @@ function contentPreviewMarkup(kind,data){
  if(kind==='article')return '<div class="cms-private-article">'+previewMarkup(data)+'</div>';
  if(kind==='site'){
   const photos=sitePreviewPhotos(data),cover=photos[0],link=previewSafeHref(data.url);
+  const specs=[['企业',data.name],['所属行业',data.sector],['业务方向',data.focus],['网站类型',data.model||'企业网站']].filter(x=>x[1]);
+  const tags=[data.visual_style,...(Array.isArray(data.design_strengths)?data.design_strengths:[])].filter(Boolean).slice(0,8);
   return '<div class="cms-public-like"><div class="cms-public-sample-label">网站案例 · 前台视觉示意</div>'
    +'<div class="cms-public-card-sample"><div class="cms-public-card-photo">'
    +(cover?'<img src="'+h(cover.url)+'" alt="'+title+' 网站封面" loading="lazy">':'<span>案例封面尚未上传</span>')
    +'</div><div class="cms-public-card-copy"><small>'+h(data.sector||'未分类')+'</small><h3>'+title+'</h3><p>'+summary+'</p></div></div>'
-   +'<div class="cms-public-detail-sample"><div><span class="cms-public-sample-label">CASE STUDY / 案例详情</span><h2>'+title+'</h2>'
+   +'<div class="cms-public-detail-sample"><div class="cms-public-detail-info"><span class="cms-public-sample-label">WEBSITE RESEARCH / 案例研究</span><h2>'+title+'</h2>'
    +'<p>'+summary+'</p><div class="cms-public-meta"><span>'+h(data.sector||'')+'</span>'
    +(data.model?'<span>'+h(data.model)+'</span>':'')
    +(link?'<a href="'+h(link)+'" target="_blank" rel="noopener noreferrer nofollow">访问官方网站 ↗</a>':'')
-   +'</div></div><div class="cms-public-gallery">'
+   +'</div><dl class="cms-public-specs">'+specs.map(([label,value])=>'<div><dt>'+h(label)+'</dt><dd>'+h(value)+'</dd></div>').join('')+'</dl>'
+   +(tags.length?'<div class="cms-public-style-tags"><strong>设计风格</strong><div>'+tags.map(tag=>'<span>'+h(tag)+'</span>').join('')+'</div></div>':'')
+   +'</div><div class="cms-public-gallery">'
    +(cover?'<img id="cms-preview-hero" src="'+h(cover.url)+'" alt="'+h(cover.label)+'">':'<div class="cms-public-photo-empty">暂无截图</div>')
    +(photos.length>1?'<div class="cms-public-thumbs" role="group" aria-label="切换案例截图">'+photos.map((photo,i)=>
      '<button type="button" data-preview-photo="'+i+'" data-preview-src="'+h(photo.url)+'" data-preview-alt="'+h(photo.label)+'" aria-pressed="'+(i===0?'true':'false')+'">'
       +'<img src="'+h(photo.url)+'" alt=""><span>'+h(photo.label)+'</span></button>').join('')+'</div>':'')
-   +'</div>'+(data.takeaway?'<section class="cms-public-takeaway"><h3>设计启示</h3><p>'+h(data.takeaway)+'</p></section>':'')
+   +'<p class="cms-public-gallery-note">当前预览主封面与新增截图。前台保留的原有研究截图仍可能补充展示。</p></div>'+(data.takeaway?'<section class="cms-public-takeaway"><h3>设计启示</h3><p>'+h(data.takeaway)+'</p></section>':'')
    +(Array.isArray(data.design_strengths)&&data.design_strengths.length?
      '<section class="cms-public-takeaway"><h3>值得借鉴</h3><ul>'+data.design_strengths.slice(0,12).map(x=>'<li>'+h(x)+'</li>').join('')+'</ul></section>':'')
    +'</div></div>';
