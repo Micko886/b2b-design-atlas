@@ -300,7 +300,44 @@ function articleStudio(v,editable){
  +'<datalist id="v51-categories">'+categorySuggestions+'</datalist>'
  +'<div class="cms-v51-chapter-head"><strong>文章章节</strong>'+(editable?'<button type="button" data-v51-add>＋ 添加章节</button>':'')+'</div>'
  +'<div id="cms-v51-sections">'+(v.sections||[]).map((s,i)=>articleSection(s,i,editable)).join('')+'</div>'
- +'<p class="cms-v51-guidance">每章可以包含正文、要点与高亮提示。上传媒体后可设为文章封面；图片发布前会检查是否存在。</p></section>';
+ +'<p class="cms-v51-guidance">每章可以包含正文、要点与高亮提示。上传媒体后可设为文章封面；图片发布前会检查是否存在。</p>'
+ +'<div class="cms-v512-preview-actions"><button type="button" data-v512-preview aria-expanded="false">预览当前文章（无需保存）</button><small>仅在本页渲染，不会公开未保存的内容</small></div>'
+ +'<section id="cms-v512-preview" class="cms-v512-preview" hidden><div class="cms-v512-preview-heading"><strong>文章排版预览</strong><span>PRIVATE · UNSAVED</span></div>'
+ +'<p id="cms-v512-preview-error" hidden role="alert"></p><div id="cms-v512-preview-content"></div></section></section>';
+}
+// V51.2: Private, unsaved preview. All user content is HTML-escaped.
+function previewMarkup(article){
+ const sections=Array.isArray(article.sections)?article.sections:[];
+ const tags=Array.isArray(article.tags)?article.tags:[];
+ const cover=/^\\/api\\/media\\/[0-9a-f-]{36}$/.test(article.cover_image||'')?article.cover_image:'';
+ return '<article class="cms-v512-article">'
+   +'<div class="cms-v512-kicker">'+h(article.category||'未分类')+' · '+h(article.author||'编辑部')+'</div>'
+   +'<h1>'+h(article.title||'未命名文章')+'</h1><p class="cms-v512-deck">'+h(article.subtitle||'请填写文章摘要')+'</p>'
+   +(cover?'<img class="cms-v512-cover" src="'+h(cover)+'" alt="文章封面">':'')
+   +'<div class="cms-v512-tags">'+tags.map(x=>'<span>'+h(x)+'</span>').join('')+'</div>'
+   +sections.map((s,i)=>'<section><h2>'+h(s.title||'章节 '+(i+1))+'</h2>'
+     +(Array.isArray(s.paragraphs)?s.paragraphs:[]).map(p=>'<p>'+h(p)+'</p>').join('')
+     +(Array.isArray(s.bullets)&&s.bullets.length?'<ul>'+s.bullets.map(x=>'<li>'+h(x)+'</li>').join('')+'</ul>':'')
+     +(s.callout?'<blockquote>'+h(s.callout)+'</blockquote>':'')+'</section>').join('')
+   +'</article>';
+}
+function refreshArticlePreview(){
+ const target=$('#cms-v512-preview');if(!target||target.hidden||!state.selected||state.selected.kind!=='article')return;
+ try{
+   const draft=takeFields();
+   $('#cms-v512-preview-content').innerHTML=previewMarkup(draft);
+   $('#cms-v512-preview-error').hidden=true;
+ }catch(err){
+   $('#cms-v512-preview-error').textContent=err.message;
+   $('#cms-v512-preview-error').hidden=false;
+ }
+}
+function toggleArticlePreview(){
+ const target=$('#cms-v512-preview');if(!target)return;
+ target.hidden=!target.hidden;
+ const button=$('[data-v512-preview]');
+ if(button)button.setAttribute('aria-expanded',String(!target.hidden));
+ if(!target.hidden)refreshArticlePreview();
 }
 function reindexSections(){
  document.querySelectorAll('#cms-v51-sections [data-v51-section]').forEach((el,i)=>el.querySelector('.cms-v51-section-top strong').textContent='章节 '+(i+1));
@@ -384,7 +421,8 @@ function boot(){
    const action=e.target.closest('[data-transition]');if(action){await transition(action.dataset.transition);return}
    const restore=e.target.closest('[data-restore]');if(restore){await restoreRevision(Number(restore.dataset.restore));return}
    const bulkCheck=e.target.closest('[data-bulk-select]');if(bulkCheck){const slug=bulkCheck.dataset.bulkSelect;if(bulkCheck.checked)state.selectedSlugs.add(slug);else state.selectedSlugs.delete(slug);updateBulkToolbar();return}
-   if(e.target.closest('[data-v51-add]')){const root=$('#cms-v51-sections');root.insertAdjacentHTML('beforeend',articleSection({},root.children.length,true));reindexSections();state.dirty=true;return}
+   if(e.target.closest('[data-v512-preview]')){toggleArticlePreview();return}
+   if(e.target.closest('[data-v51-add]')){const root=$('#cms-v51-sections');root.insertAdjacentHTML('beforeend',articleSection({},root.children.length,true));reindexSections();state.dirty=true;refreshArticlePreview();return}
    if(e.target.closest('[data-v51-remove]')){const blocks=document.querySelectorAll('#cms-v51-sections [data-v51-section]');if(blocks.length<=1){message('至少保留一个章节',false);return}e.target.closest('[data-v51-section]').remove();reindexSections();state.dirty=true;return}
    const move=e.target.closest('[data-v51-move]');if(move){const block=move.closest('[data-v51-section]'),target=Number(move.dataset.v51Move)<0?block.previousElementSibling:block.nextElementSibling;if(target){if(Number(move.dataset.v51Move)<0)target.before(block);else target.after(block);reindexSections();state.dirty=true}return}
    const deleteMedia=e.target.closest('[data-v51-delete-media]');
@@ -399,7 +437,7 @@ function boot(){
    if(e.target.closest('[data-media-close]')){$('#cms-media-dialog').close();return}
    if(e.target.closest('[data-dialog-close]')){$('#cms-create-dialog').close();return}
  });
- document.addEventListener('input',e=>{if(e.target.closest('#cms-edit-form'))state.dirty=true});
+ document.addEventListener('input',e=>{if(e.target.closest('#cms-edit-form')){state.dirty=true;refreshArticlePreview()}});
  $('#cms-search').addEventListener('input',e=>{state.q=e.target.value;drawItems()});
  $('#cms-status').addEventListener('change',e=>{state.status=e.target.value;drawItems()});
  $('#cms-refresh').addEventListener('click',async()=>{try{await loadKind(true);message('内容列表已刷新')}catch(e){message(e.message,false)}});
