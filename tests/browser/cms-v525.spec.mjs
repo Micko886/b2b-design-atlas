@@ -44,14 +44,45 @@ async function mockCms(page,role='owner',forcedErrors={}){
   else if(p==='/api/admin/categories')result={items:[{id:'research',name:'Research'}]};
   else if(p==='/api/admin/tags')result={items:[{id:'design',name:'Design'}]};
   else if(p==='/api/source-library')result={sites:[{id:'demo-site',name:'Atlas Demo'}]};
-  else if(p==='/api/admin/media'&&method==='GET')result={items:uploads};
+  else if(p==='/api/admin/media'&&method==='GET'){
+   const q=(url.searchParams.get('q')||'').toLowerCase(),
+    usage=url.searchParams.get('usage')||'all',
+    type=url.searchParams.get('file_type')||'all',
+    seo=url.searchParams.get('seo')||'all',
+    offset=Number(url.searchParams.get('offset')||0),
+    limit=Number(url.searchParams.get('limit')||24);
+   const filtered=uploads.filter(item=>
+    (!q||[item.file_name,item.alt_text,item.caption,...(item.used_by||[]).map(x=>x.slug)].join(' ').toLowerCase().includes(q))&&
+    (usage==='all'||(usage==='used'?item.usage_count>0:!item.usage_count))&&
+    (type==='all'||item.mime==='image/'+type||item.mime_type==='image/'+type)&&
+    (seo==='all'||(seo==='ready'?Boolean(item.alt_text):!item.alt_text)));
+   result={items:filtered.slice(offset,offset+limit),total:filtered.length,offset,limit,has_more:offset+limit<filtered.length};
+  }
   else if(p==='/api/admin/media'&&method==='POST'){
    const id='11111111-1111-4111-8111-'+String(uploads.length+1).padStart(12,'0');
    if(!body.content){status=422;result={detail:'File missing'}}
    else {
-    const item={id,url:'/api/media/'+id,file_name:body.name,mime:body.mime,byte_size:png.length,created_at:'2026-11-25T10:00:00',usage_count:0,used_by:[]};
+    const item={id,url:'/api/media/'+id,file_name:body.name,mime:body.mime,mime_type:body.mime,byte_size:png.length,created_at:'2026-11-25T10:00:00',usage_count:0,used_by:[],alt_text:'',caption:''};
     uploads.push(item);result={id,url:item.url,name:body.name,mime:body.mime};
    }
+  }
+  else if(method==='PUT'&&/^\/api\/admin\/media\/[0-9a-f-]{36}\/metadata$/.test(p)){
+   const id=p.split('/')[4],item=uploads.find(x=>x.id===id);
+   if(!item){status=404;result={detail:'Media missing'}}
+   else if(String(body.alt_text||'').length>240){status=422;result={detail:'ALT is too long'}}
+   else{item.alt_text=String(body.alt_text||'').trim();item.caption=String(body.caption||'').trim();result={ok:true,id,alt_text:item.alt_text,caption:item.caption}}
+  }
+  else if(p==='/api/admin/media/bulk-delete'&&method==='POST'){
+   const target=uploads.filter(item=>(body.ids||[]).includes(item.id));
+   if(target.some(item=>item.usage_count)){status=409;result={detail:'有图片仍被草稿或公开内容引用'}}
+   else if(target.length!==(body.ids||[]).length){status=404;result={detail:'Media missing'}}
+   else{for(const item of target)uploads.splice(uploads.indexOf(item),1);result={ok:true,deleted:target.length}}
+  }
+  else if(method==='DELETE'&&/^\/api\/admin\/media\/[0-9a-f-]{36}$/.test(p)){
+   const id=p.split('/')[4],item=uploads.find(x=>x.id===id);
+   if(!item){status=404;result={detail:'Media missing'}}
+   else if(item.usage_count){status=409;result={detail:'Image is used'}}
+   else{uploads.splice(uploads.indexOf(item),1);result={ok:true}}
   }
   else if(p==='/api/admin/content'&&method==='GET'){
    const kind=url.searchParams.get('kind'),x=records[kind];
@@ -399,4 +430,95 @@ test('V53.1 article toolbar and image audit fit mobile viewport without overflow
  await expect(page.locator('.cms-v531-editor-bar')).toBeVisible();
  await expect(page.locator('.cms-v531-media-health')).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
+});
+
+test('V53.2 media search, filters, linked references and pagination operate via API',async({page})=>{
+ const {uploads}=await mockCms(page);
+ for(let i=0;i<30;i++){
+  const id='22222222-2222-4222-8222-'+String(i+1).padStart(12,'0');
+  uploads.push({id,url:'/api/media/'+id,file_name:'asset-'+i+'.png',mime_type:'image/png',
+   byte_size:125000,created_at:'2026-11-26T10:00:00',usage_count:i===3?1:0,
+   used_by:i===3?[{kind:'site',slug:'demo-site'}]:[],alt_text:i%2?'Factory product screenshot':'',caption:''});
+ }
+ await page.goto(origin+'/admin/content?workspace=media');
+ await expect(page.locator('[data-media-id]')).toHaveCount(24);
+ await expect(page.locator('#cms-media-total')).toContainText('30 张');
+ await page.locator('#cms-media-next').click();
+ await expect(page.locator('[data-media-id]')).toHaveCount(6);
+ await page.locator('#cms-media-prev').click();
+ await expect(page.locator('[data-media-id]')).toHaveCount(24);
+ await page.locator('#cms-media-usage').selectOption('used');
+ await expect(page.locator('[data-media-id]')).toHaveCount(1);
+ await expect(page.locator('[data-media-check]')).toBeDisabled();
+ await page.locator('.cms-v532-details summary').click();
+ await expect(page.locator('.cms-v532-refs a')).toHaveAttribute('href','/admin/content?kind=site&edit=demo-site');
+ await page.locator('#cms-media-usage').selectOption('all');
+ await page.locator('#cms-media-seo').selectOption('missing');
+ await expect(page.locator('#cms-media-total')).toContainText('15 张');
+ await page.locator('#cms-media-seo').selectOption('all');
+ await page.locator('#cms-media-search').fill('asset-29');
+ await expect(page.locator('[data-media-id]')).toHaveCount(1);
+ await expect(page.locator('[data-media-id]')).toContainText('asset-29.png');
+});
+
+test('V53.2 media ALT and caption edits persist without modifying published content',async({page})=>{
+ const {records,uploads}=await mockCms(page);
+ const id='33333333-3333-4333-8333-333333333333';
+ uploads.push({id,url:'/api/media/'+id,file_name:'product.png',mime_type:'image/png',byte_size:25000,
+  created_at:'2026-11-26T10:00:00',usage_count:0,used_by:[],alt_text:'',caption:''});
+ await page.goto(origin+'/admin/content?workspace=media');
+ await expect(page.locator('[data-media-seo-status="missing"]')).toHaveCount(1);
+ await page.locator('.cms-v532-details summary').click();
+ await page.locator('[data-media-alt]').fill('Industrial machinery close-up');
+ await page.locator('[data-media-caption]').fill('Product engineering team');
+ await page.locator('[data-media-meta-save]').click();
+ await expect(page.locator('[data-media-seo-status="ready"]')).toHaveCount(1);
+ expect(uploads[0].alt_text).toBe('Industrial machinery close-up');
+ expect(uploads[0].caption).toBe('Product engineering team');
+ expect(records.article.payload.sections[0].paragraphs[0]).toBe('First paragraph');
+ await page.locator('#cms-media-seo').selectOption('missing');
+ await expect(page.locator('[data-media-id]')).toHaveCount(0);
+});
+
+test('V53.2 bulk delete selects only unused assets and rejects stale used references',async({page})=>{
+ const {uploads}=await mockCms(page);
+ for(let i=0;i<3;i++){
+  const id='44444444-4444-4444-8444-'+String(i+1).padStart(12,'0');
+  uploads.push({id,url:'/api/media/'+id,file_name:'sample-'+i+'.png',mime_type:'image/png',
+   byte_size:10000,created_at:'2026-11-26T10:00:00',usage_count:i===2?1:0,
+   used_by:i===2?[{kind:'article',slug:'demo-article'}]:[],alt_text:'',caption:''});
+ }
+ page.on('dialog',async dialog=>dialog.accept());
+ await page.goto(origin+'/admin/content?workspace=media');
+ await page.locator('#cms-media-select-unused').click();
+ await expect(page.locator('#cms-media-selected')).toContainText('2 张');
+ expect(await page.locator('[data-media-check]:checked').count()).toBe(2);
+ await page.locator('#cms-media-bulk-delete').click();
+ await expect(page.locator('[data-media-id]')).toHaveCount(1);
+ expect(uploads).toHaveLength(1);
+ await expect(page.locator('[data-media-check]')).toBeDisabled();
+});
+
+test('V53.2 server rejects a media batch if one selected asset gained a reference',async({page})=>{
+ const {uploads}=await mockCms(page);
+ for(let i=0;i<2;i++){
+  const id='55555555-5555-4555-8555-'+String(i+1).padStart(12,'0');
+  uploads.push({id,url:'/api/media/'+id,file_name:'photo-'+i+'.png',mime_type:'image/png',
+   byte_size:10000,created_at:'2026-11-26T10:00:00',usage_count:0,used_by:[],alt_text:'',caption:''});
+ }
+ page.on('dialog',async dialog=>dialog.accept());
+ await page.goto(origin+'/admin/content?workspace=media');
+ await page.locator('#cms-media-select-unused').click();
+ uploads[1].usage_count=1;
+ await page.locator('#cms-media-bulk-delete').click();
+ await expect(page.locator('#cms-media-status')).toContainText('批量删除失败');
+ expect(uploads).toHaveLength(2);
+});
+
+test('V53.2 media workspace controls fit 320px mobile viewport',async({page})=>{
+ await mockCms(page);
+ await page.setViewportSize({width:320,height:800});
+ await page.goto(origin+'/admin/content?workspace=media');
+ await expect(page.locator('.cms-v532-toolbar')).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });
