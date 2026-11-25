@@ -164,6 +164,7 @@ function setEditorTab(tab){
  }
  for(const pane of root.querySelectorAll('[data-editor-pane]'))
    pane.hidden=pane.dataset.editorPane!==selected;
+ if(selected==='preview')refreshContentPreview();
 }
 async function logoutCms(){
  if(state.busy){message('草稿正在保存，请稍后再退出。',false);return}
@@ -471,6 +472,105 @@ function syncSiteImage(){
  img.hidden=!safe;empty.hidden=Boolean(safe);
  if(safe&&img.getAttribute('src')!==value)img.src=value;
 }
+// V52.7 · Private render-only preview of the current form. Never uses the public API.
+function previewSafeHref(uri){
+ try{const u=new URL(String(uri||''));return ['https:','http:'].includes(u.protocol)?u.href:''}catch{return ''}
+}
+function sitePreviewPhotos(data){
+ const chosen=[],seen=new Set();
+ const add=(url,label)=>{if(validSiteShot(url)&&!seen.has(url)){chosen.push({url,label});seen.add(url)}};
+ add(data.screenshot_url,'案例封面');
+ for(const shot of (Array.isArray(data.gallery)?data.gallery:[]).slice(0,16)){
+  if(shot&&typeof shot==='object')add(shot.url,String(shot.label||'页面截图').slice(0,80));
+ }
+ return chosen;
+}
+function contentPreviewMarkup(kind,data){
+ const title=h(data.name||data.title||'未填写名称'),summary=h(data.summary||data.subtitle||data.question||'暂无简介');
+ if(kind==='article')return '<div class="cms-private-article">'+previewMarkup(data)+'</div>';
+ if(kind==='site'){
+  const photos=sitePreviewPhotos(data),cover=photos[0],link=previewSafeHref(data.url);
+  return '<div class="cms-public-like"><div class="cms-public-sample-label">网站案例 · 前台视觉示意</div>'
+   +'<div class="cms-public-card-sample"><div class="cms-public-card-photo">'
+   +(cover?'<img src="'+h(cover.url)+'" alt="'+title+' 网站封面" loading="lazy">':'<span>案例封面尚未上传</span>')
+   +'</div><div class="cms-public-card-copy"><small>'+h(data.sector||'未分类')+'</small><h3>'+title+'</h3><p>'+summary+'</p></div></div>'
+   +'<div class="cms-public-detail-sample"><div><span class="cms-public-sample-label">CASE STUDY / 案例详情</span><h2>'+title+'</h2>'
+   +'<p>'+summary+'</p><div class="cms-public-meta"><span>'+h(data.sector||'')+'</span>'
+   +(data.model?'<span>'+h(data.model)+'</span>':'')
+   +(link?'<a href="'+h(link)+'" target="_blank" rel="noopener noreferrer nofollow">访问官方网站 ↗</a>':'')
+   +'</div></div><div class="cms-public-gallery">'
+   +(cover?'<img id="cms-preview-hero" src="'+h(cover.url)+'" alt="'+h(cover.label)+'">':'<div class="cms-public-photo-empty">暂无截图</div>')
+   +(photos.length>1?'<div class="cms-public-thumbs" role="group" aria-label="切换案例截图">'+photos.map((photo,i)=>
+     '<button type="button" data-preview-photo="'+i+'" data-preview-src="'+h(photo.url)+'" data-preview-alt="'+h(photo.label)+'" aria-pressed="'+(i===0?'true':'false')+'">'
+      +'<img src="'+h(photo.url)+'" alt=""><span>'+h(photo.label)+'</span></button>').join('')+'</div>':'')
+   +'</div>'+(data.takeaway?'<section class="cms-public-takeaway"><h3>设计启示</h3><p>'+h(data.takeaway)+'</p></section>':'')
+   +(Array.isArray(data.design_strengths)&&data.design_strengths.length?
+     '<section class="cms-public-takeaway"><h3>值得借鉴</h3><ul>'+data.design_strengths.slice(0,12).map(x=>'<li>'+h(x)+'</li>').join('')+'</ul></section>':'')
+   +'</div></div>';
+ }
+ if(kind==='module'){
+  const image=validSiteShot(data.screenshot_url)?data.screenshot_url:'';
+  return '<div class="cms-public-like"><div class="cms-public-sample-label">页面模块 · 前台视觉示意</div>'
+   +'<div class="cms-public-card-sample"><div class="cms-public-card-photo">'
+   +(image?'<img src="'+h(image)+'" alt="'+title+' 截图" loading="lazy">':'<span>尚未选择模块截图</span>')
+   +'</div><div class="cms-public-card-copy"><small>'+h(data.category||'页面模块')+'</small><h3>'+title+'</h3>'
+   +'<p>'+h(data.lesson||data.summary||'尚未填写设计方法')+'</p></div></div>'
+   +'<section class="cms-public-takeaway"><h3>模块设计方法</h3><p>'+h(data.lesson||'')+'</p>'
+   +(data.summary?'<p>'+h(data.summary)+'</p>':'')+'</section></div>';
+ }
+ const modules=Array.isArray(data.modules)?data.modules:[];
+ return '<div class="cms-public-like"><div class="cms-public-sample-label">设计模式 · 前台视觉示意</div>'
+  +'<div class="cms-public-pattern"><span>'+h(data.family||'设计模式')+'</span><h2>'+title+'</h2>'
+  +'<h3>设计要解决的问题</h3><p>'+h(data.question||'')+'</p><h3>核心原则</h3><p>'+h(data.principle||'')+'</p>'
+  +(data.when?'<h3>适用场景</h3><p>'+h(data.when)+'</p>':'')
+  +(modules.length?'<small>关联模块 '+modules.length+' 个</small>':'')+'</div></div>';
+}
+function refreshContentPreview(){
+ const pane=$('[data-editor-pane="preview"]');
+ if(!pane||pane.hidden||!state.selected)return;
+ const target=$('#cms-private-preview'),error=$('#cms-private-preview-error');
+ if(!target||!error)return;
+ try{
+  const data=takeFields();
+  target.innerHTML=contentPreviewMarkup(state.selected.kind,data);
+  error.hidden=true;
+  const stateLabel=$('#cms-private-preview-state');
+  if(stateLabel)stateLabel.textContent=state.dirty?'当前未保存修改 · 仅本页可见':'当前草稿内容 · 仅本页可见';
+ }catch(e){target.innerHTML='';error.hidden=false;error.textContent='预览无法生成：'+e.message}
+}
+function compareValue(field,value){
+ if(value===undefined||value===null||value==='')return '<span class="cms-review-blank">未填写</span>';
+ if(typeof value==='boolean')return value?'是':'否';
+ if(Array.isArray(value)){
+  if(!value.length)return '<span class="cms-review-blank">无</span>';
+  if(field==='gallery')return h(value.length+' 张截图 · '+value.map(x=>x.label||'未命名').slice(0,5).join('、'));
+  if(field==='sections')return h(value.length+' 个章节 · '+value.map(x=>x.title||'未命名').slice(0,5).join('、'));
+  return h(value.slice(0,8).map(x=>typeof x==='string'?x:JSON.stringify(x)).join('、')).slice(0,300);
+ }
+ if(typeof value==='object')return h(JSON.stringify(value).slice(0,300));
+ const text=String(value);
+ if(['screenshot_url','cover_image'].includes(field)&&validSiteShot(text))
+  return '<img class="cms-review-photo" src="'+h(text)+'" alt="截图">';
+ if(field==='cover_image'&&/^\/api\/media\/[0-9a-f-]{36}$/.test(text))
+  return '<img class="cms-review-photo" src="'+h(text)+'" alt="文章封面">';
+ return '<span>'+h(text.slice(0,300))+(text.length>300?'…':'')+'</span>';
+}
+function inlineReviewComparison(item){
+ if(item.status!=='review')return '';
+ const before=item.published||null,after=item.payload||{};
+ const labels=Object.fromEntries((fieldSpecs[item.kind]||[]).map(x=>[x[0],x[1]]));
+ const fields=before?Array.from(new Set([...Object.keys(before),...Object.keys(after)])).filter(k=>
+    JSON.stringify(before[k]??null)!==JSON.stringify(after[k]??null)):[];
+ if(!before)return '<div class="cms-review-inline"><h4>首次发布</h4><p>这条内容尚未公开，请使用「发布前预览」检查内容、图片和排版。</p></div>';
+ if(!fields.length)return '<div class="cms-review-inline"><h4>没有内容差异</h4><p>当前待审核稿与公开版本相同。</p></div>';
+ const shown=fields.slice(0,8);
+ return '<section class="cms-review-inline"><h4>修改内容对照 <span>共 '+fields.length+' 项</span></h4>'
+  +'<div class="cms-review-inline-heading"><strong>当前公开版本</strong><strong>待审核版本</strong></div>'
+  +shown.map(field=>'<div class="cms-review-compare-field"><div class="cms-review-compare-label">'+h(labels[field]||field)+'</div>'
+   +'<div class="cms-review-compare-cols"><div>'+compareValue(field,before[field])+'</div><div>'+compareValue(field,after[field])+'</div></div></div>').join('')
+  +(fields.length>shown.length?'<p>还有 '+(fields.length-shown.length)+' 项修改，请打开下方完整版本对比。</p>':'')
+  +'</section>';
+}
 function reviewBrief(item){
  if(mode!=='admin'||item.status!=='review')return '';
  const original=item.published||null,current=item.payload||{};
@@ -482,7 +582,9 @@ function reviewBrief(item){
  +(original?'<div class="cms-review-changes"><strong>对比已发布内容 · '+changed.length+' 项字段变化</strong>'
  +(changed.length?'<div class="cms-review-chips">'+changed.slice(0,20).map(k=>'<span>'+h(labels[k]||k)+'</span>').join('')+'</div>':'<p>草稿与当前公开内容一致。</p>')+'</div>'
  :'<div class="cms-review-changes"><strong>首次发布审查</strong><p>没有可对比的公开快照，请重点核对媒体、链接和正文。</p></div>')
+ +inlineReviewComparison(item)
  +'<p class="cms-review-helper">退回操作会记录审核原因，已发布内容仍保持公开版本。</p>'
+ +'<button type="button" class="cms-review-preview-link" data-editor-tab-link="preview">预览待审核稿</button>'
  +'<button type="button" class="cms-review-diff-btn" data-review-diff>打开逐段版本对比 ↗</button></div>';
 }
 async function openReviewDiff(revision=0){
@@ -588,7 +690,8 @@ const history=item.history||[];
  +'</div>');
  const root=$('#cms-editor-body');
  const tabs='<div class="atlas-v521-editor-tabs" role="tablist" aria-label="内容工作台">'
-  +'<button type="button" data-editor-tab="content" role="tab">'+(item.kind==='site'?'编辑内容':'正文与资料')+'</button>'
+  +'<button type="button" data-editor-tab="content" role="tab">编辑内容</button>'
+  +'<button type="button" data-editor-tab="preview" role="tab">发布前预览</button>'
   +(item.kind==='article'?'<button type="button" data-editor-tab="seo" role="tab">SEO 与质量</button>':'')
   +'<button type="button" data-editor-tab="review" role="tab">'+(item.kind==='site'?'审核发布':'审核与发布')+'</button>'
   +'<button type="button" data-editor-tab="history" role="tab">版本记录</button></div>';
@@ -596,6 +699,7 @@ const history=item.history||[];
  root.classList.toggle('cms-easy-mode',true);
  root.innerHTML=topbar+siteHeader+tabs
   +'<div data-editor-pane="content">'+form+'</div>'
+  +'<div class="cms-private-preview-pane" data-editor-pane="preview" hidden><div class="cms-preview-heading"><div><h3>发布前预览</h3><p>模拟前台视觉效果，显示当前草稿和未保存修改；预览本身不会发布内容。</p></div><span id="cms-private-preview-state">仅当前浏览器可见</span></div><p id="cms-private-preview-error" role="alert" hidden></p><div id="cms-private-preview"></div></div>'
   +(item.kind==='article'?'<div data-editor-pane="seo" hidden>'+seoPanel+'</div>':'')
   +'<div data-editor-pane="review" hidden>'+reviewBrief(item)+reviewActions
   +(can('review')?'':'<p class="atlas-v521-readonly-tip">本账户没有审核发布权限。如需审核，请联系最高管理员。</p>')+'</div>'
@@ -1581,6 +1685,12 @@ function boot(){
    if(mediaPicker){state.mediaTarget=null;state.mediaField=mediaPicker.dataset.editorPickMedia;await openMedia();return}
    const tab=e.target.closest('[data-editor-tab]');
    if(tab){setEditorTab(tab.dataset.editorTab);return}
+   const tabLink=e.target.closest('[data-editor-tab-link]');
+   if(tabLink){setEditorTab(tabLink.dataset.editorTabLink);return}
+   const photo=e.target.closest('[data-preview-photo]');
+   if(photo){const hero=$('#cms-preview-hero'),group=photo.parentElement;
+     if(hero){hero.src=photo.dataset.previewSrc;hero.alt=photo.dataset.previewAlt;}
+     for(const button of group?.querySelectorAll('[data-preview-photo]')||[])button.setAttribute('aria-pressed',String(button===photo));return}
    const themeButton=e.target.closest('[data-set-theme]');if(themeButton){setTheme(themeButton.dataset.setTheme);return}
    if(e.target.closest('[data-editor-open-media]')){state.mediaTarget=null;state.mediaField=state.selected?.kind==='article'?'field-cover_image':state.selected?.kind==='site'||state.selected?.kind==='module'?'field-screenshot_url':null;await openMedia();return}
    const type=e.target.closest('[data-kind-link]');if(type){e.preventDefault();await changeKind(type.dataset.kindLink);return}
@@ -1649,7 +1759,7 @@ function boot(){
    if(e.target.closest('[data-media-close]')){state.mediaTarget=null;state.mediaField=null;$('#cms-media-dialog').close();return}
    if(e.target.closest('[data-dialog-close]')){$('#cms-create-dialog').close();return}
  });
- document.addEventListener('input',e=>{if(e.target.closest('[data-gallery-label]')){syncGalleryLabels();return}if(e.target.closest('#cms-edit-form')){markDraftDirty();syncSiteTitle();refreshArticlePreview();refreshSeoSnippet()}});
+ document.addEventListener('input',e=>{if(e.target.closest('[data-gallery-label]')){syncGalleryLabels();return}if(e.target.closest('#cms-edit-form')){markDraftDirty();syncSiteTitle();refreshArticlePreview();refreshSeoSnippet();refreshContentPreview()}});
  $('#cms-search').addEventListener('input',e=>{state.q=e.target.value;drawItems()});
  $('#cms-status').addEventListener('change',e=>{state.status=e.target.value;markWorkspace(state.status==='review'?'review':'content');drawItems()});
  $('#cms-refresh').addEventListener('click',async()=>{
