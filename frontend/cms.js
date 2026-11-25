@@ -10,7 +10,7 @@ const kinds={site:{title:'网站内容',label:'Websites',icon:'globe',public:'/a
  module:{title:'页面模块',label:'Sections',icon:'layers',public:'/api/module-library',url:'/sections/'},
  pattern:{title:'设计模式',label:'Patterns',icon:'shapes',public:'/assets/patterns.json',url:'/patterns/'},
  article:{title:'研究文章',label:'Insights',icon:'article',public:'/assets/articles.json',url:'/insights/'}};
-const state={kind:new URLSearchParams(location.search).get('kind')||'site',items:[],records:{},selected:null,csrf:'',user:null,dirty:false,q:'',status:'',busy:false,selectedSlugs:new Set(),taxonomy:{},tagSuggestions:[],mediaTarget:null,categoryRecords:[],categoryEditing:null};
+const state={kind:new URLSearchParams(location.search).get('kind')||'site',items:[],records:{},selected:null,csrf:'',user:null,dirty:false,q:'',status:'',busy:false,selectedSlugs:new Set(),taxonomy:{},tagSuggestions:[],mediaTarget:null,categoryRecords:[],categoryEditing:null,tagRecords:[],tagEditing:null,tagSearch:''};
 if(!kinds[state.kind])state.kind='site';
 const fieldSpecs={
  site:[
@@ -568,12 +568,13 @@ async function uploadMedia(files){
 // V51.5 · Manage article categories separately from individual articles.
 async function loadCmsTaxonomy(){
  if(mode!=='admin')return;
- const [taxonomy,categories]=await Promise.all([
-   api('/api/admin/content/taxonomy'),api('/api/admin/categories')
+ const [taxonomy,categories,tags]=await Promise.all([
+   api('/api/admin/content/taxonomy'),api('/api/admin/categories'),api('/api/admin/tags')
  ]);
  state.taxonomy=taxonomy.categories||{};
  state.tagSuggestions=taxonomy.article_tags||[];
  state.categoryRecords=categories.items||[];
+ state.tagRecords=tags.items||[];
 }
 function refreshEditorCategoryChoices(){
  const select=$('#field-category');
@@ -646,6 +647,80 @@ async function deleteCategory(){
    message('分类已删除');
  }catch(err){message(err.message,false)}
  finally{$('#cms-v515-delete').disabled=false}
+}
+
+function paintSuggestedTags(){
+ const box=$('.cms-v512-suggestions');
+ if(!box)return;
+ box.innerHTML='<span>常用标签</span>'
+  +(state.tagSuggestions.length?state.tagSuggestions.slice(0,18).map(name=>
+    '<button type="button" data-v512-tag="'+h(name)+'">'+h(name)+'</button>').join('')
+  :'<small>暂无标签，点击顶部「标签管理」创建</small>');
+}
+function drawTags(){
+ const box=$('#cms-tag-items');if(!box)return;
+ const q=state.tagSearch.toLowerCase().trim();
+ const items=state.tagRecords.filter(x=>!q||(x.name+' '+x.description).toLowerCase().includes(q));
+ box.innerHTML=items.length?items.map(x=>
+   '<button type="button" class="cms-v515-category cms-v513-tag-item" data-v513-tag="'+h(x.name)+'">'
+   +'<span><strong>'+h(x.name)+'</strong><small>'+h(x.description||'尚无运营说明')+'</small></span>'
+   +'<span class="cms-v515-usage">'+x.usage+' 篇</span></button>').join('')
+   :'<p class="cms-loading">尚无标签，或搜索无结果。</p>';
+ $('#cms-tag-items [data-v513-tag]').forEach(button=>{
+   const selected=button.dataset.v513Tag===state.tagEditing;
+   button.classList.toggle('active',selected);
+   button.setAttribute('aria-pressed',String(selected));
+ });
+}
+function chooseTag(name=null){
+ const selected=state.tagRecords.find(x=>x.name===name);
+ state.tagEditing=selected?.name||null;
+ $('#cms-tag-name').value=selected?.name||'';
+ $('#cms-tag-description').value=selected?.description||'';
+ $('#cms-tag-name').readOnly=Boolean(selected);
+ $('#cms-tag-form-title').textContent=selected?'EDIT TAG':'NEW TAG';
+ $('#cms-tag-save').textContent=selected?'保存标签说明':'创建标签';
+ $('#cms-tag-delete').hidden=!selected;
+ $('#cms-tag-info').textContent=selected
+  ?'目前有 '+selected.usage+' 篇内容引用 · '+(selected.source==='content'?'收录内容标签':'后台管理标签')
+  :'创建标签后可在文章编辑区快速添加；名称不可直接重命名。';
+ drawTags();
+}
+async function openTagManager(){
+ if(mode!=='admin')return;
+ $('#cms-tags-dialog').showModal();
+ try{await loadCmsTaxonomy();drawTags();chooseTag(state.tagEditing)}
+ catch(e){message(e.message,false);$('#cms-tag-items').textContent='标签读取失败：'+e.message}
+}
+async function refreshTagsAfterEdit(){
+ await loadCmsTaxonomy();drawTags();paintSuggestedTags();
+}
+async function saveTag(e){
+ e.preventDefault();if(mode!=='admin'||state.busy)return;
+ const name=$('#cms-tag-name').value.trim(),description=$('#cms-tag-description').value.trim();
+ if(!name||name.length>32||/[<>]/.test(name)){message('标签名称不合法',false);return}
+ $('#cms-tag-save').disabled=true;
+ try{
+   const editing=state.tagEditing;
+   await api(editing?'/api/admin/tags/'+encodeURIComponent(editing):'/api/admin/tags',{
+     method:editing?'PUT':'POST',body:JSON.stringify({name,description})
+   });
+   await refreshTagsAfterEdit();chooseTag(name);
+   message(editing?'标签说明已更新':'标签创建成功');
+ }catch(err){message(err.message,false)}
+ finally{$('#cms-tag-save').disabled=false}
+}
+async function deleteTag(){
+ const name=state.tagEditing;if(!name||mode!=='admin')return;
+ const tag=state.tagRecords.find(t=>t.name===name);
+ if(!confirm('删除标签「'+name+'」？仍被 '+(tag?.usage||0)+' 篇文章引用的标签不可删除。'))return;
+ $('#cms-tag-delete').disabled=true;
+ try{
+   await api('/api/admin/tags/'+encodeURIComponent(name),{method:'DELETE'});
+   state.tagEditing=null;await refreshTagsAfterEdit();chooseTag();
+   message('标签已删除');
+ }catch(err){message(err.message,false)}
+ finally{$('#cms-tag-delete').disabled=false}
 }
 function boot(){
  setTheme(theme());
