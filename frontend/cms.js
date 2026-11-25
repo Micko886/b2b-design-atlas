@@ -433,23 +433,49 @@ async function refreshMedia(){
      :'<p class="cms-loading">暂无上传图片。可以上传 JPG、PNG 或 WebP。</p>';
  }catch(e){message(e.message,false)}
 }
+// V51.6 · Optimize oversized images locally; never upload unsupported content.
+async function optimizeMediaFile(original){
+ if(!['image/jpeg','image/png','image/webp'].includes(original.type))
+   throw Error(original.name+'：仅支持 JPG、PNG 或 WebP。');
+ if(original.size<=1500000)return original;
+ if(original.size>12000000)throw Error(original.name+'：原始图片不能超过 12MB。');
+ if(typeof createImageBitmap!=='function')throw Error('当前浏览器不支持自动压缩，请先将图片压缩到 1.5MB 以下。');
+ const bitmap=await createImageBitmap(original);
+ try{
+   const canvas=document.createElement('canvas');
+   const context=canvas.getContext('2d',{alpha:true});
+   if(!context)throw Error('浏览器无法创建图片压缩画布。');
+   for(const limit of [2400,1800,1400,1100]){
+     const factor=Math.min(1,limit/Math.max(bitmap.width,bitmap.height));
+     canvas.width=Math.max(1,Math.round(bitmap.width*factor));
+     canvas.height=Math.max(1,Math.round(bitmap.height*factor));
+     context.clearRect(0,0,canvas.width,canvas.height);
+     context.drawImage(bitmap,0,0,canvas.width,canvas.height);
+     for(const quality of [0.86,0.74,0.62]){
+       const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',quality));
+       if(blob&&blob.type==='image/webp'&&blob.size>0&&blob.size<=1500000)
+         return new File([blob],(original.name.replace(/\\.[^.]+$/,'')||'atlas-image')+'.webp',{type:'image/webp'});
+     }
+   }
+   throw Error(original.name+'：图片优化后仍超过 1.5MB，请使用更小的图片。');
+ }finally{if(typeof bitmap.close==='function')bitmap.close()}
+}
 async function uploadMedia(files){
  if(mode!=='admin')return;
- for(const file of [...files].slice(0,10)){
-   if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>1500000){
-     message(file.name+'：仅允许 1.5MB 以下的 JPG、PNG 和 WebP 图片',false);continue;
-   }
-   $('#cms-media-status').textContent='正在上传 '+file.name;
+ for(const original of [...files].slice(0,10)){
    try{
+     $('#cms-media-status').textContent='正在处理 '+original.name;
+     const file=await optimizeMediaFile(original);
+     $('#cms-media-status').textContent='正在上传 '+file.name+'（'+Math.round(file.size/1024)+' KB）';
      const base64=await new Promise((resolve,reject)=>{
        const reader=new FileReader();reader.onerror=()=>reject(Error('文件读取失败'));
        reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.readAsDataURL(file);
      });
      await api('/api/admin/media',{method:'POST',body:JSON.stringify({name:file.name,mime:file.type,content:base64})});
-     message('媒体已保存：'+file.name);
-   }catch(e){message(e.message,false)}
+     message((file!==original?'已优化并上传：':'媒体已保存：')+file.name);
+   }catch(err){message(err.message,false)}
  }
- $('#cms-media-status').textContent='媒体资源存储于 PostgreSQL';
+ $('#cms-media-status').textContent='媒体安全保存在 PostgreSQL';
  await refreshMedia();
 }
 
