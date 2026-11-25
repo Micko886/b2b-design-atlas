@@ -39,6 +39,7 @@ const fieldSpecs={
 };
 const statusText={source:'原始收录 · 可编辑',draft:'草稿',review:'待审核',published:'后台已发布',archived:'已归档',public:'公开内容'};
 let toastTimer=0;
+let contentListScrollY=0;
 function message(text,success=true){const el=$('#cms-toast');el.textContent=text;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3200);if(!success)console.warn('CMS',text)}
 function theme(saved=false){try{const s=localStorage.getItem('atlas-admin-theme');return s==='dark'?'dark':'light'}catch{return 'light'}}
 function setTheme(value){document.documentElement.dataset.theme=value;document.documentElement.style.colorScheme=value;$$('[data-set-theme]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.setTheme===value)));const meta=$('meta[name=theme-color]');if(meta)meta.content=value==='dark'?'#0b111c':'#f5f7fb';try{localStorage.setItem('atlas-admin-theme',value)}catch{}}
@@ -254,6 +255,9 @@ function closeEditor(push=true){
  $('#cms-editor-body').hidden=true;$('#cms-empty').hidden=false;
  setStudioMode(false);drawItems();
  if(push)history.pushState({},'',editorUrl(null));
+ // Restore the content list position instead of leaving users halfway down the page.
+ window.scrollTo({top:contentListScrollY,behavior:'instant'});
+ const listHeading=$('#cms-browser-title');if(listHeading){listHeading.setAttribute('tabindex','-1');listHeading.focus({preventScroll:true})}
  return true;
 }
 function rowImage(x){
@@ -737,6 +741,7 @@ const history=item.history||[];
  state.dirty=false;autosavePaused=false;
 }
 async function selectItem(slug,push=false){
+ if(!state.selected)contentListScrollY=window.scrollY;
  if(state.dirty&&!confirm('当前修改还未保存。确定放弃这些更改吗？'))return;
  clearTimeout(autosaveTimer);editGeneration++;
  const item=state.items.find(x=>x.slug===slug);if(!item)return;
@@ -748,7 +753,10 @@ async function selectItem(slug,push=false){
    resetArticleStructureHistory();
    if(result.kind==='module')await loadSiteChoices();
    state.editorTab=result.status==='review'&&can('review')?'review':'content';
-   renderForm(result);drawItems();if(push)history.pushState({},'',editorUrl(slug));await offerDraftRecovery(result);
+   renderForm(result);drawItems();if(push)history.pushState({},'',editorUrl(slug));
+   window.scrollTo({top:0,behavior:'instant'});
+   const heading=$('#cms-editor-body .cms-easy-heading h2');if(heading){heading.setAttribute('tabindex','-1');heading.focus({preventScroll:true})}
+   await offerDraftRecovery(result);
  }catch(e){setStudioMode(false);$('#cms-empty').innerHTML='<div class="cms-error">'+h(e.message)+'</div>';message(e.message,false)}
 }
 // One serializer for save, undo/redo and live image SEO inspection.
