@@ -798,7 +798,7 @@ function transitionErrorInfo(error,action,applied=false){
  if(error.status===409)return {title:'内容版本已经变化',detail:'其他窗口或编辑人员可能修改了这条内容。重新加载最新版本后再决定是否操作。'};
  if(error.status===401)return {title:'登录已失效',detail:'请重新登录。原来的公开版本未因本次请求发生变化。'};
  if(error.status===403)return {title:'没有执行权限',detail:'请使用具备审核权限的账号，或联系最高管理员。'};
- if(error.status===422)return {title:action==='publish'?'暂时无法发布':'内容校验未通过',detail:'请根据下方错误检查图片、分类、正文及关联内容，修改后再提交。'};
+ if(error.status===422)return action==='reject'?{title:'退回意见还不够明确',detail:'请在审核页面写明需要修改的地方，至少 4 个字符。'}:{title:action==='publish'?'暂时无法发布':'内容校验未通过',detail:'请根据下方错误检查图片、分类、正文及关联内容，修改后再提交。'};
  return {title:'操作未确认成功',detail:'请检查网络并重新读取内容状态，避免重复执行操作。'};
 }
 function showTransitionFeedback(error,action,applied=false){
@@ -816,7 +816,7 @@ async function transition(action){
  let reason='';
  if(action==='reject'){
    reason=$('#cms-review-reason')?.value?.trim()||'';
-   if(reason.trim().length<4){message('退回原因至少 4 个字符。',false);return}
+   if(reason.trim().length<4){const error=Object.assign(new Error('退回原因至少 4 个字符，请填写具体修改意见。'),{status:422});showTransitionFeedback(error,action);message(error.message,false);return}
  }
  if(action==='archive'&&!confirm('确定归档「'+(item.payload.name||item.payload.title||item.slug)+'」？该页面将从前台列表移除。'))return;
  clearTransitionFeedback();
