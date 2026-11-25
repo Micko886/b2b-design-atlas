@@ -154,7 +154,7 @@ function setCmsRole(){
  $('#cms-team-open').hidden=!can('team');
  $('#cms-schedules-open').hidden=!can('view');
  $('#cms-review-shortcut').hidden=!can('view');
- $('.side-nav a[href="/admin"],.side-nav a[href="/admin#traffic"]').forEach(a=>a.hidden=!can('team'));
+ $$('.side-nav a[href="/admin"],.side-nav a[href="/admin#traffic"]').forEach(a=>a.hidden=!can('team'));
  const options=[];
  if(can('edit'))options.push(['submit','提交审核']);
  if(can('review'))options.push(['publish','批量发布'],['archive','归档下线']);
