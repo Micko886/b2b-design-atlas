@@ -278,6 +278,7 @@ async function loadKind(keep=false){
 function formField(spec,values,editable){
  const [name,label,type,required]=spec,value=values[name]??(type==='json'?[]:type==='bool'?false:'');
  const inputName='field-'+name,disabled=editable?'':' disabled';
+ const mediaField=(name==='cover_image'||name==='screenshot_url')&&editable&&can('media');
  const attr='id="'+inputName+'" data-field="'+h(name)+'" data-type="'+h(type)+'"';
  let input='';
  if(name==='category'&&state.kind==='article'){
@@ -293,7 +294,7 @@ function formField(spec,values,editable){
    input='<textarea '+attr+disabled+' rows="7" spellcheck="false">'+h(pretty)+'</textarea>';
  }else if(type==='long')input='<textarea '+attr+disabled+' rows="4"'+(required?' required':'')+'>'+h(value)+'</textarea>';
  else input='<input '+attr+(name==='category'&&state.kind==='article'?' list="v51-categories"':'')+disabled+' type="'+(type==='url'?'url':type==='number'?'number':'text')+'" value="'+h(value)+'"'+(required?' required':'')+'>';
- return '<div class="cms-field" data-json="'+(type==='json')+'" data-multiline="'+(type==='long')+'"><label for="'+inputName+'">'+h(label)+(required?' *':'')+'</label>'+input+'</div>';
+ return '<div class="cms-field" data-json="'+(type==='json')+'" data-multiline="'+(type==='long')+'"><label for="'+inputName+'">'+h(label)+(required?' *':'')+'</label>'+input+(mediaField?'<button type="button" class="cms-field-media-pick" data-editor-pick-media="'+h(inputName)+'">从媒体库选择或上传图片</button>':'')+'</div>';
 }
 function reviewBrief(item){
  if(mode!=='admin'||item.status!=='review')return '';
@@ -906,7 +907,7 @@ async function refreshMedia(){
      +'<small class="cms-v519-usage">'+(item.usage_count?'<strong>引用 '+item.usage_count+' 篇</strong> · '+h((item.used_by||[]).map(x=>x.slug).join('、')):'未被 CMS 内容引用')+'</small>'
      +(can('media')?'<button type="button" data-media-crop="'+h(item.id)+'">裁剪 / 设置焦点</button>':'')
      +'<button type="button" data-v51-copy-media="'+h(item.url)+'">复制图片地址</button>'
-     +(state.mediaTarget?'<button type="button" data-v513-use-inline="'+h(item.url)+'">插入当前章节</button>':state.selected?.kind==='article'?'<button type="button" data-v51-use-media="'+h(item.url)+'">设为当前文章封面</button>':'')
+     +(state.mediaTarget?'<button type="button" data-v513-use-inline="'+h(item.url)+'">插入当前章节</button>':state.mediaField?'<button type="button" data-v51-use-media="'+h(item.url)+'">使用此图片</button>':'')
      +'<button type="button" data-v51-delete-media="'+h(item.id)+'" class="cms-v51-delete">删除图片</button></div>').join('')
      :'<p class="cms-loading">暂无上传图片。可以上传 JPG、PNG 或 WebP。</p>';
  }catch(e){$('#cms-media-status').textContent='媒体列表加载失败：'+e.message;message(e.message,false)}
@@ -963,6 +964,10 @@ async function uploadMedia(files){
  $('#cms-media-status').textContent='上传完成：成功 '+uploaded+' 张'+(failed?'，失败 '+failed+' 张，请检查文件格式及权限。':'。选择下方图片即可用于文章。');
  picker.disabled=false;dropzone.disabled=false;
  await refreshMedia();
+ if(uploaded===1&&lastUrl&&state.mediaField){
+   const target=document.getElementById(state.mediaField);
+   if(target){target.value=lastUrl;state.mediaField=null;$('#cms-media-dialog').close();markDraftDirty();refreshArticlePreview();message('图片已关联到当前字段，请保存草稿')}
+ }
  if(uploaded===1&&lastUrl&&state.mediaTarget){
    const target=state.mediaTarget.querySelector('[data-block-image],[data-v513-image]');
    if(target){target.value=lastUrl;state.mediaTarget=null;$('#cms-media-dialog').close();markDraftDirty();refreshArticlePreview();message('图片已插入正文，记得保存草稿')}
@@ -1382,10 +1387,12 @@ function boot(){
    if(e.target.closest('[data-close-editor]')){closeEditor();return}
    if(e.target.closest('[data-editor-save]')){if(!state.dirty)message('当前没有待保存的修改。');else await persistDraft(false);return}
    if(e.target.closest('[data-editor-submit]')){await transition('submit');return}
+   const mediaPicker=e.target.closest('[data-editor-pick-media]');
+   if(mediaPicker){state.mediaTarget=null;state.mediaField=mediaPicker.dataset.editorPickMedia;await openMedia();return}
    const tab=e.target.closest('[data-editor-tab]');
    if(tab){setEditorTab(tab.dataset.editorTab);return}
    const themeButton=e.target.closest('[data-set-theme]');if(themeButton){setTheme(themeButton.dataset.setTheme);return}
-   if(e.target.closest('[data-editor-open-media]')){state.mediaTarget=null;await openMedia();return}
+   if(e.target.closest('[data-editor-open-media]')){state.mediaTarget=null;state.mediaField=state.selected?.kind==='article'?'field-cover_image':state.selected?.kind==='site'||state.selected?.kind==='module'?'field-screenshot_url':null;await openMedia();return}
    const type=e.target.closest('[data-kind-link]');if(type){e.preventDefault();await changeKind(type.dataset.kindLink);return}
    const choice=e.target.closest('[data-pick]');if(choice){if(state.busy)return;await selectItem(choice.dataset.pick,true);return}
    const action=e.target.closest('[data-transition]');if(action){await transition(action.dataset.transition);return}
@@ -1419,7 +1426,7 @@ function boot(){
    const blockFormat=e.target.closest('[data-block-format]');
    if(blockFormat){applyBlockFormat(blockFormat);return}
    const blockPick=e.target.closest('[data-block-pick-image]');
-   if(blockPick){state.mediaTarget=blockPick.closest('[data-cms-block]');await openMedia();return}
+   if(blockPick){state.mediaField=null;state.mediaTarget=blockPick.closest('[data-cms-block]');await openMedia();return}
    if(e.target.closest('[data-seo-check]')){await runSeoAudit();return}
     const formatter=e.target.closest('[data-v514-format]');if(formatter){applyArticleFormat(formatter);return}
    if(e.target.closest('[data-v512-preview]')){toggleArticlePreview();return}
@@ -1444,12 +1451,12 @@ function boot(){
      return;
    }
    const pickInline=e.target.closest('[data-v513-pick-image]');
-   if(pickInline){state.mediaTarget=pickInline.closest('[data-v51-section]');await openMedia();return}
+   if(pickInline){state.mediaField=null;state.mediaTarget=pickInline.closest('[data-v51-section]');await openMedia();return}
    const clearInline=e.target.closest('[data-v513-clear-image]');
    if(clearInline){clearInline.closest('[data-v51-section]').querySelector('[data-v513-image]').value='';markDraftDirty();refreshArticlePreview();return}
-   const useMedia=e.target.closest('[data-v51-use-media]');if(useMedia){const target=$('#field-cover_image');if(target){target.value=useMedia.dataset.v51UseMedia;markDraftDirty();$('#cms-media-dialog').close();message('封面已选择，请保存草稿')}return}
+   const useMedia=e.target.closest('[data-v51-use-media]');if(useMedia){const target=state.mediaField?document.getElementById(state.mediaField):null;if(target){target.value=useMedia.dataset.v51UseMedia;state.mediaField=null;markDraftDirty();refreshArticlePreview();$('#cms-media-dialog').close();message('图片已选择，请保存草稿')}return}
    const copy=e.target.closest('[data-v51-copy-media]');if(copy){try{await navigator.clipboard.writeText(location.origin+copy.dataset.v51CopyMedia);message('图片地址已复制')}catch{message('请从媒体列表中手动复制地址',false)}return}
-   if(e.target.closest('[data-media-close]')){state.mediaTarget=null;$('#cms-media-dialog').close();return}
+   if(e.target.closest('[data-media-close]')){state.mediaTarget=null;state.mediaField=null;$('#cms-media-dialog').close();return}
    if(e.target.closest('[data-dialog-close]')){$('#cms-create-dialog').close();return}
  });
  document.addEventListener('input',e=>{if(e.target.closest('#cms-edit-form')){markDraftDirty();refreshArticlePreview();refreshSeoSnippet()}});
@@ -1503,7 +1510,7 @@ function boot(){
  $('#cms-crop-x').addEventListener('input',paintCrop);
  $('#cms-crop-y').addEventListener('input',paintCrop);
  $('#cms-crop-save').addEventListener('click',saveCrop);
- $('#cms-media-open').addEventListener('click',()=>{state.mediaTarget=null;openMedia()});
+ $('#cms-media-open').addEventListener('click',()=>{state.mediaTarget=null;state.mediaField=null;openMedia()});
  $('#cms-media-select').addEventListener('click',()=>$('#cms-media-file').click());
  $('#cms-media-file').addEventListener('change',async e=>{const files=Array.from(e.target.files||[]);e.target.value='';await uploadMedia(files)});
  const drop=$('#cms-media-drop');
