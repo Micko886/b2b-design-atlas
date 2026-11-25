@@ -54,6 +54,16 @@ class FocusedEditorContracts(unittest.TestCase):
         self.assertIn(".cms-easy-header-side .cms-item-state",self.js)
         self.assertIn("syncSiteImage();refreshArticlePreview()",self.js)
 
+    def test_site_gallery_can_add_sort_remove_and_set_cover(self):
+        for text in ("function galleryCards(items)","function galleryValue()", "function addGalleryImages(urls)",
+                     "data-gallery-add", "data-gallery-cover", "data-gallery-remove", "data-gallery-move",
+                     "data-gallery-label", "state.mediaField='field-gallery'", "uploadedUrls.push(lastUrl)",
+                     "if(state.mediaField==='field-gallery')", "galleryCards(Array.isArray(values.gallery)"):
+            with self.subTest(text=text):self.assertIn(text,self.js)
+        self.assertIn("cms-gallery-editor",self.css)
+        self.assertIn("data-field=\"gallery\"",self.js)
+
+
     def test_media_file_chooser_is_a_real_button(self):
         self.assertIn('id="cms-media-select"',self.html)
         self.assertIn('id="cms-media-file"',self.html)
@@ -92,6 +102,25 @@ class ScreenshotMediaValidation(unittest.TestCase):
                       "/api/media/not-a-uuid","/screenshots/../private.png"):
             with self.subTest(image=image),self.assertRaises(HTTPException):
                 cms_routes.cleaned("site","site-example",self.site_payload(image))
+
+    def test_website_gallery_accepts_valid_multiple_images(self):
+        payload=self.site_payload('/screenshots/sites/example.webp')
+        payload['gallery']=[{'url':'/screenshots/research/example-home.jpg','label':'首页'},
+                            {'url':'/api/media/'+str(uuid.uuid4()),'label':'产品页'}]
+        result=cms_routes.cleaned('site','site-example',payload)
+        self.assertEqual(len(result['gallery']),2)
+
+    def test_website_gallery_rejects_external_duplicate_and_oversize(self):
+        base=self.site_payload('/screenshots/sites/example.webp')
+        entries=[{'url':'https://evil.example/pic.png','label':'bad'}]
+        cases=[entries,[{'url':'/screenshots/../secret.png','label':'x'}],
+               [{'url':'/api/media/not-a-uuid','label':'bad'}],
+               [{'url':'/screenshots/sites/example.webp','label':'1'},
+                {'url':'/screenshots/sites/example.webp','label':'2'}],
+               [{'url':'/screenshots/sites/img'+str(i)+'.webp','label':'x'} for i in range(17)]]
+        for case in cases:
+            with self.subTest(case=case[:2]),self.assertRaises(HTTPException):
+                cms_routes.cleaned('site','site-example',{**base,'gallery':case})
 
     def test_source_capture_remains_statically_constrained(self):
         payload=self.site_payload("/screenshots/sites/example.webp")
