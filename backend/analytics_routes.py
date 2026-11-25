@@ -193,7 +193,8 @@ def register_analytics_routes(app:FastAPI):
         return Response(status_code=204)
 
     @app.get("/api/admin/analytics",include_in_schema=False)
-    def admin_report(request:Request,response:Response,days:Literal[7,30,90]=30):
+    def admin_report(request:Request,response:Response,days:int=30):
+        if days not in (7,30,90):user_auth.error(422,"只能查询 7、30 或 90 天数据。")
         session=user_auth.required(request)
         if not admin_routes.admin_allowed(session):
             user_auth.error(403,"此账号没有查看运营数据的权限。")
