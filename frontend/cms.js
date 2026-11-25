@@ -196,7 +196,7 @@ function setCmsRole(){
 }
 function btnDisable(value){
  state.busy=value;
- $('[data-editor-pane] button,#cms-editor-body .cms-edit-quick-actions button,#cms-new,#cms-refresh,#cms-export').forEach(button=>{
+ $$('[data-editor-pane] button,#cms-editor-body .cms-edit-quick-actions button,#cms-new,#cms-refresh,#cms-export').forEach(button=>{
   if(button.dataset.alwaysEnabled)return;
   if(value){
    if(button.dataset.cmsBeforeBusy===undefined)button.dataset.cmsBeforeBusy=button.disabled?'1':'0';
