@@ -143,9 +143,33 @@ async function offerDraftRecovery(item){
  }catch(_){}
 }
 function can(permission){return mode==='admin'&&state.capabilities.includes(permission)}
+function setEditorTab(tab){
+ const root=$('#cms-editor-body');if(!root||root.hidden)return;
+ const options=Array.from(root.querySelectorAll('[data-editor-tab]'));
+ const selected=options.some(x=>x.dataset.editorTab===tab)?tab:'content';
+ state.editorTab=selected;
+ for(const button of options){
+   const active=button.dataset.editorTab===selected;
+   button.setAttribute('aria-selected',String(active));
+   button.tabIndex=active?0:-1;
+ }
+ for(const pane of root.querySelectorAll('[data-editor-pane]'))
+   pane.hidden=pane.dataset.editorPane!==selected;
+}
+async function logoutCms(){
+ if(state.busy){message('草稿正在保存，请稍后再退出。',false);return}
+ if(state.dirty&&!confirm('有尚未保存的修改。确认退出登录？'))return;
+ const btn=$('#cms-logout');btn.disabled=true;
+ try{await api('/api/auth/logout',{method:'POST'});
+   location.assign('/login?next=%2Fadmin%2Fcontent');
+ }catch(err){btn.disabled=false;message('退出失败：'+err.message,false)}
+}
 function setCmsRole(){
  const title={owner:'最高管理员',editor:'内容编辑',reviewer:'审核员'}[state.role]||'未授权';
  $('#cms-role').textContent=(state.user?.display_name||'Atlas')+' · '+title;
+ $('#cms-logout').hidden=mode!=='admin';
+ $('#cms-tools-menu').hidden=!(can('media')||can('taxonomy')||can('team')||can('export'));
+ $('[data-owner-only]').forEach(el=>el.hidden=!can('team'));
  $('#cms-new').hidden=!can('edit');
  $('#cms-export').hidden=!can('export');
  $('#cms-media-open').hidden=!can('media');
@@ -322,7 +346,7 @@ function renderForm(item){
  '<form id="cms-edit-form" class="cms-form"><div class="cms-form-group-label"><span>基础资料与内容字段</span><small>自动保存开启 · 发布仍需审核</small></div>'
  +(editable?'<div class="cms-autosave-strip"><span class="cms-autosave-led"></span><span id="cms-autosave-status" role="status" aria-live="polite">已加载 · 修改后 3 秒自动保存草稿</span><button type="button" data-autosave-retry>立即保存</button></div>':'')
  +specs.filter(spec=>!(item.kind==='article'&&['tags','takeaways','sections'].includes(spec[0]))).map(spec=>formField(spec,values,editable)).join('')
- +(item.kind==='article'?articleStudio(values,editable)+seoStudio(values):'')
+ +(item.kind==='article'?articleStudio(values,editable):'')
  +'<details class="cms-json-advanced"><summary>高级 · 查看完整 JSON 结构</summary><div class="cms-field" data-json="true"><label>只读数据结构</label><textarea disabled spellcheck="false">'+h(JSON.stringify(values,null,2))+'</textarea></div></details>'
  +(editable?'<div class="cms-form-actions">'
   +'<button class="primary" type="submit">'+icon('save')+' 保存草稿</button>'
@@ -353,7 +377,20 @@ const history=item.history||[];
  +(v.reason?'<em class="cms-review-reason">退回意见：'+h(v.reason)+'</em>':'')+'</div>'+(editable?'<button type="button" data-restore="'+v.revision+'">恢复草稿</button>':'')+'</div>').join(''):'<p style="color:var(--muted);font-size:11px">原始内容尚无 CMS 修改记录。首次保存后开始记录版本。</p>')
  +'</div>');
  const root=$('#cms-editor-body');
- root.innerHTML=content+steps+meta+reviewBrief(item)+form+reviewActions+timeline;root.hidden=false;
+ const tabs='<div class="atlas-v521-editor-tabs" role="tablist" aria-label="内容工作台">'
+  +'<button type="button" data-editor-tab="content" role="tab">正文与资料</button>'
+  +(item.kind==='article'?'<button type="button" data-editor-tab="seo" role="tab">SEO 与质量</button>':'')
+  +'<button type="button" data-editor-tab="review" role="tab">审核与发布</button>'
+  +'<button type="button" data-editor-tab="history" role="tab">版本记录</button></div>';
+ const seoPanel=item.kind==='article'?seoStudio(values):'';
+ root.innerHTML=content+steps+meta+tabs
+  +'<div data-editor-pane="content">'+form+'</div>'
+  +(item.kind==='article'?'<div data-editor-pane="seo" hidden>'+seoPanel+'</div>':'')
+  +'<div data-editor-pane="review" hidden>'+reviewBrief(item)+reviewActions
+  +(can('review')?'':'<p class="atlas-v521-readonly-tip">本账户没有审核发布权限。如需审核，请联系最高管理员。</p>')+'</div>'
+  +'<div data-editor-pane="history" hidden>'+timeline+'</div>';
+ root.hidden=false;
+ setEditorTab(state.editorTab||'content');
  syncScheduleEditor(item);
  $('#cms-empty').hidden=true;
  state.dirty=false;autosavePaused=false;
@@ -367,6 +404,7 @@ async function selectItem(slug){
    const result=mode==='admin'?await api('/api/admin/content/'+state.kind+'/'+slug):
     {kind:state.kind,slug,source:'repository',status:'public',revision:0,payload:state.records[slug],history:[]};
    state.selected=result;
+   state.editorTab=result.status==='review'&&can('review')?'review':'content';
    renderForm(result);drawItems();await offerDraftRecovery(result);
  }catch(e){$('#cms-empty').innerHTML='<div class="cms-error">'+h(e.message)+'</div>';message(e.message,false)}
 }
@@ -922,7 +960,7 @@ function chooseCategory(id=null){
  $('#cms-v515-info').textContent=item
    ?'被 '+item.usage+' 篇文章使用 · '+(item.source==='repository'?'原始分类':'CMS 分类')
    :'分类 ID 创建后不可更改；新分类会同步到前台资讯筛选。';
- $('#cms-v515-category-items [data-v515-pick]').forEach(button=>{
+ $$('#cms-v515-category-items [data-v515-pick]').forEach(button=>{
    button.classList.toggle('active',button.dataset.v515Pick===id);
    button.setAttribute('aria-pressed',String(button.dataset.v515Pick===id));
  });
@@ -982,7 +1020,7 @@ function drawTags(){
    +'<span><strong>'+h(x.name)+'</strong><small>'+h(x.description||'尚无运营说明')+'</small></span>'
    +'<span class="cms-v515-usage">'+x.usage+' 篇</span></button>').join('')
    :'<p class="cms-loading">尚无标签，或搜索无结果。</p>';
- $('#cms-tag-items [data-v513-tag]').forEach(button=>{
+ $$('#cms-tag-items [data-v513-tag]').forEach(button=>{
    const selected=button.dataset.v513Tag===state.tagEditing;
    button.classList.toggle('active',selected);
    button.setAttribute('aria-pressed',String(selected));
@@ -1111,7 +1149,7 @@ function paintCalendar(){
  $('#cms-calendar-label').textContent=calendarView==='month'
    ?calendarCursor.getFullYear()+'年 '+(calendarCursor.getMonth()+1)+'月'
    :calendarDateKey(start)+' – '+calendarDateKey(new Date(start.getFullYear(),start.getMonth(),start.getDate()+6));
- $('[data-cal-view]').forEach(btn=>btn.setAttribute('aria-pressed',String(btn.dataset.calView===calendarView)));
+ $$('[data-cal-view]').forEach(btn=>btn.setAttribute('aria-pressed',String(btn.dataset.calView===calendarView)));
  root.dataset.calendarView=calendarView;
  const statusLabels={pending:'待发布',published:'已发布',failed:'发布失败',stale:'版本失效',cancelled:'已取消'};
  root.innerHTML=Array.from({length:days},(_,i)=>{
@@ -1285,6 +1323,8 @@ function boot(){
    if(teamEntry){chooseTeamPerson(teamEntry.dataset.v514TeamId);return}
    const close=e.target.closest('[data-v514-close]');
    if(close){$('#cms-'+close.dataset.v514Close+'-dialog').close();return}
+   const tab=e.target.closest('[data-editor-tab]');
+   if(tab){setEditorTab(tab.dataset.editorTab);return}
    const themeButton=e.target.closest('[data-set-theme]');if(themeButton){setTheme(themeButton.dataset.setTheme);return}
    const type=e.target.closest('[data-kind-link]');if(type){e.preventDefault();await changeKind(type.dataset.kindLink);return}
    const choice=e.target.closest('[data-pick]');if(choice){if(state.busy)return;await selectItem(choice.dataset.pick);return}
@@ -1359,6 +1399,7 @@ function boot(){
   if(state.dirty&&!confirm('当前草稿还有未保存的修改。确认重新读取服务器内容吗？'))return;
   try{await loadKind(true);message('内容列表已刷新')}catch(e){message(e.message,false)}
  });
+ $('#cms-logout').addEventListener('click',logoutCms);
  $('#cms-export').addEventListener('click',exportCms);
  $('#cms-new').addEventListener('click',async()=>{
    if(mode==='admin'&&state.kind==='article')try{await loadCmsTaxonomy()}catch(err){message(err.message,false)}
@@ -1376,10 +1417,10 @@ function boot(){
  $('#cms-schedule-refresh').addEventListener('click',refreshSchedules);
  $('#cms-calendar-status').addEventListener('change',()=>{paintCalendar();paintScheduleQueue()});
  $('#cms-calendar-today').addEventListener('click',()=>{calendarCursor=new Date();paintCalendar()});
- $('[data-cal-view]').forEach(button=>button.addEventListener('click',()=>{
+ $$('[data-cal-view]').forEach(button=>button.addEventListener('click',()=>{
    calendarView=button.dataset.calView;paintCalendar()
  }));
- $('[data-cal-shift]').forEach(button=>button.addEventListener('click',()=>shiftCalendar(Number(button.dataset.calShift))));
+ $$('[data-cal-shift]').forEach(button=>button.addEventListener('click',()=>shiftCalendar(Number(button.dataset.calShift))));
  installCalendarDrag();
  $('#cms-team-open').addEventListener('click',openTeam);
  $('#cms-team-search').addEventListener('input',paintTeam);
