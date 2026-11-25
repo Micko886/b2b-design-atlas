@@ -31,7 +31,12 @@ COPY enhancements/build_palettes.py /srv/atlas/build_palettes.py
 RUN pip install --no-cache-dir -r requirements.txt 'psycopg[binary]>=3.2,<4' && mkdir -p /srv/atlas/data
 RUN python create_module_catalog.py && python build_palettes.py
 # Regression gate: prevent archived public resources from resurfacing in drafts.
+COPY scripts/guard_restore.py /srv/atlas/scripts/guard_restore.py
+COPY scripts/backup-postgres.sh /srv/atlas/scripts/backup-postgres.sh
+COPY scripts/verify-postgres-backup.sh /srv/atlas/scripts/verify-postgres-backup.sh
 COPY tests/test_cms_visibility.py /srv/atlas/tests/test_cms_visibility.py
-RUN python -m unittest discover -s /srv/atlas/tests -p "test_cms_visibility.py" -v
+COPY tests/test_restore_guard.py /srv/atlas/tests/test_restore_guard.py
+RUN bash -n /srv/atlas/scripts/backup-postgres.sh /srv/atlas/scripts/verify-postgres-backup.sh \
+ && python -m unittest discover -s /srv/atlas/tests -p "test_*.py" -v
 EXPOSE 8000
 CMD ["python","run.py"]
