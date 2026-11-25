@@ -1668,7 +1668,7 @@ async function openSettingsHub(){
 }
 async function openReviewRecord(kind,slug){
  if(!can('view')||!kinds[kind]||!slug)return;
- if(state.dirty&&!confirm('当前修改尚未保存，是否放弃修改并打开审核内容？'))return;
+ // changeKind/selectItem already prompt for unsaved edits; do not ask twice.
  if(kind!==state.kind){await changeKind(kind,false);if(state.kind!==kind)return}
  const item=state.items.find(x=>x.slug===slug);
  if(!item){message('该条目已从待审核队列中移除，请刷新队列。',false);await refreshReviewQueue();return}
