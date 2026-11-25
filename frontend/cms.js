@@ -178,7 +178,8 @@ function setCmsRole(){
  const title={owner:'最高管理员',editor:'内容编辑',reviewer:'审核员'}[state.role]||'未授权';
  $('#cms-role').textContent=(state.user?.display_name||'Atlas')+' · '+title;
  $('#cms-logout').hidden=mode!=='admin';
- $('#cms-tools-menu').hidden=!(can('media')||can('taxonomy')||can('team')||can('export'));
+ $('#cms-tools-menu').hidden=!(can('taxonomy')||can('team')||can('export'));
+ $('#cms-settings-open').hidden=!(can('taxonomy')||can('team')||can('export'));
  $$('[data-owner-only]').forEach(el=>el.hidden=!can('team'));
  $('#cms-new').hidden=!can('edit');
  $('#cms-export').hidden=!can('export');
@@ -1621,6 +1622,62 @@ async function refreshSchedules(){
    $('#cms-schedule-note').textContent=res.execution_note||'到期检查随公开目录访问执行。';
  }catch(e){$('#cms-schedule-items').innerHTML='<div class="cms-error">'+h(e.message)+'</div>'}
 }
+// V53.0 — One cross-category review inbox instead of reviewing one hidden filter at a time.
+async function refreshReviewQueue(){
+ if(!can('view'))return;
+ const status=$('#cms-review-queue-status'),root=$('#cms-review-queue');
+ status.textContent='正在读取四类内容的待审核稿…';
+ root.innerHTML='<p class="cms-loading">读取中…</p>';
+ const types=Object.keys(kinds);
+ const settled=await Promise.allSettled(types.map(kind=>api('/api/admin/content?kind='+kind)));
+ const pending=[],failures=[],counts={};
+ settled.forEach((out,i)=>{
+  const kind=types[i];
+  if(out.status!=='fulfilled'||!Array.isArray(out.value?.items)){failures.push(kinds[kind].title);return}
+  const entries=out.value.items.filter(x=>x.status==='review');
+  counts[kind]=entries.length;
+  entries.forEach(item=>pending.push({...item,kind}));
+ });
+ pending.sort((a,b)=>String(b.updated_at||b.updatedAt||'').localeCompare(String(a.updated_at||a.updatedAt||''),'zh'));
+ const count=$('#cms-review-total');
+ if(count){count.textContent=String(pending.length);count.hidden=!pending.length}
+ if(failures.length)status.textContent='部分栏目读取失败：'+failures.join('、')+'。请刷新后再核对。';
+ else status.textContent='待审核 '+pending.length+' 条 · 网站 '+(counts.site||0)+' / 模块 '+(counts.module||0)+' / 模式 '+(counts.pattern||0)+' / 文章 '+(counts.article||0);
+ root.innerHTML=pending.length?pending.map(item=>
+  '<article class="cms-v530-review-row"><div><span>'+h(kinds[item.kind].title)+' · 等待审核</span>'
+   +'<strong>'+h(item.label||item.slug)+'</strong><small>'+h(item.slug)+' · v'+h(item.revision??0)+'</small></div>'
+   +'<button type="button" data-review-open-kind="'+h(item.kind)+'" data-review-open-slug="'+h(item.slug)+'">查看变更</button></article>').join('')
+  :'<p class="cms-v530-review-empty">'+(failures.length?'已读取的栏目暂无待审核稿，其他栏目尚未成功读取。':'目前没有待审核内容，可以继续编辑或计划发布。')+'</p>';
+}
+async function openReviewQueue(){
+ if(!can('view')){message('当前账号没有内容查看权限。',false);return}
+ markWorkspace('review');
+ const dialog=$('#cms-review-dialog');
+ if(!dialog.open)dialog.showModal();
+ closeMobile();
+ try{await refreshReviewQueue()}catch(e){
+  $('#cms-review-queue-status').textContent='审核队列读取失败，请点击刷新重试。';
+  $('#cms-review-queue').textContent=e.message;
+ }
+}
+async function openSettingsHub(){
+ if(!(can('taxonomy')||can('team')||can('export'))){message('当前账号没有系统管理权限。',false);return}
+ markWorkspace('settings');
+ const dialog=$('#cms-settings-dialog');if(!dialog.open)dialog.showModal();
+ closeMobile();
+}
+async function openReviewRecord(kind,slug){
+ if(!can('view')||!kinds[kind]||!slug)return;
+ if(state.dirty&&!confirm('当前修改尚未保存，是否放弃修改并打开审核内容？'))return;
+ if(kind!==state.kind){await changeKind(kind,false);if(state.kind!==kind)return}
+ const item=state.items.find(x=>x.slug===slug);
+ if(!item){message('该条目已从待审核队列中移除，请刷新队列。',false);await refreshReviewQueue();return}
+ await selectItem(slug,true);
+ if(state.selected?.slug!==slug||state.selected?.kind!==kind)return;
+ $('#cms-review-dialog').close();
+ setEditorTab('review');
+ markWorkspace('review');
+}
 async function openScheduleQueue(){
  if(!can('view'))return;
  markWorkspace('schedule');
@@ -1690,7 +1747,7 @@ function boot(){
  // Start every privileged action hidden until /api/admin/team/me succeeds.
  for(const id of ['cms-new','cms-export','cms-media-open','cms-categories-open',
                   'cms-tags-open','cms-review-shortcut','cms-schedules-open',
-                  'cms-team-open','cms-logout'])$('#'+id).hidden=true;
+                  'cms-settings-open','cms-team-open','cms-logout'])$('#'+id).hidden=true;
  $('#cms-tools-menu').hidden=true;
  $('#cms-login-link').hidden=mode!=='preview';
  $('#cms-role').textContent=mode==='admin'?'管理员 · 内容维护':'公开只读预览';
@@ -1820,14 +1877,15 @@ function boot(){
  $('#cms-tag-form').addEventListener('submit',saveTag);
  $('#cms-tag-delete').addEventListener('click',deleteTag);
  $('#cms-tag-search').addEventListener('input',e=>{state.tagSearch=e.target.value;drawTags()});
- $('#cms-review-shortcut').addEventListener('click',async()=>{
-   if(!can('view'))return;
-   if(state.dirty&&!confirm('当前草稿尚未保存，确定切换到审核队列吗？'))return;
-   $('#cms-status').value='review';state.status='review';markWorkspace('review');drawItems();
-   closeMobile();$('#cms-items').scrollIntoView({block:'nearest',behavior:'smooth'});
-   const first=listFiltered()[0];
-   if(first){await selectItem(first.slug);setEditorTab('review')}
-   else message('当前类型没有待审核内容');
+ $('#cms-review-shortcut').addEventListener('click',openReviewQueue);
+ $('#cms-review-refresh').addEventListener('click',refreshReviewQueue);
+ $('#cms-settings-open').addEventListener('click',openSettingsHub);
+ for(const area of ['review','settings']){
+  const dialog=$('#cms-'+area+'-dialog');
+  dialog.addEventListener('close',()=>markWorkspace(state.selected?.status==='review'?'review':'content'));
+ }
+ $('#cms-settings-dialog').addEventListener('click',event=>{
+  if(event.target.closest('.cms-v530-tool'))$('#cms-settings-dialog').close();
  });
  $('#cms-schedules-open').addEventListener('click',openScheduleQueue);
  $('#cms-schedules-dialog').addEventListener('close',()=>markWorkspace(state.status==='review'?'review':'content'));
@@ -1851,7 +1909,14 @@ function boot(){
  $('#cms-crop-x').addEventListener('input',paintCrop);
  $('#cms-crop-y').addEventListener('input',paintCrop);
  $('#cms-crop-save').addEventListener('click',saveCrop);
- $('#cms-media-open').addEventListener('click',()=>{state.mediaTarget=null;state.mediaField=null;openMedia()});
+ $('#cms-media-open').addEventListener('click',()=>{state.mediaTarget=null;state.mediaField=null;markWorkspace('media');closeMobile();openMedia()});
+ $('#cms-media-dialog').addEventListener('close',()=>markWorkspace(state.selected?.status==='review'?'review':'content'));
+ document.addEventListener('click',async event=>{
+  const close=event.target.closest('[data-v530-close]');
+  if(close){$('#cms-'+close.dataset.v530Close+'-dialog').close();return}
+  const entry=event.target.closest('[data-review-open-kind][data-review-open-slug]');
+  if(entry)await openReviewRecord(entry.dataset.reviewOpenKind,entry.dataset.reviewOpenSlug);
+ });
  $('#cms-media-select').addEventListener('click',()=>$('#cms-media-file').click());
  $('#cms-media-file').addEventListener('change',async e=>{const files=Array.from(e.target.files||[]);e.target.value='';await uploadMedia(files)});
  const drop=$('#cms-media-drop');
@@ -1905,6 +1970,9 @@ function boot(){
      await loadKind();
      if(routeParams.get('edit')&&state.items.some(x=>x.slug===routeParams.get('edit')))await selectItem(routeParams.get('edit'));
      if(routeParams.get('workspace')==='schedule'&&can('view'))await openScheduleQueue();
+     if(routeParams.get('workspace')==='media'&&can('media')){markWorkspace('media');await openMedia()}
+     if(routeParams.get('workspace')==='review'&&can('view'))await openReviewQueue();
+     if(routeParams.get('workspace')==='settings'&&(can('taxonomy')||can('team')||can('export')))await openSettingsHub();
    }catch(e){console.error('[CMS] initial content load failed',e);setNotice('无法读取后台内容：'+e.message,true);$('#cms-items').innerHTML='<div class="cms-error">'+h(e.message)+'</div>'}
  })();
 }
