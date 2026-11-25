@@ -10,7 +10,7 @@ const kinds={site:{title:'网站内容',label:'Websites',icon:'globe',public:'/a
  module:{title:'页面模块',label:'Sections',icon:'layers',public:'/api/module-library',url:'/sections/'},
  pattern:{title:'设计模式',label:'Patterns',icon:'shapes',public:'/assets/patterns.json',url:'/patterns/'},
  article:{title:'研究文章',label:'Insights',icon:'article',public:'/assets/articles.json',url:'/insights/'}};
-const state={kind:new URLSearchParams(location.search).get('kind')||'site',items:[],records:{},selected:null,mediaField:null,csrf:'',user:null,dirty:false,q:'',status:'',busy:false,selectedSlugs:new Set(),taxonomy:{},tagSuggestions:[],mediaTarget:null,categoryRecords:[],categoryEditing:null,tagRecords:[],tagEditing:null,tagSearch:'',role:null,capabilities:[],scheduleItems:[],teamPeople:[],teamSelected:null};
+const state={kind:new URLSearchParams(location.search).get('kind')||'site',items:[],records:{},selected:null,mediaField:null,csrf:'',user:null,dirty:false,q:'',status:'',busy:false,selectedSlugs:new Set(),taxonomy:{},tagSuggestions:[],mediaTarget:null,categoryRecords:[],categoryEditing:null,tagRecords:[],tagEditing:null,tagSearch:'',role:null,capabilities:[],scheduleItems:[],teamPeople:[],teamSelected:null,siteChoices:[]};
 if(!kinds[state.kind])state.kind='site';
 const fieldSpecs={
  site:[
@@ -285,6 +285,12 @@ function formField(spec,values,editable){
  if(name==='sector'&&state.kind==='site'&&type==='text'){
    input='<input '+attr+disabled+' list="cms-site-sector-options" type="text" value="'+h(value)+'"'+(required?' required':'')+' placeholder="例如 工业制造">';
  }
+ else if(name==='site_id'&&state.kind==='module'&&state.siteChoices.length){
+   const options=state.siteChoices;
+   input='<select '+attr+disabled+' required><option value="">选择关联的网站案例</option>'
+     +(!options.some(x=>x.id===value)&&value?'<option value="'+h(value)+'" selected>'+h(value)+'（现有案例）</option>':'')
+     +options.map(x=>'<option value="'+h(x.id)+'"'+(value===x.id?' selected':'')+'>'+h(x.name||x.id)+'</option>').join('')+'</select>';
+ }
  else if(name==='category'&&state.kind==='article'){
    const items=state.categoryRecords.length?state.categoryRecords.map(x=>({id:x.id,name:x.name})):
      (state.taxonomy.article||[]).map(id=>({id,name:id}));
@@ -386,14 +392,77 @@ function siteEditorForm(values,editable){
  +'<details class="cms-easy-advanced"><summary>更多设置 <span>选填 · 业务方向、设计亮点</span></summary>'
  +'<div class="cms-easy-extra">'+extra.map(spec=>formField(spec,values,editable)).join('')+'</div></details>';
 }
+// V52.4: Plain-language editors share the same focused layout without modifying CMS payload schemas.
+function easyImagePreview(field,values,editable,explanation){
+ const url=String(values[field]||''),valid=validSiteShot(url);
+ return '<aside class="cms-easy-visual"><strong>展示图片</strong><p>'+h(explanation)+'</p>'
+  +'<div class="cms-easy-shot"><img id="cms-site-image" src="'+(valid?h(url):'')+'" alt="当前图片"'+(valid?'':' hidden')+'>'
+  +'<div id="cms-site-image-empty"'+(valid?' hidden':'')+'>暂未添加图片</div></div>'
+  +'<input type="hidden" id="field-'+field+'" data-field="'+field+'" data-type="text" value="'+h(url)+'">'
+  +(editable&&can('media')?'<button type="button" class="cms-easy-upload" data-editor-pick-media="field-'+field+'">选择或上传图片</button>':'')
+  +'<small>从媒体库选择现有图片，或上传 JPG、PNG、WebP。</small></aside>';
+}
+function simpleEditorForm(kind,values,editable){
+ let title='基本信息',description='',basic=[],extra=[],aside='';
+ if(kind==='module'){
+   title='编辑页面模块';description='填写模块标题、所属网站和设计说明，右侧可更换截图。';
+   basic=[['title','模块标题','text',true],['site_id','所属网站','text',true],
+     ['category','模块分类','text',true],['lesson','设计方法','long',true],['summary','模块介绍','long']];
+   extra=[['url','原始页面链接','url'],['type','模块类型','text']];
+   aside=easyImagePreview('screenshot_url',values,editable,'这张截图会展示在页面模块卡片和详情页中。');
+ }else if(kind==='pattern'){
+   title='编辑设计模式';description='描述设计要解决的问题、核心方法，以及适合什么场景。';
+   basic=[['title','模式名称','text',true],['family','所属类别','text',true],
+     ['question','解决什么问题','long',true],['principle','核心设计原则','long',true]];
+   extra=[['when','适用场景','long'],['compare','可以比较什么','long'],
+     ['modules','关联模块标识（每行一个）','lines']];
+   aside='<aside class="cms-easy-visual cms-pattern-preview"><strong>即时预览</strong>'
+    +'<div class="cms-pattern-preview-card"><small id="cms-preview-category">'+h(values.family||'设计模式')+'</small>'
+    +'<h3 id="cms-preview-title">'+h(values.title||'设计模式名称')+'</h3>'
+    +'<p id="cms-preview-description">'+h(values.question||'这里会显示设计问题')+'</p>'
+    +'<div id="cms-preview-principle">'+h(values.principle||'这里会显示核心设计原则')+'</div></div>'
+    +'<small>预览只在当前浏览器显示，未发布的内容不会公开。</small></aside>';
+ }else{
+   title='文章基本信息';description='先填写标题、摘要和分类，再在下方逐章编辑文章正文。';
+   basic=[['title','文章标题','text',true],['subtitle','文章摘要','long',true],
+     ['category','文章分类','text',true],['author','作者','text',true]];
+   extra=[['seo_title','SEO 标题','text'],['seo_description','SEO 描述','long'],
+     ['cover_site','关联网站标识','text'],['published_at','发布日期','text'],
+     ['reading_minutes','阅读时长（分钟）','number'],['featured','设为精选文章','bool']];
+   aside=easyImagePreview('cover_image',values,editable,'这张封面用于文章列表和详情页展示。');
+ }
+ return '<section class="cms-easy-intro"><div><h3>'+title+'</h3><p>'+description+'</p></div></section>'
+  +'<div class="cms-easy-layout"><div class="cms-easy-fields">'+basic.map(spec=>formField(spec,values,editable)).join('')+'</div>'+aside+'</div>'
+  +'<details class="cms-easy-advanced"><summary>更多设置 <span>不常用的内容放在这里</span></summary>'
+  +'<div class="cms-easy-extra">'+extra.map(spec=>formField(spec,values,editable)).join('')+'</div></details>';
+}
+function syncSimplePreview(){
+ if(!state.selected)return;
+ const kind=state.selected.kind;
+ const title=$('.cms-easy-heading h2'),source=$('#field-name')||$('#field-title');
+ if(title&&source)title.textContent=source.value.trim()||state.selected.slug;
+ if(kind==='pattern'){
+  const set=(id,field,fallback)=>{const target=$(id),input=$('#field-'+field);if(target&&input)target.textContent=input.value.trim()||fallback};
+  set('#cms-preview-title','title','设计模式名称');
+  set('#cms-preview-category','family','设计模式');
+  set('#cms-preview-description','question','这里会显示设计问题');
+  set('#cms-preview-principle','principle','这里会显示核心设计原则');
+ }
+}
+async function loadSiteChoices(){
+ if(state.siteChoices.length)return;
+ try{
+   const res=await api('/api/source-library');
+   state.siteChoices=Array.isArray(res.sites)?res.sites.map(x=>({id:x.id,name:x.name||x.id})): [];
+ }catch(e){console.warn('[CMS] site options unavailable',e)}
+}
 function syncSiteTitle(){
- if(state.selected?.kind!=='site')return;
- const heading=$('.cms-easy-heading h2'),name=$('#field-name');
- if(heading&&name)heading.textContent=name.value.trim()||state.selected.slug;
+ if(!state.selected)return;
+ syncSimplePreview();
 }
 function syncSiteImage(){
- if(state.selected?.kind!=='site')return;
- const field=$('#field-screenshot_url'),img=$('#cms-site-image'),empty=$('#cms-site-image-empty');
+ if(!state.selected||state.selected.kind==='pattern')return;
+ const field=$('#field-screenshot_url')||$('#field-cover_image'),img=$('#cms-site-image'),empty=$('#cms-site-image-empty');
  if(!field||!img||!empty)return;
  const value=field.value.trim();
  const safe=(/^\/screenshots\/[a-zA-Z0-9_./-]{1,200}$/.test(value)&&!value.includes('..'))||
@@ -553,6 +622,7 @@ async function selectItem(slug,push=false){
    const result=mode==='admin'?await api('/api/admin/content/'+state.kind+'/'+slug):
     {kind:state.kind,slug,source:'repository',status:'public',revision:0,payload:state.records[slug],history:[]};
    state.selected=result;
+   if(result.kind==='module')await loadSiteChoices();
    state.editorTab=result.status==='review'&&can('review')?'review':'content';
    renderForm(result);drawItems();if(push)history.pushState({},'',editorUrl(slug));await offerDraftRecovery(result);
  }catch(e){setStudioMode(false);$('#cms-empty').innerHTML='<div class="cms-error">'+h(e.message)+'</div>';message(e.message,false)}
