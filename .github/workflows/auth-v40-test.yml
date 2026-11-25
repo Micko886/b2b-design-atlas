@@ -1,7 +1,7 @@
 name: V40 Authentication QA
 on:
   push:
-    branches: [account-auth-v40, p0-v42-v43-security-collections, v44-website-comparison, v45-advanced-discovery, v46-admin-overview-light-dark]
+    branches: [account-auth-v40, p0-v42-v43-security-collections, v44-website-comparison, v45-advanced-discovery, v46-admin-overview-light-dark, v47-admin-cms]
   workflow_dispatch:
 jobs:
   tests:
@@ -14,14 +14,16 @@ jobs:
       - name: Install test dependencies
         run: pip install "fastapi>=0.115,<1" "pydantic>=2,<3" "httpx>=0.27,<1" "python-multipart>=0.0.18,<1"
       - name: Compile account backend
-        run: python -m py_compile backend/user_auth.py backend/install_auth.py backend/seo_routes.py backend/admin_routes.py
+        run: python -m py_compile backend/user_auth.py backend/install_auth.py backend/seo_routes.py backend/admin_routes.py backend/cms_routes.py
       - name: Exercise real account API with temporary isolated DB
         run: PYTHONPATH=backend python backend/test_auth.py
       - name: Test SEO paths and HTTP statuses
         run: PYTHONPATH=backend python backend/test_seo.py
       - name: Check frontend JavaScript syntax
-        run: node --check frontend/app.js && node --check frontend/admin.js
+        run: node --check frontend/app.js && node --check frontend/admin.js && node --check frontend/cms.js
       - name: Test admin dashboard authorization and catalog metrics
         run: PYTHONPATH=backend python backend/test_admin.py
+      - name: Exercise persistent editorial CMS, public publication and permissions
+        run: PYTHONPATH=backend python backend/test_cms.py
       - name: Assert bundled backend cannot bypass protected admin route
         run: PYTHONPATH=backend python backend/test_install_admin.py
