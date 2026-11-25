@@ -77,7 +77,7 @@ function markDraftDirty(){
 function applyDraftResult(target,res,payload){
  target.revision=res.revision;target.status='draft';target.payload=payload;
  const version=$('.cms-editor-meta strong');if(version)version.textContent='v'+res.revision;
- const status=$('.cms-editor-meta .cms-item-state');
+ const status=$('.cms-editor-meta .cms-item-state, .cms-easy-header-side .cms-item-state');
  if(status){status.dataset.status='draft';status.textContent=statusText.draft}
  const submit=$('#cms-edit-form [data-transition="submit"]');
  const quickSubmit=$('[data-editor-submit]');if(quickSubmit)quickSubmit.disabled=false;
@@ -334,6 +334,11 @@ function siteEditorForm(values,editable){
  +'<small>支持 JPG、PNG、WebP；已有图片也可从媒体库选用。</small></aside></div>'
  +'<details class="cms-easy-advanced"><summary>更多设置 <span>选填 · 业务方向、设计亮点</span></summary>'
  +'<div class="cms-easy-extra">'+extra.map(spec=>formField(spec,values,editable)).join('')+'</div></details>';
+}
+function syncSiteTitle(){
+ if(state.selected?.kind!=='site')return;
+ const heading=$('.cms-easy-heading h2'),name=$('#field-name');
+ if(heading&&name)heading.textContent=name.value.trim()||state.selected.slug;
 }
 function syncSiteImage(){
  if(state.selected?.kind!=='site')return;
@@ -1515,7 +1520,7 @@ function boot(){
    if(e.target.closest('[data-media-close]')){state.mediaTarget=null;state.mediaField=null;$('#cms-media-dialog').close();return}
    if(e.target.closest('[data-dialog-close]')){$('#cms-create-dialog').close();return}
  });
- document.addEventListener('input',e=>{if(e.target.closest('#cms-edit-form')){markDraftDirty();refreshArticlePreview();refreshSeoSnippet()}});
+ document.addEventListener('input',e=>{if(e.target.closest('#cms-edit-form')){markDraftDirty();syncSiteTitle();refreshArticlePreview();refreshSeoSnippet()}});
  $('#cms-search').addEventListener('input',e=>{state.q=e.target.value;drawItems()});
  $('#cms-status').addEventListener('change',e=>{state.status=e.target.value;markWorkspace(state.status==='review'?'review':'content');drawItems()});
  $('#cms-refresh').addEventListener('click',async()=>{
