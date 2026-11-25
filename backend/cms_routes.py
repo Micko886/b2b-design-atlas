@@ -323,6 +323,44 @@ def all_editorial_tags():
         overrides=db.all("SELECT name,description,status,created_at,updated_at FROM atlas_cms_tags ORDER BY created_at,name")
     return merge_editorial_tags(base,rows,overrides)
 
+ARTICLE_BLOCK_TYPES={"paragraph","heading","quote","callout","list","image","table","link"}
+def validate_article_blocks(blocks):
+    """Validate structured article blocks without changing legacy article payloads."""
+    if not isinstance(blocks,list) or len(blocks)>70:
+        user_auth.error(422,"每章最多 70 个正文块。")
+    for block in blocks:
+        if not isinstance(block,dict) or block.get("type") not in ARTICLE_BLOCK_TYPES:
+            user_auth.error(422,"文章包含不支持的正文块类型。")
+        kind=block["type"]
+        if kind in ("paragraph","heading","quote","callout","link"):
+            value=block.get("text","")
+            if not isinstance(value,str) or len(value)>12000:
+                user_auth.error(422,"正文块文字长度超出限制。")
+        if kind=="list":
+            values=block.get("items",[])
+            if not isinstance(values,list) or len(values)>60 or any(
+                not isinstance(text,str) or len(text)>1800 for text in values
+            ):user_auth.error(422,"列表块格式无效。")
+        if kind=="table":
+            rows=block.get("rows",[])
+            if not isinstance(rows,list) or len(rows)>30 or any(
+                not isinstance(row,list) or len(row)>8 or any(
+                    not isinstance(cell,str) or len(cell)>1500 for cell in row
+                ) for row in rows
+            ):user_auth.error(422,"表格块最多 30 行、每行 8 列。")
+        if kind=="image":
+            src=block.get("src","")
+            if src and (not isinstance(src,str) or not re.fullmatch(
+                r"/api/media/[0-9a-f-]{36}",src
+            )):user_auth.error(422,"图片块必须选择站内媒体。")
+            if any(not isinstance(block.get(k,""),str) or len(block.get(k,""))>240 for k in ("alt","caption")):
+                user_auth.error(422,"图片替代文字或说明超过限制。")
+        if kind=="link":
+            uri=block.get("url","")
+            if uri and (not isinstance(uri,str) or len(uri)>500 or
+                urlparse(uri).scheme not in ("https","http") or not urlparse(uri).netloc):
+                user_auth.error(422,"链接块需要有效的 http(s) 地址。")
+
 def cleaned(kind,slug,payload):
     if not SLUG.fullmatch(slug):user_auth.error(400,"URL 标识只能使用小写英文、数字与短横线。")
     if not isinstance(payload,dict):user_auth.error(422,"内容必须是 JSON 对象。")
@@ -365,6 +403,8 @@ def cleaned(kind,slug,payload):
         for s in result["sections"]:
             if not isinstance(s,dict) or not isinstance(s.get("title"),str):
                 user_auth.error(422,"文章章节缺少标题。")
+            if "blocks" in s:
+                validate_article_blocks(s["blocks"])
             for text_field,maximum in (("paragraphs",80),("bullets",60)):
                 entries=s.get(text_field,[])
                 if not isinstance(entries,list) or len(entries)>maximum or any(
@@ -400,6 +440,9 @@ def verify_links(kind,payload):
     if kind=="article":
         referenced=[payload.get("cover_image","")]
         referenced += [s.get("image","") for s in payload.get("sections",[]) if isinstance(s,dict)]
+        referenced += [block.get("src","") for section in payload.get("sections",[])
+                       if isinstance(section,dict) for block in section.get("blocks",[])
+                       if isinstance(block,dict) and block.get("type")=="image"]
         referenced=[v.rsplit("/",1)[-1] for v in referenced if v]
         if referenced:
             ensure_cms()
@@ -409,9 +452,17 @@ def verify_links(kind,payload):
                         user_auth.error(422,"文章引用了已删除的图片，请从媒体库重新选择。")
     if kind=="article":
         for chapter in payload.get("sections",[]):
-            paragraphs=chapter.get("paragraphs",[])
-            if not isinstance(paragraphs,list) or not any(isinstance(v,str) and v.strip() for v in paragraphs):
-                user_auth.error(422,"发布文章前，请为每个章节写入至少一段正文。")
+            if "blocks" in chapter:
+                valid_text=any(
+                    b.get("type") in ("paragraph","heading","quote","callout","list","table")
+                    and (str(b.get("text","")).strip() or b.get("items") or b.get("rows"))
+                    for b in chapter.get("blocks",[]) if isinstance(b,dict)
+                )
+                if not valid_text:user_auth.error(422,"发布前每章至少需要一个有效正文或列表块。")
+            else:
+                paragraphs=chapter.get("paragraphs",[])
+                if not isinstance(paragraphs,list) or not any(isinstance(v,str) and v.strip() for v in paragraphs):
+                    user_auth.error(422,"发布文章前，请为每个章节写入至少一段正文。")
     if kind=="pattern" and any(x not in current["modules"] for x in payload.get("modules",[])):
         user_auth.error(422,"设计模式关联了尚未发布的模块。")
 
