@@ -215,6 +215,7 @@ function listFiltered(){
 }
 function setStudioMode(editing){
  const layout=$('.cms-split');if(layout)layout.classList.toggle('cms-editing',Boolean(editing));
+ document.body.classList.toggle('cms-editor-active',Boolean(editing));
  const metrics=$('#cms-metrics');if(metrics)metrics.hidden=Boolean(editing);
  const guide=$('.cms-workflow-guide');if(guide)guide.hidden=Boolean(editing);
 }
@@ -321,7 +322,7 @@ function siteEditorForm(values,editable){
  const raw=String(values.screenshot_url||'');
  const picture=/^\/screenshots\/[a-zA-Z0-9_./-]{1,200}$/.test(raw)&&!raw.includes('..')||
    /^\/api\/media\/[0-9a-f-]{36}$/.test(raw);
- return '<section class="cms-easy-intro"><h3>编辑网站案例</h3><p>只需修改下面的内容。保存后先存在后台，审核发布才会更新前台。</p></section>'
+ return '<section class="cms-easy-intro"><div><h3>基本信息</h3><p>左侧修改内容，右侧选择封面图片。更改会自动保存为草稿。</p></div></section>'
  +'<div class="cms-easy-layout"><div class="cms-easy-fields">'
  +basic.map(spec=>formField(spec,values,editable)).join('')
  +'<datalist id="cms-site-sector-options"><option value="工业制造"><option value="工业软件"><option value="机器人"><option value="新能源"><option value="医疗科技"><option value="航空航天"></datalist>'
@@ -331,7 +332,7 @@ function siteEditorForm(values,editable){
  +'<input id="field-screenshot_url" data-field="screenshot_url" data-type="text" type="hidden" value="'+h(raw)+'">'
  +(editable&&can('media')?'<button type="button" class="cms-easy-upload" data-editor-pick-media="field-screenshot_url">上传或更换图片</button>':'')
  +'<small>支持 JPG、PNG、WebP；已有图片也可从媒体库选用。</small></aside></div>'
- +'<details class="cms-easy-advanced"><summary>更多设置（可选）<span>业务信息、设计亮点、精选展示</span></summary>'
+ +'<details class="cms-easy-advanced"><summary>更多设置 <span>选填 · 业务方向、设计亮点</span></summary>'
  +'<div class="cms-easy-extra">'+extra.map(spec=>formField(spec,values,editable)).join('')+'</div></details>';
 }
 function syncSiteImage(){
@@ -423,6 +424,9 @@ function renderForm(item){
  const content='<div class="cms-editor-title"><div><div class="section-eyebrow">EDIT / '+kinds[item.kind].label.toUpperCase()+'</div><h2>'+h(values.name||values.title||item.slug)+'</h2><p>URL 标识：'+h(item.slug)+' · '+h(item.source==='cms'?'CMS 内容记录':'原始内容资料')+'</p></div>'
   +'<a target="_blank" rel="noopener" href="'+h(kinds[item.kind].url+item.slug)+'">'+icon('arrow-up-right')+' 查看前台</a></div>';
  const s=item.status;
+ const siteHeader='<div class="cms-easy-header"><div class="cms-easy-heading"><span class="cms-easy-kicker">网站案例 / 编辑</span><h2>'+h(values.name||item.slug)+'</h2><p>修改内容并保存为草稿，审核通过后才会展示在前台。</p></div>'
+  +'<div class="cms-easy-header-side">'+stateClasses(s)
+  +'<a class="cms-easy-public-link" target="_blank" rel="noopener" href="'+h(kinds[item.kind].url+item.slug)+'">查看前台 ↗</a></div></div>';
  const statuses=['draft','review','published'];
  const index=s==='source'||s==='public'?-1:statuses.indexOf(s);
  const steps='<div class="cms-steps">'+['内容准备','保存草稿','提交审核','正式发布'].map((title,i)=>'<span class="cms-step '+(i===index+1?'current':i<index+1?'passed':'')+'"><span>'+String(i+1).padStart(2,'0')+'</span>'+title+'</span>'+(i<3?'<span class="cms-step-line"></span>':'')).join('')+'</div>';
@@ -430,8 +434,9 @@ function renderForm(item){
  const mediaHint=item.kind==='site'?'':mode==='admin'&&can('media')?'<div class="cms-editor-media-hint"><span>需要上传或更换图片？</span><button type="button" data-editor-open-media>打开媒体库 / 上传图片</button></div>':'';
  const form='<div class="cms-editor-content">'+mediaHint+(isPreview?'<div class="cms-readonly-banner">当前是公开设计预览。字段来自公开目录，无法在这里保存或发布。正式操作请使用管理员账户。</div>':item.source==='repository'&&item.kind!=='site'?'<div class="cms-readonly-banner">这条资料来自现有案例库。修改字段或首次保存后，将生成可审核的独立草稿；未审核的内容不会影响前台。</div>':'')+
  '<form id="cms-edit-form" class="cms-form">'+(item.kind==='site'?'':'<div class="cms-form-group-label"><span>编辑内容 · 标题、图片与正文</span><small>修改后自动保存草稿，正式发布需审核</small></div>')
- +(editable?'<div class="cms-autosave-strip"><span class="cms-autosave-led"></span><span id="cms-autosave-status" role="status" aria-live="polite">修改后自动保存 · 也可以点击右上角「保存修改」</span>'+(item.kind==='site'?'':'<button type="button" data-autosave-retry>立即保存</button>')+'</div>':'')
+ +(editable&&item.kind!=='site'?'<div class="cms-autosave-strip"><span class="cms-autosave-led"></span><span id="cms-autosave-status" role="status" aria-live="polite">修改后自动保存 · 也可以点击右上角「保存修改」</span><button type="button" data-autosave-retry>立即保存</button></div>':'')
  +(item.kind==='site'?siteEditorForm(values,editable):specs.filter(spec=>!(item.kind==='article'&&['tags','takeaways','sections'].includes(spec[0]))).map(spec=>formField(spec,values,editable)).join(''))
+ +(editable&&item.kind==='site'?'<div class="cms-easy-save-note"><span class="cms-autosave-led" aria-hidden="true"></span><span id="cms-autosave-status" role="status" aria-live="polite">修改后自动保存草稿</span><button type="button" data-autosave-retry>重试保存</button></div>':'')
  +(item.kind==='article'?articleStudio(values,editable):'')
  +(item.kind==='site'?'':'<details class="cms-json-advanced"><summary>高级 · 查看完整 JSON 结构</summary><div class="cms-field" data-json="true"><label>只读数据结构</label><textarea disabled spellcheck="false">'+h(JSON.stringify(values,null,2))+'</textarea></div></details>')
  +(editable&&item.kind!=='site'?'<div class="cms-form-actions">'
@@ -464,12 +469,13 @@ const history=item.history||[];
  +'</div>');
  const root=$('#cms-editor-body');
  const tabs='<div class="atlas-v521-editor-tabs" role="tablist" aria-label="内容工作台">'
-  +'<button type="button" data-editor-tab="content" role="tab">正文与资料</button>'
+  +'<button type="button" data-editor-tab="content" role="tab">'+(item.kind==='site'?'编辑内容':'正文与资料')+'</button>'
   +(item.kind==='article'?'<button type="button" data-editor-tab="seo" role="tab">SEO 与质量</button>':'')
-  +'<button type="button" data-editor-tab="review" role="tab">审核与发布</button>'
+  +'<button type="button" data-editor-tab="review" role="tab">'+(item.kind==='site'?'审核发布':'审核与发布')+'</button>'
   +'<button type="button" data-editor-tab="history" role="tab">版本记录</button></div>';
  const seoPanel=item.kind==='article'?seoStudio(values):'';
- root.innerHTML=topbar+content+(item.kind==='site'?'':steps)+meta+tabs
+ root.classList.toggle('cms-easy-mode',item.kind==='site');
+ root.innerHTML=topbar+(item.kind==='site'?siteHeader:content+steps+meta)+tabs
   +'<div data-editor-pane="content">'+form+'</div>'
   +(item.kind==='article'?'<div data-editor-pane="seo" hidden>'+seoPanel+'</div>':'')
   +'<div data-editor-pane="review" hidden>'+reviewBrief(item)+reviewActions
@@ -1435,7 +1441,7 @@ function boot(){
    const close=e.target.closest('[data-v514-close]');
    if(close){$('#cms-'+close.dataset.v514Close+'-dialog').close();return}
    if(e.target.closest('[data-close-editor]')){closeEditor();return}
-   if(e.target.closest('[data-editor-save]')){if(!state.dirty&&state.selected?.status!=='source')message('当前没有待保存的修改。');else await saveDraft({preventDefault(){}});return}
+   if(e.target.closest('[data-editor-save]')){if(!state.dirty&&state.selected?.status!=='source')message('当前没有待保存的修改。');else if($('#cms-edit-form')?.reportValidity())await saveDraft({preventDefault(){}});return}
    if(e.target.closest('[data-editor-submit]')){await transition('submit');return}
    const mediaPicker=e.target.closest('[data-editor-pick-media]');
    if(mediaPicker){state.mediaTarget=null;state.mediaField=mediaPicker.dataset.editorPickMedia;await openMedia();return}
