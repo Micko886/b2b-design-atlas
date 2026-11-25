@@ -34,7 +34,7 @@ class SiteEditorV533Tests(unittest.TestCase):
         self.assertIn("data-gallery-remove", self.js)
 
     def test_assets_use_new_version(self):
-        self.assertIn("/assets/cms.js?v=5350", self.html)
+        self.assertIn("/assets/cms.js?v=5360", self.html)
         self.assertIn("/assets/cms.css?v=5350", self.html)
 
 
