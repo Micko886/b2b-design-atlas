@@ -55,7 +55,7 @@
     setText('#sidebar-user',d.administrator?.name || 'Atlas Workspace');
     setText('#sidebar-user-role',d.mode==='admin'?'已授权管理员':'只读运营预览');
     setText('#sidebar-avatar',(d.administrator?.name || 'Atlas').slice(0,1).toUpperCase());
-    setText('#connection-state',d.mode==='admin'?'PRIVATE / LIVE':'LIVE CATALOG');
+    const connection=$('#connection-state');connection.innerHTML='<span class="status-led"></span> '+(d.mode==='admin'?'PRIVATE / LIVE':'LIVE CATALOG');
   }
   function renderKpis(d){
     const container=$('#kpi-grid'),sum=totalContent(d.counts);
@@ -209,7 +209,8 @@
       const data=await result.json();
       if(mode==='preview'&&(data.private||data.administrator))throw new Error('预览接口包含不应公开的数据，已阻止显示');
       render(data);
-    }catch(error){showError(error.message)}
+      return true;
+    }catch(error){showError(error.message);return false}
     finally{state.fetching=false;btn.disabled=false}
   }
   function exportSummary(){
@@ -250,7 +251,7 @@
       const nav=event.target.closest('[data-nav-section]');
       if(nav){setNavActive(nav.dataset.navSection);closeSidebar()}
     });
-    $('#refresh-button').addEventListener('click',()=>{load().then(()=>toast('运营资料已刷新'))});
+    $('#refresh-button').addEventListener('click',()=>{load().then(success=>{if(success)toast('运营资料已刷新')})});
     $('#export-button').addEventListener('click',exportSummary);
     $('#queue-search').addEventListener('input',event=>{state.query=event.target.value;state.expanded=false;renderQueue()});
     $('#queue-more').addEventListener('click',()=>{state.expanded=!state.expanded;renderQueue()});
