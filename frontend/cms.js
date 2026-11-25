@@ -74,18 +74,23 @@ function markDraftDirty(){
  if(!autosavePaused)autosaveTimer=setTimeout(()=>persistDraft(true),3200);
  try{keepRecovery(takeFields())}catch(_){}
 }
+function syncBusyButtonState(button,disabled){
+ if(!button)return;
+ // An automatic save can legitimately unlock "Submit for review". Updating
+ // the desired state while the form is busy prevents btnDisable(false) from
+ // restoring the obsolete pre-save disabled state.
+ if(state.busy)button.dataset.cmsBeforeBusy=disabled?'1':'0';
+ button.disabled=state.busy?true:disabled;
+}
 function applyDraftResult(target,res,payload){
  target.revision=res.revision;target.status='draft';target.payload=payload;
  const version=$('.cms-editor-meta strong');if(version)version.textContent='v'+res.revision;
  const status=$('.cms-editor-meta .cms-item-state, .cms-easy-header-side .cms-item-state');
  if(status){status.dataset.status='draft';status.textContent=statusText.draft}
- const submit=$('#cms-edit-form [data-transition="submit"]');
- const quickSubmit=$('[data-editor-submit]');if(quickSubmit)quickSubmit.disabled=false;
- const publish=$('#cms-edit-form [data-transition="publish"]');
- const archive=$('#cms-edit-form [data-transition="archive"]');
- if(submit)submit.disabled=false;
- if(publish)publish.disabled=true;
- if(archive)archive.disabled=true;
+ syncBusyButtonState($('#cms-edit-form [data-transition="submit"]'),false);
+ syncBusyButtonState($('[data-editor-submit]'),false);
+ syncBusyButtonState($('#cms-edit-form [data-transition="publish"]'),true);
+ syncBusyButtonState($('#cms-edit-form [data-transition="archive"]'),true);
  const row=state.items.find(x=>x.slug===target.slug);
  if(row){row.revision=res.revision;row.status='draft';drawItems();updateSummary()}
 }
