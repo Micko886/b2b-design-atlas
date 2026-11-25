@@ -113,6 +113,12 @@ def classify_source(data,site_host=""):
         channel="social"
     elif medium in ("organic","search","seo"):
         channel="organic"
+    elif source in ("google","bing","duckduckgo","baidu","yandex","yahoo"):
+        channel="organic"
+    elif source in ("linkedin","facebook","instagram","twitter","x","reddit","pinterest","tiktok"):
+        channel="social"
+    elif source in ("newsletter","mailchimp","substack","email"):
+        channel="email"
     elif source and medium:
         channel="referral"
     elif host:
