@@ -2,7 +2,8 @@
 import re
 import unittest
 from pathlib import Path
-from app import cms_routes
+from app import cms_routes,cms_diff
+from fastapi import FastAPI
 from test_cms_v514 import DB
 from unittest.mock import patch
 import json
@@ -96,6 +97,42 @@ class PrivatePreviewContracts(unittest.TestCase):
             result=cms_routes.cms_item("site","demo-case",{"user_id":uid})
         self.assertEqual(result["published"],original)
         self.assertEqual(result["payload"]["summary"],"Private")
+
+    def test_review_diff_baseline_matches_real_public_snapshot_and_archives(self):
+        db=DB()
+        uid=str(uuid.uuid4())
+        slug="legacy-diff"
+        source={"id":slug,"name":"Before","url":"https://example.com",
+                "sector":"Industrial","summary":"Public text"}
+        draft={**source,"name":"After","summary":"Private review text"}
+        db.execute("INSERT INTO atlas_users(id,email,display_name,created_at) VALUES(?,?,?,?)",
+                   (uid,"tester@demo.test","Tester","2026-11-25"))
+        db.execute("""INSERT INTO atlas_cms_entries
+            (kind,slug,draft_json,published_json,status,revision,created_by,updated_by,created_at,updated_at)
+            VALUES(?,?,?,NULL,'review',2,?,?,?,?)""",
+            ("site",slug,json.dumps(draft),uid,uid,"2026-11-25","2026-11-25"))
+        app=FastAPI()
+        cms_diff.register_diff_routes(app)
+        endpoint=next(x.endpoint for x in app.routes if x.path=="/api/admin/content/{kind}/{slug}/diff")
+        with patch.object(cms_routes,"require_admin",return_value={"user_id":uid}),\
+             patch.object(cms_routes,"ensure_cms"),\
+             patch.object(cms_routes.user_auth,"db",return_value=db),\
+             patch.object(cms_routes,"base_item",return_value=source):
+            old=endpoint("site",slug,object(),revision=0)
+            self.assertEqual(old["baseline_label"],"当前公开版本")
+            self.assertIn("summary",old["changed_fields"])
+            self.assertTrue(any("Public text" in text
+                                for chunk in old["chunks"] for text in chunk["before"]))
+            db.execute("""INSERT INTO atlas_cms_history
+                         (id,kind,slug,revision,action,actor_id,created_at,snapshot_json)
+                         VALUES(?,?,?,?,?,?,?,?)""",
+                       (str(uuid.uuid4()),"site",slug,1,"archive",uid,"2026-11-25",json.dumps(source)))
+            # The archived original remains hidden even when a new draft is pending.
+            db.execute("UPDATE atlas_cms_entries SET status='draft' WHERE kind='site' AND slug=?", (slug,))
+            archived=endpoint("site",slug,object(),revision=0)
+            self.assertEqual(archived["baseline_label"],"尚无公开版本")
+            self.assertEqual(archived["summary"]["before_lines"],0)
+            self.assertIsNone(cms_routes.cms_item("site",slug,{"user_id":uid})["published"])
 
 
 if __name__=="__main__":
