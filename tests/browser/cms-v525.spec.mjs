@@ -135,6 +135,8 @@ test('site editor autosaves and reviewer transitions work',async({page})=>{
 test('media picker loads, uploads and adds a gallery entry',async({page})=>{
  const {uploads}=await mockCms(page);
  await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await page.locator('.cms-easy-gallery summary').click();
+ await expect(page.locator('.cms-easy-gallery')).toHaveAttribute('open','');
  await page.locator('[data-gallery-add]').click();
  await expect(page.locator('#cms-media-dialog')).toHaveJSProperty('open',true);
  await expect(page.locator('#cms-media-status')).toContainText('媒体库暂无图片');
@@ -163,7 +165,8 @@ test('content index shows records directly without dashboard-only clutter',async
  await page.goto(origin+'/admin/content?kind=site');
  await expect(page.locator('[data-pick="demo-site"]')).toBeVisible();
  await expect(page.locator('#cms-metrics')).toBeHidden();
- await expect(page.locator('.cms-workflow-guide')).toBeHidden();
+ await expect(page.locator('.cms-workflow-guide')).toBeVisible();
+ await expect(page.locator('.cms-workflow-guide')).not.toHaveAttribute('open','');
  await expect(page.locator('#cms-notice')).toBeHidden();
  await page.locator('[data-pick="demo-site"]').click();
  await expect(page.locator('#field-name')).toBeVisible();
