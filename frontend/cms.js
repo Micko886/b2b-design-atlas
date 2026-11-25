@@ -1334,24 +1334,116 @@ async function saveCrop(){
  }catch(err){message(err.message,false)}
  finally{button.disabled=false;button.textContent='生成并保存裁剪图片'}
 }
+// V53.2 · Server-backed media search and revision-safe management.
+const mediaWorkbench={query:'',usage:'all',fileType:'all',seo:'all',offset:0,limit:24,total:0,selected:new Set(),request:0};
+function mediaFilters(){
+ const p=new URLSearchParams({q:mediaWorkbench.query,usage:mediaWorkbench.usage,
+  file_type:mediaWorkbench.fileType,seo:mediaWorkbench.seo,
+  offset:String(mediaWorkbench.offset),limit:String(mediaWorkbench.limit)});
+ return p.toString();
+}
+function mediaReferenceLinks(item){
+ const refs=Array.isArray(item.used_by)?item.used_by:[];
+ if(!refs.length)return '<p>未发现当前 CMS 草稿或已发布内容引用。</p>';
+ return '<div class="cms-v532-refs">'+refs.map(ref=>
+  '<a href="/admin/content?kind='+encodeURIComponent(ref.kind)+'&edit='+encodeURIComponent(ref.slug)+'" target="_blank" rel="noopener noreferrer">'
+   +h(kinds[ref.kind]?.title||ref.kind)+' · '+h(ref.slug)+'</a>').join('')+'</div>';
+}
+function renderMediaCards(){
+ const grid=$('#cms-media-grid'),items=state.mediaRecords||[];
+ const visibleIds=new Set(items.filter(x=>!x.usage_count).map(x=>x.id));
+ for(const id of mediaWorkbench.selected)if(!visibleIds.has(id))mediaWorkbench.selected.delete(id);
+ grid.innerHTML=items.length?items.map(item=>{
+  const used=Number(item.usage_count||0),isSelected=mediaWorkbench.selected.has(item.id),alt=String(item.alt_text||''),caption=String(item.caption||'');
+  return '<article class="cms-v51-media-item cms-v532-media-item" data-media-id="'+h(item.id)+'">'
+   +'<div class="cms-v532-photo"><img src="'+h(item.url)+'" alt="'+h(alt||item.file_name||'媒体缩略图')+'" loading="lazy">'
+   +'<label class="cms-v532-select"><input type="checkbox" data-media-check="'+h(item.id)+'"'+(isSelected?' checked':'')+(used?' disabled':'')+' aria-label="选择 '+h(item.file_name)+' 以批量删除"><span>选择</span></label></div>'
+   +'<strong title="'+h(item.file_name)+'">'+h(item.file_name)+'</strong>'
+   +'<small>'+Math.round(Number(item.byte_size||0)/1024)+' KB · '+h(String(item.mime_type||'').replace('image/','').toUpperCase())+' · '+h(String(item.created_at||'').slice(0,10))+'</small>'
+   +'<div class="cms-v532-state"><span data-media-seo-status="'+(alt.trim()?'ready':'missing')+'">'+(alt.trim()?'已填写 ALT':'待补 ALT')+'</span><span>'+(used?'引用 '+used+' 条内容':'未引用')+'</span></div>'
+   +'<details class="cms-v532-details"><summary>SEO 信息与引用关系</summary><div class="cms-v532-details-body">'
+   +'<label>图片 ALT（复用建议）<input data-media-alt maxlength="240" value="'+h(alt)+'" placeholder="说明图片内容，而不是堆砌关键词"></label>'
+   +'<label>图片说明或来源<textarea data-media-caption maxlength="320" rows="2" placeholder="可选：图片背景和来源">'+h(caption)+'</textarea></label>'
+   +(can('media')?'<button type="button" data-media-meta-save="'+h(item.id)+'">保存 SEO 资料</button>':'')
+   +'<div class="cms-v532-references"><strong>当前引用</strong>'+mediaReferenceLinks(item)+'</div></div></details>'
+   +(can('media')?'<button type="button" data-media-crop="'+h(item.id)+'">裁剪 / 设置焦点</button>':'')
+   +'<button type="button" data-v51-copy-media="'+h(item.url)+'">复制图片地址</button>'
+   +(state.mediaTarget?'<button type="button" data-v513-use-inline="'+h(item.url)+'">插入当前章节</button>':state.mediaField?'<button type="button" data-v51-use-media="'+h(item.url)+'">使用此图片</button>':'')
+   +(can('media')?'<button type="button" data-v51-delete-media="'+h(item.id)+'" class="cms-v51-delete"'+(used?' disabled title="被内容引用，不能删除"':'')+'>'+(used?'引用中 · 不可删除':'删除图片')+'</button>':'')
+   +'</article>';
+ }).join(''):'<p class="cms-loading">没有匹配的媒体。可以修改筛选条件，或上传新图片。</p>';
+ const total=$('#cms-media-total');if(total)total.textContent='找到 '+mediaWorkbench.total+' 张 · 本页 '+items.length+' 张';
+ const page=$('#cms-media-page');if(page)page.textContent='第 '+(Math.floor(mediaWorkbench.offset/mediaWorkbench.limit)+1)+' 页';
+ const prev=$('#cms-media-prev'),next=$('#cms-media-next');
+ if(prev)prev.disabled=mediaWorkbench.offset===0;
+ if(next)next.disabled=mediaWorkbench.offset+mediaWorkbench.limit>=mediaWorkbench.total;
+ updateMediaBulkSelection();
+}
+function updateMediaBulkSelection(){
+ const count=mediaWorkbench.selected.size,button=$('#cms-media-bulk-delete');
+ if(button){button.disabled=!count||!can('media');button.textContent='删除选中（'+count+'）'}
+ const text=$('#cms-media-selected');if(text)text.textContent='已选择 '+count+' 张';
+}
+function resetMediaFilters(){
+ mediaWorkbench.offset=0;mediaWorkbench.selected.clear();
+}
 async function refreshMedia(){
+ const seq=++mediaWorkbench.request;
  try{
-   const res=await api('/api/admin/media');
-   const items=Array.isArray(res.items)?res.items:[];
-   state.mediaRecords=items;
-   $('#cms-media-status').textContent=items.length?'已加载 '+items.length+' 张图片 · 选择图片或上传新图片。':'媒体库暂无图片 · 可上传 JPG、PNG 或 WebP。';
-   $('#cms-media-grid').innerHTML=items.length?items.map(item=>'<div class="cms-v51-media-item">'
-     +'<img src="'+h(item.url)+'" alt="'+h(item.file_name)+'" loading="lazy">'
-     +'<strong title="'+h(item.file_name)+'">'+h(item.file_name)+'</strong>'
-     +'<small>'+(item.byte_size/1024).toFixed(0)+' KB · '+h(item.created_at.slice(0,10))+'</small>'
-     +'<small class="cms-v519-usage">'+(item.usage_count?'<strong>引用 '+item.usage_count+' 篇</strong> · '+h((item.used_by||[]).map(x=>x.slug).join('、')):'未被 CMS 内容引用')+'</small>'
-     +(can('media')?'<button type="button" data-media-crop="'+h(item.id)+'">裁剪 / 设置焦点</button>':'')
-     +'<button type="button" data-v51-copy-media="'+h(item.url)+'">复制图片地址</button>'
-     +(state.mediaTarget?'<button type="button" data-v513-use-inline="'+h(item.url)+'">插入当前章节</button>':state.mediaField?'<button type="button" data-v51-use-media="'+h(item.url)+'">使用此图片</button>':'')
-     +'<button type="button" data-v51-delete-media="'+h(item.id)+'" class="cms-v51-delete">删除图片</button></div>').join('')
-     :'<p class="cms-loading">暂无上传图片。可以上传 JPG、PNG 或 WebP。</p>';
-   return true;
- }catch(e){$('#cms-media-status').textContent='媒体列表加载失败：'+e.message;message(e.message,false);return false}
+  const res=await api('/api/admin/media?'+mediaFilters());
+  if(seq!==mediaWorkbench.request)return false;
+  const items=Array.isArray(res.items)?res.items:[];
+  state.mediaRecords=items;
+  mediaWorkbench.total=Number.isFinite(res.total)?res.total:items.length;
+  // If the last image was deleted on a later page, return to the previous one.
+  if(!items.length&&mediaWorkbench.total&&mediaWorkbench.offset>=mediaWorkbench.total){
+   mediaWorkbench.offset=Math.max(0,mediaWorkbench.offset-mediaWorkbench.limit);
+   return refreshMedia();
+  }
+  $('#cms-media-status').textContent=mediaWorkbench.total?'已加载 '+mediaWorkbench.total+' 张符合条件的图片。':'媒体库暂无图片或没有匹配结果 · 可上传 JPG、PNG 或 WebP。';
+  renderMediaCards();return true;
+ }catch(e){
+  if(seq!==mediaWorkbench.request)return false;
+  $('#cms-media-status').textContent='媒体列表加载失败：'+e.message;
+  message(e.message,false);return false
+ }
+}
+function applyMediaSeoDefaults(container,url){
+ const record=(state.mediaRecords||[]).find(x=>x.url===url);
+ if(!record||!container)return;
+ const alt=container.querySelector('[data-block-alt]'),caption=container.querySelector('[data-block-caption]');
+ if(alt&&!alt.value.trim())alt.value=record.alt_text||'';
+ if(caption&&!caption.value.trim())caption.value=record.caption||'';
+}
+async function saveMediaSeo(button){
+ if(!can('media'))return;
+ const card=button.closest('[data-media-id]'),id=card?.dataset.mediaId;
+ if(!id)return;
+ const alt_text=card.querySelector('[data-media-alt]').value.trim(),
+  caption=card.querySelector('[data-media-caption]').value.trim();
+ button.disabled=true;
+ try{
+  await api('/api/admin/media/'+id+'/metadata',{method:'PUT',body:JSON.stringify({alt_text,caption})});
+  message('图片 SEO 资料已保存。已发布文章中的 ALT 不会被自动修改。');
+  await refreshMedia();
+ }catch(e){$('#cms-media-status').textContent='SEO 资料保存失败：'+e.message;message(e.message,false)}
+ finally{button.disabled=false}
+}
+async function bulkDeleteMedia(){
+ if(!can('media')||!mediaWorkbench.selected.size)return;
+ const ids=[...mediaWorkbench.selected];
+ if(ids.length>20){message('每次最多删除 20 张图片。',false);return}
+ const used=ids.filter(id=>(state.mediaRecords||[]).find(item=>item.id===id)?.usage_count);
+ if(used.length){message('当前选择含有引用中的图片，已取消操作。',false);return}
+ if(!confirm('确定永久删除选中的 '+ids.length+' 张未引用图片？此操作无法撤销，服务端会再次校验所有引用。'))return;
+ const button=$('#cms-media-bulk-delete');button.disabled=true;
+ try{
+  const result=await api('/api/admin/media/bulk-delete',{method:'POST',body:JSON.stringify({ids})});
+  mediaWorkbench.selected.clear();
+  await refreshMedia();
+  message('已安全删除 '+result.deleted+' 张未引用图片。');
+ }catch(e){$('#cms-media-status').textContent='批量删除失败：'+e.message;message(e.message,false)}
+ finally{updateMediaBulkSelection()}
 }
 // V51.6 · Optimize oversized images locally; never upload unsupported content.
 async function optimizeMediaFile(original){
@@ -1415,7 +1507,7 @@ async function uploadMedia(files){
  }
  if(uploaded===1&&lastUrl&&state.mediaTarget){
    const target=state.mediaTarget.querySelector('[data-block-image],[data-v513-image]');
-   if(target){target.value=lastUrl;state.mediaTarget=null;$('#cms-media-dialog').close();markDraftDirty();refreshArticlePreview();message('图片已插入正文，记得保存草稿')}
+   if(target){target.value=lastUrl;applyMediaSeoDefaults(state.mediaTarget,lastUrl);state.mediaTarget=null;$('#cms-media-dialog').close();markDraftDirty();refreshArticlePreview();refreshArticleHealth();message('图片已插入正文，记得保存草稿')}
  }
  return uploaded;
 }
@@ -1956,7 +2048,8 @@ function boot(){
    if(useInline&&state.mediaTarget){
      const input=state.mediaTarget.querySelector('[data-block-image],[data-v513-image]');
      if(input)input.value=useInline.dataset.v513UseInline;
-     state.mediaTarget=null;$('#cms-media-dialog').close();markDraftDirty();refreshArticlePreview();
+     applyMediaSeoDefaults(state.mediaTarget,useInline.dataset.v513UseInline);
+     state.mediaTarget=null;$('#cms-media-dialog').close();markDraftDirty();refreshArticlePreview();refreshArticleHealth();
      message('图片已加入章节，保存草稿后生效');return;
    }
    const crop=e.target.closest('[data-media-crop]');
@@ -2031,12 +2124,39 @@ function boot(){
  $('#cms-crop-y').addEventListener('input',paintCrop);
  $('#cms-crop-save').addEventListener('click',saveCrop);
  $('#cms-media-open').addEventListener('click',()=>{state.mediaTarget=null;state.mediaField=null;markWorkspace('media');closeMobile();openMedia()});
- $('#cms-media-dialog').addEventListener('close',()=>markWorkspace(state.selected?.status==='review'?'review':'content'));
+ $('#cms-media-dialog').addEventListener('close',()=>{mediaWorkbench.selected.clear();updateMediaBulkSelection();markWorkspace(state.selected?.status==='review'?'review':'content')});
  document.addEventListener('click',async event=>{
   const close=event.target.closest('[data-v530-close]');
   if(close){$('#cms-'+close.dataset.v530Close+'-dialog').close();return}
   const entry=event.target.closest('[data-review-open-kind][data-review-open-slug]');
   if(entry)await openReviewRecord(entry.dataset.reviewOpenKind,entry.dataset.reviewOpenSlug);
+ });
+ let mediaSearchTimer=0;
+ $('#cms-media-search').addEventListener('input',e=>{
+  mediaWorkbench.query=e.target.value;resetMediaFilters();clearTimeout(mediaSearchTimer);
+  mediaSearchTimer=setTimeout(()=>refreshMedia(),240)
+ });
+ for(const [id,key] of [['cms-media-usage','usage'],['cms-media-type','fileType'],['cms-media-seo','seo']]){
+  $('#'+id).addEventListener('change',e=>{mediaWorkbench[key]=e.target.value;resetMediaFilters();refreshMedia()});
+ }
+ $('#cms-media-prev').addEventListener('click',()=>{if(mediaWorkbench.offset>0){mediaWorkbench.offset-=mediaWorkbench.limit;mediaWorkbench.selected.clear();refreshMedia()}});
+ $('#cms-media-next').addEventListener('click',()=>{if(mediaWorkbench.offset+mediaWorkbench.limit<mediaWorkbench.total){mediaWorkbench.offset+=mediaWorkbench.limit;mediaWorkbench.selected.clear();refreshMedia()}});
+ $('#cms-media-select-unused').addEventListener('click',()=>{
+  const available=(state.mediaRecords||[]).filter(item=>!item.usage_count).slice(0,20);
+  mediaWorkbench.selected=new Set(available.map(x=>x.id));renderMediaCards();
+  if((state.mediaRecords||[]).filter(item=>!item.usage_count).length>20)message('一次最多可以批量选择 20 张图片。')
+ });
+ $('#cms-media-bulk-delete').addEventListener('click',bulkDeleteMedia);
+ $('#cms-media-grid').addEventListener('change',event=>{
+  const input=event.target.closest('[data-media-check]');if(!input)return;
+  if(input.checked){
+   if(mediaWorkbench.selected.size>=20){input.checked=false;message('每次最多选择 20 张图片。',false);return}
+   mediaWorkbench.selected.add(input.dataset.mediaCheck)
+  }else mediaWorkbench.selected.delete(input.dataset.mediaCheck);
+  updateMediaBulkSelection();
+ });
+ $('#cms-media-grid').addEventListener('click',async event=>{
+  const save=event.target.closest('[data-media-meta-save]');if(save){await saveMediaSeo(save);return}
  });
  $('#cms-media-select').addEventListener('click',()=>$('#cms-media-file').click());
  $('#cms-media-file').addEventListener('change',async e=>{const files=Array.from(e.target.files||[]);e.target.value='';await uploadMedia(files)});
