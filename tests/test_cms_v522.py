@@ -45,7 +45,7 @@ class FocusedEditorContracts(unittest.TestCase):
     def test_cache_busted_and_no_single_node_iteration(self):
         self.assertIn("cms.js?v=5220",self.html)
         self.assertIn("cms.css?v=5220",self.html)
-        self.assertEqual(re.findall(r"for\\s*\\([^)]*\\bof\\s+\\$\\(",self.js),[])
+        self.assertEqual(re.findall(r"for\s*\([^)]*\bof\s+\$\(",self.js),[])
 
 
 class ScreenshotMediaValidation(unittest.TestCase):
