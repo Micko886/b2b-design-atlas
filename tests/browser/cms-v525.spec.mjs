@@ -121,6 +121,9 @@ for(const [kind,payload] of Object.entries(samples)){
 test('site editor autosaves and reviewer transitions work',async({page})=>{
  const {records}=await mockCms(page);
  await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await expect(page.locator('[data-editor-save]')).toHaveText('保存草稿');
+ await expect(page.locator('[data-editor-submit]')).toBeDisabled();
+ await expect(page.locator('[data-editor-submit]')).toHaveAttribute('title','先保存草稿，才能提交审核');
  await page.locator('#field-name').fill('Atlas Demo revised');
  await expect(page.locator('#cms-autosave-status')).toContainText('草稿已保存',{timeout:9000});
  expect(records.site.payload.name).toBe('Atlas Demo revised');
