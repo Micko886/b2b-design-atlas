@@ -10,7 +10,7 @@ const kinds={site:{title:'网站内容',label:'Websites',icon:'globe',public:'/a
  module:{title:'页面模块',label:'Sections',icon:'layers',public:'/api/module-library',url:'/sections/'},
  pattern:{title:'设计模式',label:'Patterns',icon:'shapes',public:'/assets/patterns.json',url:'/patterns/'},
  article:{title:'研究文章',label:'Insights',icon:'article',public:'/assets/articles.json',url:'/insights/'}};
-const state={kind:new URLSearchParams(location.search).get('kind')||'site',items:[],records:{},selected:null,csrf:'',user:null,dirty:false,q:'',status:'',busy:false,selectedSlugs:new Set(),taxonomy:{},tagSuggestions:[],mediaTarget:null,categoryRecords:[],categoryEditing:null,tagRecords:[],tagEditing:null,tagSearch:'',role:null,capabilities:[],scheduleItems:[],teamPeople:[],teamSelected:null};
+const state={kind:new URLSearchParams(location.search).get('kind')||'site',items:[],records:{},selected:null,mediaField:null,csrf:'',user:null,dirty:false,q:'',status:'',busy:false,selectedSlugs:new Set(),taxonomy:{},tagSuggestions:[],mediaTarget:null,categoryRecords:[],categoryEditing:null,tagRecords:[],tagEditing:null,tagSearch:'',role:null,capabilities:[],scheduleItems:[],teamPeople:[],teamSelected:null};
 if(!kinds[state.kind])state.kind='site';
 const fieldSpecs={
  site:[
@@ -37,7 +37,7 @@ const fieldSpecs={
   ['sections','文章章节（JSON 数组）','json'],['references','关联引用（JSON 数组）','json']
  ]
 };
-const statusText={source:'文件已发布',draft:'草稿',review:'待审核',published:'后台已发布',archived:'已归档',public:'公开内容'};
+const statusText={source:'原始收录 · 可编辑',draft:'草稿',review:'待审核',published:'后台已发布',archived:'已归档',public:'公开内容'};
 let toastTimer=0;
 function message(text,success=true){const el=$('#cms-toast');el.textContent=text;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3200);if(!success)console.warn('CMS',text)}
 function theme(saved=false){try{const s=localStorage.getItem('atlas-admin-theme');return s==='dark'?'dark':'light'}catch{return 'light'}}
@@ -380,8 +380,8 @@ function renderForm(item){
  const steps='<div class="cms-steps">'+['内容准备','保存草稿','提交审核','正式发布'].map((title,i)=>'<span class="cms-step '+(i===index+1?'current':i<index+1?'passed':'')+'"><span>'+String(i+1).padStart(2,'0')+'</span>'+title+'</span>'+(i<3?'<span class="cms-step-line"></span>':'')).join('')+'</div>';
  const meta='<div class="cms-editor-meta">'+stateClasses(s)+'<span>修订版本 <strong>v'+item.revision+'</strong></span><span>内容来源：'+h(item.source==='cms'?'PostgreSQL CMS':'项目内容文件')+'</span>'+(item.published_at?'<span>发布时间：'+h(item.published_at.slice(0,16))+'</span>':'')+'</div>';
  const mediaHint=mode==='admin'&&can('media')?'<div class="cms-editor-media-hint"><span>需要上传或更换图片？</span><button type="button" data-editor-open-media>打开媒体库 / 上传图片</button></div>':'';
- const form='<div class="cms-editor-content">'+mediaHint+(isPreview?'<div class="cms-readonly-banner">当前是公开设计预览。字段来自公开目录，无法在这里保存或发布。正式操作请使用管理员账户。</div>':'')+
- '<form id="cms-edit-form" class="cms-form"><div class="cms-form-group-label"><span>基础资料与内容字段</span><small>自动保存开启 · 发布仍需审核</small></div>'
+ const form='<div class="cms-editor-content">'+mediaHint+(isPreview?'<div class="cms-readonly-banner">当前是公开设计预览。字段来自公开目录，无法在这里保存或发布。正式操作请使用管理员账户。</div>':item.source==='repository'?'<div class="cms-readonly-banner">这条资料来自现有案例库。修改字段或首次保存后，将生成可审核的独立草稿；未审核的内容不会影响前台。</div>':'')+
+ '<form id="cms-edit-form" class="cms-form"><div class="cms-form-group-label"><span>编辑内容 · 标题、图片与正文</span><small>修改后自动保存草稿，正式发布需审核</small></div>'
  +(editable?'<div class="cms-autosave-strip"><span class="cms-autosave-led"></span><span id="cms-autosave-status" role="status" aria-live="polite">已加载 · 修改后 3 秒自动保存草稿</span><button type="button" data-autosave-retry>立即保存</button></div>':'')
  +specs.filter(spec=>!(item.kind==='article'&&['tags','takeaways','sections'].includes(spec[0]))).map(spec=>formField(spec,values,editable)).join('')
  +(item.kind==='article'?articleStudio(values,editable):'')
@@ -489,6 +489,7 @@ function takeFields(){
 }
 async function saveDraft(event){
  event.preventDefault();
+ if(state.selected?.status==='source'&&!state.dirty)state.dirty=true;
  if(autosavePaused){message('版本冲突时不可覆盖远端草稿，请先复制内容并刷新。',false);return}
  await persistDraft(false);
 }
@@ -1385,7 +1386,7 @@ function boot(){
    const close=e.target.closest('[data-v514-close]');
    if(close){$('#cms-'+close.dataset.v514Close+'-dialog').close();return}
    if(e.target.closest('[data-close-editor]')){closeEditor();return}
-   if(e.target.closest('[data-editor-save]')){if(!state.dirty)message('当前没有待保存的修改。');else await persistDraft(false);return}
+   if(e.target.closest('[data-editor-save]')){if(!state.dirty&&state.selected?.status!=='source')message('当前没有待保存的修改。');else await saveDraft({preventDefault(){}});return}
    if(e.target.closest('[data-editor-submit]')){await transition('submit');return}
    const mediaPicker=e.target.closest('[data-editor-pick-media]');
    if(mediaPicker){state.mediaTarget=null;state.mediaField=mediaPicker.dataset.editorPickMedia;await openMedia();return}
