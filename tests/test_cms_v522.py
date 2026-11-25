@@ -4,7 +4,10 @@ import unittest
 import uuid
 from pathlib import Path
 
-from fastapi import HTTPException
+from fastapi import FastAPI, HTTPException
+from unittest.mock import patch
+import base64
+from test_cms_v514 import DB
 from app import cms_routes
 
 STATIC=Path("/srv/atlas/static")
@@ -71,6 +74,42 @@ class ScreenshotMediaValidation(unittest.TestCase):
         with self.assertRaises(HTTPException):
             cms_routes.cleaned("site","site-example",payload)
 
+
+
+class MediaUploadRoundTrip(unittest.TestCase):
+    def setUp(self):
+        self.db=DB()
+        self.uid=str(uuid.uuid4())
+        self.db.execute("INSERT INTO atlas_users(id,email,display_name,created_at) VALUES(?,?,?,?)",
+                        (self.uid,"editor@example.com","Editor","2026-11-25"))
+        app=FastAPI()
+        cms_routes.register_cms_routes(app)
+        self.routes={(route.path,method):route.endpoint
+                     for route in app.routes for method in (route.methods or set())}
+
+    def test_authorized_image_upload_returns_a_reusable_public_url(self):
+        # Real transparent 1x1 PNG; upload is intentionally content-addressed by UUID.
+        png=base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMBAeKf3UYAAAAASUVORK5CYII=")
+        data=cms_routes.MediaUpload(name="cover.png",mime="image/png",
+                                    content=base64.b64encode(png).decode("ascii"))
+        with patch.object(cms_routes,"require_admin",return_value={"user_id":self.uid}),\
+             patch.object(cms_routes,"ensure_cms"),\
+             patch.object(cms_routes.user_auth,"db",return_value=self.db):
+            created=self.routes[("/api/admin/media","POST")](data,object())
+            self.assertRegex(created["url"],r"^/api/media/[0-9a-f-]{36}$")
+            self.assertEqual(created["mime"],"image/png")
+            response=self.routes[("/api/media/{media_id}","GET")](created["id"])
+            self.assertEqual(response.body,png)
+            self.assertEqual(response.media_type,"image/png")
+
+    def test_mismatched_file_type_is_rejected(self):
+        data=cms_routes.MediaUpload(name="fake.webp",mime="image/webp",
+                                    content=base64.b64encode(b"not a webp file").decode("ascii"))
+        with patch.object(cms_routes,"require_admin",return_value={"user_id":self.uid}),\
+             patch.object(cms_routes,"ensure_cms"):
+            with self.assertRaises(HTTPException) as error:
+                self.routes[("/api/admin/media","POST")](data,object())
+        self.assertEqual(error.exception.status_code,422)
 
 if __name__=="__main__":
     unittest.main()
