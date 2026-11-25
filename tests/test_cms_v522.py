@@ -81,8 +81,8 @@ class FocusedEditorContracts(unittest.TestCase):
         self.assertIn("media_urls=[document.get(\"cover_image\",\"\")",Path(cms_routes.__file__).read_text(encoding="utf-8"))
 
     def test_cache_busted_and_no_single_node_iteration(self):
-        self.assertIn("cms.js?v=5222",self.html)
-        self.assertIn("cms.css?v=5222",self.html)
+        self.assertIn("cms.js?v=5230",self.html)
+        self.assertIn("cms.css?v=5230",self.html)
         self.assertEqual(re.findall(r"for\s*\([^)]*\bof\s+\$\(",self.js),[])
 
 
