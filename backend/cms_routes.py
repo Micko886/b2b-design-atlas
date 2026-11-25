@@ -218,6 +218,11 @@ def cleaned(kind,slug,payload):
         for s in result["sections"]:
             if not isinstance(s,dict) or not isinstance(s.get("title"),str):
                 user_auth.error(422,"文章章节缺少标题。")
+            if s.get("image") and (not isinstance(s["image"],str) or
+                                  not re.fullmatch(r"/api/media/[0-9a-f-]{36}",s["image"])):
+                user_auth.error(422,"章节图片只能从媒体资源库选择。")
+            if s.get("image_caption") and (not isinstance(s["image_caption"],str) or len(s["image_caption"])>240):
+                user_auth.error(422,"图片说明不可超过 240 字。")
     for field in ("screenshot_url","source_capture"):
         if field in result:
             value=result[field]
@@ -235,12 +240,16 @@ def verify_links(kind,payload):
         user_auth.error(422,"关联的网站不存在或尚未发布。")
     if kind=="article" and payload.get("cover_site") and payload["cover_site"] not in current["sites"]:
         user_auth.error(422,"封面关联网站尚未发布。")
-    if kind=="article" and payload.get("cover_image"):
-        media_id=payload["cover_image"].rsplit("/",1)[-1]
-        ensure_cms()
-        with user_auth.db() as db:
-            if not db.one("SELECT id FROM atlas_cms_media WHERE id=?",(media_id,)):
-                user_auth.error(422,"封面图片不存在，请重新从媒体库选择。")
+    if kind=="article":
+        referenced=[payload.get("cover_image","")]
+        referenced += [s.get("image","") for s in payload.get("sections",[]) if isinstance(s,dict)]
+        referenced=[v.rsplit("/",1)[-1] for v in referenced if v]
+        if referenced:
+            ensure_cms()
+            with user_auth.db() as db:
+                for media_id in set(referenced):
+                    if not db.one("SELECT id FROM atlas_cms_media WHERE id=?",(media_id,)):
+                        user_auth.error(422,"文章引用了已删除的图片，请从媒体库重新选择。")
     if kind=="article":
         for chapter in payload.get("sections",[]):
             paragraphs=chapter.get("paragraphs",[])
