@@ -311,14 +311,15 @@ function galleryValue(){
  }catch{return []}
 }
 function galleryCards(items){
+ const editable=can('edit');
  if(!items.length)return '<p class="cms-gallery-empty">还没有其他页面截图。上传产品页、解决方案页、移动端等截图，案例详情页就能切换查看。</p>';
  return items.map((x,i)=>'<article class="cms-gallery-card" data-gallery-index="'+i+'">'
  +'<img class="cms-gallery-thumb" src="'+h(x.url)+'" alt="'+h(x.label||'页面截图')+'" loading="lazy">'
- +'<div class="cms-gallery-info"><label>截图名称<input type="text" data-gallery-label maxlength="80" value="'+h(x.label||'')+'" placeholder="例如 产品详情页"></label>'
- +'<div class="cms-gallery-actions"><button type="button" data-gallery-cover="'+i+'">设为封面</button>'
+ +'<div class="cms-gallery-info"><label>截图名称<input type="text" data-gallery-label maxlength="80" value="'+h(x.label||'')+'" placeholder="例如 产品详情页"'+(editable?'':' disabled')+'></label>'
+ +'<div class="cms-gallery-actions">'+(editable?'<button type="button" data-gallery-cover="'+i+'">设为封面</button>'
  +'<button type="button" data-gallery-move="'+i+'" data-gallery-direction="-1"'+(i===0?' disabled':'')+' aria-label="前移截图">↑</button>'
  +'<button type="button" data-gallery-move="'+i+'" data-gallery-direction="1"'+(i===items.length-1?' disabled':'')+' aria-label="后移截图">↓</button>'
- +'<button type="button" data-gallery-remove="'+i+'" class="cms-gallery-delete">移除</button></div></div></article>').join('');
+ +'<button type="button" data-gallery-remove="'+i+'" class="cms-gallery-delete">移除</button>':'')+'</div></div></article>').join('');
 }
 function renderGalleryCards(){
  const list=$('#cms-gallery-list');if(!list)return;
