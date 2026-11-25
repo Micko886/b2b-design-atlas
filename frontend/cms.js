@@ -628,7 +628,7 @@ function takeFields(){
      try{base[name]=JSON.parse(value)}catch{throw Error('「'+name+'」需要填写有效 JSON。')}
    }else if(type==='lines')base[name]=value.split('\n').map(x=>x.trim()).filter(Boolean);
    else if(type==='bool')base[name]=value==='true';
-   else if(type==='number')base[name]=value===''?0:Number(value);
+   else if(type==='number')base[name]=value===''?null:Number(value);
    else base[name]=value.trim();
  }
  if(state.selected.kind==='article'){
