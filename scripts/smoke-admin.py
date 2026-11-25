@@ -71,8 +71,11 @@ def main():
         reread = get("/api/admin/content/article/" + slug)
         check(reread.status_code == 200 and reread.json().get("status")=="draft",
               "Unpublished draft persists in PostgreSQL")
-        check(get("/insights/"+slug,guest).status_code in (404, 200),
-              "Public path answered (verify page content does not contain draft)")
+        public_articles = get("/assets/articles.json", guest)
+        check(public_articles.status_code == 200, "Public article catalog available")
+        published = public_articles.json().get("articles", [])
+        check(not any(a.get("id") == slug for a in published),
+              "Unpublished draft excluded from public article catalog")
         print("NOTE: draft",slug,"intentionally remains unpublished for cleanup by admin.")
     logout = client.post(base + "/api/auth/logout",headers={"Origin":base,"X-CSRF-Token":token},timeout=30)
     check(logout.status_code==200,"Admin session can log out")
