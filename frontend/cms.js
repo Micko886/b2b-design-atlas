@@ -724,7 +724,7 @@ async function deleteTag(){
 }
 function boot(){
  setTheme(theme());
- $('#cms-new').hidden=mode!=='admin';$('#cms-export').hidden=mode!=='admin';$('#cms-media-open').hidden=mode!=='admin';$('#cms-categories-open').hidden=mode!=='admin';
+ $('#cms-new').hidden=mode!=='admin';$('#cms-export').hidden=mode!=='admin';$('#cms-media-open').hidden=mode!=='admin';$('#cms-categories-open').hidden=mode!=='admin';$('#cms-tags-open').hidden=mode!=='admin';$('#cms-review-shortcut').hidden=mode!=='admin';
  $('#cms-login-link').hidden=mode!=='preview';
  $('#cms-role').textContent=mode==='admin'?'管理员 · 内容维护':'公开只读预览';
  setNotice(mode==='admin'?'管理员工作区：编辑先保存草稿，审核通过后才会进入公开目录。':'只读预览：这里展示公开网站资料，不会提供编辑或发布权限。');
@@ -736,6 +736,8 @@ function boot(){
    const action=e.target.closest('[data-transition]');if(action){await transition(action.dataset.transition);return}
    const restore=e.target.closest('[data-restore]');if(restore){await restoreRevision(Number(restore.dataset.restore));return}
    const bulkCheck=e.target.closest('[data-bulk-select]');if(bulkCheck){const slug=bulkCheck.dataset.bulkSelect;if(bulkCheck.checked)state.selectedSlugs.add(slug);else state.selectedSlugs.delete(slug);updateBulkToolbar();return}
+   const tagPick=e.target.closest('[data-v513-tag]');if(tagPick){chooseTag(tagPick.dataset.v513Tag);return}
+   if(e.target.closest('[data-v513-close-tags]')){$('#cms-tags-dialog').close();return}
    const picked=e.target.closest('[data-v515-pick]');if(picked){chooseCategory(picked.dataset.v515Pick);return}
    if(e.target.closest('[data-v515-close]')){$('#cms-categories-dialog').close();return}
    if(e.target.closest('[data-autosave-retry]')){if(autosavePaused){message('已暂停覆盖：请备份当前内容并刷新记录。',false);return}await persistDraft(false);return}
@@ -777,12 +779,33 @@ function boot(){
    updateCreateFields();$('#cms-create-dialog').showModal()
  });
  $('#cms-create-kind').addEventListener('change',updateCreateFields);
+ $('#cms-tags-open').addEventListener('click',openTagManager);
+ $('#cms-tag-add').addEventListener('click',()=>chooseTag());
+ $('#cms-tag-form').addEventListener('submit',saveTag);
+ $('#cms-tag-delete').addEventListener('click',deleteTag);
+ $('#cms-tag-search').addEventListener('input',e=>{state.tagSearch=e.target.value;drawTags()});
+ $('#cms-review-shortcut').addEventListener('click',()=>{$('#cms-status').value='review';state.status='review';drawItems();$('#cms-items').scrollIntoView({block:'nearest',behavior:'smooth'});message('已筛选当前内容类型的待审核记录')});
  $('#cms-categories-open').addEventListener('click',openCategoryManager);
  $('#cms-v515-add').addEventListener('click',()=>chooseCategory());
  $('#cms-v515-form').addEventListener('submit',saveCategory);
  $('#cms-v515-delete').addEventListener('click',deleteCategory);
  $('#cms-media-open').addEventListener('click',()=>{state.mediaTarget=null;openMedia()});
  $('#cms-media-file').addEventListener('change',e=>{uploadMedia(e.target.files);e.target.value=''});
+ const drop=$('#cms-media-drop');
+ drop.addEventListener('click',()=>$('#cms-media-file').click());
+ for(const eventName of ['dragenter','dragover']){
+   drop.addEventListener(eventName,e=>{
+     e.preventDefault();if(mode!=='admin')return;
+     if(e.dataTransfer)e.dataTransfer.dropEffect='copy';
+     drop.classList.add('dragging');
+   });
+ }
+ for(const eventName of ['dragleave','dragend'])drop.addEventListener(eventName,()=>drop.classList.remove('dragging'));
+ drop.addEventListener('drop',e=>{
+   e.preventDefault();drop.classList.remove('dragging');
+   if(mode!=='admin'||!e.dataTransfer?.files?.length)return;
+   uploadMedia(e.dataTransfer.files);
+ });
  $('#cms-bulk-run').addEventListener('click',runBulk);
  $('#cms-select-all').addEventListener('change',e=>{for(const item of listFiltered()){if(item.status==='source')continue;if(e.target.checked)state.selectedSlugs.add(item.slug);else state.selectedSlugs.delete(item.slug)}drawItems()});
 
