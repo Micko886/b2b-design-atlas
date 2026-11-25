@@ -40,7 +40,7 @@ class FocusedEditorContracts(unittest.TestCase):
         self.assertIn("data-editor-pick-media",self.js)
         self.assertIn("state.mediaField",self.js)
         self.assertIn("document.getElementById(state.mediaField)",self.js)
-        self.assertIn("media_urls=[document.get(\"cover_image\",\"\")",cms_routes.__loader__.get_source("app.cms_routes"))
+        self.assertIn("media_urls=[document.get(\"cover_image\",\"\")",Path(cms_routes.__file__).read_text(encoding="utf-8"))
 
     def test_cache_busted_and_no_single_node_iteration(self):
         self.assertIn("cms.js?v=5220",self.html)
