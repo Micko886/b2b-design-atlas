@@ -105,3 +105,9 @@
 @media(max-width:1100px){.cms-split{grid-template-columns:minmax(240px,.9fr) minmax(0,1.1fr)}.cms-metrics{gap:7px}.cms-metric{padding:12px}.cms-metric strong{font-size:24px}.cms-form-row{grid-template-columns:1fr}.cms-step{font-size:9px}.cms-steps{gap:3px;padding:14px}.cms-step-line{min-width:4px}}
 @media(max-width:950px){.cms-split{grid-template-columns:1fr}.cms-browser{position:static}.cms-items{max-height:360px;overflow:auto}.cms-editor{min-height:430px}.cms-editor-placeholder{min-height:340px;padding:45px 22px}}
 @media(max-width:640px){.cms-content{padding-top:23px}.cms-metrics{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.cms-metric{padding:12px}.cms-metric strong{font-size:23px}.cms-browser-head{padding:17px 14px 13px}.cms-search-row{margin:0 12px 11px}.cms-items{max-height:330px}.cms-item{padding:11px}.cms-item-thumb{width:55px;height:44px}.cms-editor-title{padding:17px 14px;flex-wrap:wrap}.cms-editor-meta{padding:12px 14px}.cms-editor-content{padding:15px}.cms-steps{flex-wrap:wrap}.cms-step-line{display:none}.cms-step{min-width:40%}.cms-form-actions{gap:7px}.cms-form-actions button{flex:1}.cms-timeline{padding:17px 14px}.cms-split{gap:13px}}
+
+.cms-create-fields{display:grid;gap:13px}
+.cms-json-advanced{border-top:1px solid var(--line);padding:12px 0}
+.cms-json-advanced summary{color:var(--blue);font-size:11px;font-weight:760;cursor:pointer;margin-bottom:12px}
+.cms-json-advanced .cms-field textarea{min-height:170px}
+.cms-empty-symbol{user-select:none}
