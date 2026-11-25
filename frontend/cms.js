@@ -288,7 +288,9 @@ function articleSection(section={},index=0,editable=true){
  return '<div class="cms-v51-section" data-v51-section><div class="cms-v51-section-top"><strong>章节 '+(index+1)+'</strong>'
  +(editable?'<div><button type="button" data-v51-move="-1" aria-label="上移章节">↑</button><button type="button" data-v51-move="1" aria-label="下移章节">↓</button><button type="button" data-v51-remove aria-label="删除章节">删除</button></div>':'')+'</div>'
  +'<label>章节标题<input data-v51-title maxlength="180" required'+disabled+' value="'+h(section.title||'')+'" placeholder="为这一节写一个明确的标题"></label>'
- +'<label>正文段落 <small>空行分隔不同段落</small><textarea data-v51-paragraphs rows="7"'+disabled+' placeholder="每段正文直接输入，不再编写 JSON">'+h((section.paragraphs||[]).join('\n\n'))+'</textarea></label>'
+ +'<label>正文段落 <small>空行分段 · 选中文字后使用工具栏排版</small></label>'
+ +(editable?'<div class="cms-v514-toolbar" role="toolbar" aria-label="正文格式工具"><button type="button" data-v514-format="bold" title="加粗选中文字">B 加粗</button><button type="button" data-v514-format="italic" title="斜体选中文字"><i>I</i> 斜体</button><button type="button" data-v514-format="code" title="代码样式">代码</button></div>':'')
+ +'<textarea data-v51-paragraphs rows="7"'+disabled+' placeholder="直接输入正文，空行分隔段落">'+h((section.paragraphs||[]).join('\n\n'))+'</textarea>'
  +'<label>要点列表 <small>每行一个要点</small><textarea data-v51-bullets rows="3"'+disabled+' placeholder="要点 1\n要点 2">'+h((section.bullets||[]).join('\n'))+'</textarea></label>'
  +'<label>重点提示<textarea data-v51-callout rows="2"'+disabled+' placeholder="可选的重点结论">'+h(section.callout||'')+'</textarea></label>'
  +'<div class="cms-v513-image-row"><label>章节配图<input data-v513-image value="'+h(section.image||'')+'" readonly placeholder="尚未选择图片"></label>'
@@ -312,6 +314,25 @@ function articleStudio(v,editable){
  +'<p id="cms-v512-preview-error" hidden role="alert"></p><div id="cms-v512-preview-content"></div></section></section>';
 }
 // V51.2: Private, unsaved preview. All user content is HTML-escaped.
+// Limited inline emphasis syntax. Always escape text BEFORE applying tags.
+function inlineArticleText(value){
+ const escaped=h(value);
+ return escaped
+  .replace(/\\*\\*([^*\\n]+)\\*\\*/g,'<strong>$1</strong>')
+  .replace(/(^|[^*])\\*([^*\\n]+)\\*/g,'$1<em>$2</em>')
+  .replace(/`([^`\\n]+)`/g,'<code>$1</code>');
+}
+function applyArticleFormat(button){
+ const field=button.closest('[data-v51-section]')?.querySelector('[data-v51-paragraphs]');
+ if(!field)return;
+ const start=field.selectionStart,end=field.selectionEnd;
+ const markers={bold:'**',italic:'*',code:'`'};
+ const mark=markers[button.dataset.v514Format];if(!mark)return;
+ const selected=field.value.slice(start,end);
+ field.setRangeText(mark+(selected||'文字')+mark,start,end,'select');
+ field.setSelectionRange(start+mark.length,start+mark.length+(selected||'文字').length);
+ field.focus();state.dirty=true;refreshArticlePreview();
+}
 function sectionImageMarkup(s){
  if(!s.image||!/^\/api\/media\/[0-9a-f-]{36}$/.test(s.image))return '';
  return '<figure class="cms-v513-figure"><img src="'+h(s.image)+'" alt="'+h(s.image_caption||s.title||'配图')+'">'
@@ -327,7 +348,7 @@ function previewMarkup(article){
    +(cover?'<img class="cms-v512-cover" src="'+h(cover)+'" alt="文章封面">':'')
    +'<div class="cms-v512-tags">'+tags.map(x=>'<span>'+h(x)+'</span>').join('')+'</div>'
    +sections.map((s,i)=>'<section><h2>'+h(s.title||'章节 '+(i+1))+'</h2>'
-     +(Array.isArray(s.paragraphs)?s.paragraphs:[]).map(p=>'<p>'+h(p)+'</p>').join('')
+     +(Array.isArray(s.paragraphs)?s.paragraphs:[]).map(p=>'<p>'+inlineArticleText(p)+'</p>').join('')
      +(Array.isArray(s.bullets)&&s.bullets.length?'<ul>'+s.bullets.map(x=>'<li>'+h(x)+'</li>').join('')+'</ul>':'')
      +sectionImageMarkup(s)
      +(s.callout?'<blockquote>'+h(s.callout)+'</blockquote>':'')+'</section>').join('')
@@ -434,6 +455,7 @@ function boot(){
    const restore=e.target.closest('[data-restore]');if(restore){await restoreRevision(Number(restore.dataset.restore));return}
    const bulkCheck=e.target.closest('[data-bulk-select]');if(bulkCheck){const slug=bulkCheck.dataset.bulkSelect;if(bulkCheck.checked)state.selectedSlugs.add(slug);else state.selectedSlugs.delete(slug);updateBulkToolbar();return}
    const tag=e.target.closest('[data-v512-tag]');if(tag){const field=$('#v51-tags');if(!field)return;const existing=linesFrom('#v51-tags');if(!existing.includes(tag.dataset.v512Tag)){field.value=[...existing,tag.dataset.v512Tag].join(String.fromCharCode(10));state.dirty=true;refreshArticlePreview()}return}
+   const formatter=e.target.closest('[data-v514-format]');if(formatter){applyArticleFormat(formatter);return}
    if(e.target.closest('[data-v512-preview]')){toggleArticlePreview();return}
    if(e.target.closest('[data-v51-add]')){const root=$('#cms-v51-sections');root.insertAdjacentHTML('beforeend',articleSection({},root.children.length,true));reindexSections();state.dirty=true;refreshArticlePreview();return}
    if(e.target.closest('[data-v51-remove]')){const blocks=document.querySelectorAll('#cms-v51-sections [data-v51-section]');if(blocks.length<=1){message('至少保留一个章节',false);return}e.target.closest('[data-v51-section]').remove();reindexSections();state.dirty=true;return}
