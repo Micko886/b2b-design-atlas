@@ -5,9 +5,9 @@
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#f5f7fb">
 <title>内容管理 · B2B Atlas Control Room</title>
-<link rel="stylesheet" href="/assets/admin.css?v=514">
-<link rel="stylesheet" href="/assets/cms.css?v=514">
-<script defer src="/assets/cms.js?v=514"></script>
+<link rel="stylesheet" href="/assets/admin.css?v=515">
+<link rel="stylesheet" href="/assets/cms.css?v=515">
+<script defer src="/assets/cms.js?v=515"></script>
 </head>
 <body data-cms-mode="__CMS_MODE__">
 <svg xmlns="http://www.w3.org/2000/svg" class="icon-sprite" aria-hidden="true">
@@ -33,7 +33,7 @@
 </svg>
 <div class="dashboard-layout cms-layout">
  <aside class="sidebar" id="cms-sidebar">
-  <div class="sidebar-brand"><div class="brand-symbol" aria-hidden="true"><span></span><span></span><span></span><span></span></div><div class="brand-wordmark"><strong>B2B Atlas</strong><small>CONTROL ROOM</small></div><span class="brand-version">V51.4</span></div>
+  <div class="sidebar-brand"><div class="brand-symbol" aria-hidden="true"><span></span><span></span><span></span><span></span></div><div class="brand-wordmark"><strong>B2B Atlas</strong><small>CONTROL ROOM</small></div><span class="brand-version">V51.5</span></div>
   <div class="workspace-chip"><span class="workspace-chip-icon">A</span><span><strong>Atlas Workspace</strong><small>Content Studio</small></span></div>
   <nav class="side-nav" aria-label="内容管理导航">
    <span class="nav-group-label">MANAGEMENT <span>01</span></span>
@@ -55,7 +55,7 @@
    <div class="masthead-right"><span class="save-state" id="cms-state"><span class="status-led"></span> CONTENT WORKFLOW</span><div class="theme-switch" role="group" aria-label="界面主题"><button data-set-theme="light" type="button" title="白天模式" aria-pressed="true"><svg class="icon"><use href="#i-sun"></use></svg><span>白天</span></button><button data-set-theme="dark" type="button" title="黑夜模式" aria-pressed="false"><svg class="icon"><use href="#i-moon"></use></svg><span>黑夜</span></button></div><a class="main-top-avatar" href="/account" title="个人中心">A</a></div>
   </header>
   <main class="dashboard-content cms-content">
-   <div class="page-head"><div><div class="eyebrow"><span class="eyebrow-mark"></span> CONTENT GOVERNANCE / EDITORIAL WORKFLOW</div><h1>内容管理<span class="title-spark">✳</span></h1><p>把内容维护、研究审核和发布版本，整合到一个工作区。</p></div><div class="page-head-actions"><a id="cms-login-link" class="toolbar-button" href="/login?next=%2Fadmin%2Fcontent" hidden>管理员登录 ↗</a><button id="cms-refresh" class="toolbar-button"><svg class="icon"><use href="#i-refresh"></use></svg>刷新</button><button id="cms-export" class="toolbar-button"><svg class="icon"><use href="#i-download"></use></svg>导出内容</button><button id="cms-media-open" class="toolbar-button">媒体资源</button><button id="cms-new" class="toolbar-button toolbar-button-primary"><svg class="icon"><use href="#i-plus"></use></svg>新建内容</button></div></div>
+   <div class="page-head"><div><div class="eyebrow"><span class="eyebrow-mark"></span> CONTENT GOVERNANCE / EDITORIAL WORKFLOW</div><h1>内容管理<span class="title-spark">✳</span></h1><p>把内容维护、研究审核和发布版本，整合到一个工作区。</p></div><div class="page-head-actions"><a id="cms-login-link" class="toolbar-button" href="/login?next=%2Fadmin%2Fcontent" hidden>管理员登录 ↗</a><button id="cms-refresh" class="toolbar-button"><svg class="icon"><use href="#i-refresh"></use></svg>刷新</button><button id="cms-export" class="toolbar-button"><svg class="icon"><use href="#i-download"></use></svg>导出内容</button><button id="cms-categories-open" class="toolbar-button">文章分类</button><button id="cms-media-open" class="toolbar-button">媒体资源</button><button id="cms-new" class="toolbar-button toolbar-button-primary"><svg class="icon"><use href="#i-plus"></use></svg>新建内容</button></div></div>
    <div id="cms-notice" class="notice-strip"><div><svg class="icon"><use href="#i-lock"></use></svg><span>正在连接内容管理服务…</span></div><span>SECURE STUDIO</span></div>
    <div class="cms-metrics" id="cms-metrics">
     <div class="cms-metric"><span>全部内容</span><strong>—</strong></div><div class="cms-metric"><span>文件收录</span><strong>—</strong></div><div class="cms-metric"><span>草稿</span><strong>—</strong></div><div class="cms-metric"><span>待审核</span><strong>—</strong></div><div class="cms-metric"><span>后台已发布</span><strong>—</strong></div>
@@ -79,5 +79,20 @@
 </div>
 <dialog id="cms-create-dialog" class="cms-dialog"><form id="cms-create-form" method="dialog"><div class="cms-dialog-head"><div><span class="section-eyebrow">NEW CONTENT</span><h2>创建一条内容</h2></div><button type="button" data-dialog-close aria-label="关闭">×</button></div><label>资源类型<select id="cms-create-kind" name="kind"><option value="site">Website · 网站</option><option value="module">Section · 页面模块</option><option value="pattern">Pattern · 设计模式</option><option value="article">Insight · 研究文章</option></select></label><label>URL 标识（英文小写）<input id="cms-create-slug" name="slug" required minlength="2" maxlength="111" pattern="[a-z0-9][a-z0-9-]*" placeholder="例如 new-industrial-website"></label><p>创建后 URL 标识不可更改。请使用简短、稳定的英文名称。</p><div class="cms-dialog-actions"><button type="button" class="cms-btn-secondary" data-dialog-close>取消</button><button type="submit" class="cms-btn-primary">创建草稿 ↗</button></div></form></dialog>
 <dialog id="cms-media-dialog" class="cms-dialog cms-v51-media-dialog"><div class="cms-dialog-head"><div><span class="section-eyebrow">ASSET LIBRARY / V51</span><h2>媒体资源库</h2><p>上传 JPG、PNG、WebP 图片，统一管理并复制图片地址。每张不超过 1.5MB。</p></div><button type="button" data-media-close aria-label="关闭媒体资源库">×</button></div><div class="cms-v51-media-actions"><label class="cms-btn-primary">上传图片<input type="file" id="cms-media-file" accept="image/jpeg,image/png,image/webp" multiple hidden></label><span id="cms-media-status" role="status">媒体存储在 PostgreSQL 中</span></div><div id="cms-media-grid" class="cms-v51-media-grid"></div><div class="cms-dialog-actions"><button class="cms-btn-secondary" type="button" data-media-close>关闭</button></div></dialog>
+<dialog id="cms-categories-dialog" class="cms-dialog cms-v515-dialog" aria-label="文章分类管理">
+  <div class="cms-dialog-head"><div><span class="section-eyebrow">TAXONOMY / CONTENT STUDIO</span><h2>文章分类管理</h2><p>分类名称和说明可独立维护，已关联文章的分类受到删除保护。</p></div><button type="button" data-v515-close aria-label="关闭分类管理">×</button></div>
+  <div class="cms-v515-layout">
+    <div class="cms-v515-category-browser"><div class="cms-v515-section-head"><strong>现有分类</strong><button type="button" id="cms-v515-add" class="cms-btn-secondary">＋ 新建分类</button></div><div id="cms-v515-category-items" class="cms-v515-category-items"><p>正在读取分类…</p></div></div>
+    <form id="cms-v515-form" class="cms-v515-form">
+      <span class="section-eyebrow" id="cms-v515-form-title">NEW CATEGORY</span>
+      <label>分类 ID <small>英文小写与短横线，创建后不可更改</small><input id="cms-v515-id" name="id" required minlength="2" maxlength="48" pattern="[a-z0-9][a-z0-9-]*" placeholder="例如 product-design"></label>
+      <label>显示名称<input id="cms-v515-name" name="name" maxlength="80" required placeholder="例如 产品设计"></label>
+      <label>分类说明<textarea id="cms-v515-description" name="description" rows="4" maxlength="400" placeholder="说明这个分类会收录什么文章"></textarea></label>
+      <div class="cms-v515-form-actions"><button type="submit" class="cms-btn-primary" id="cms-v515-save">保存分类</button><button type="button" id="cms-v515-delete" class="cms-btn-secondary" hidden>删除分类</button></div>
+      <p class="cms-v515-info" id="cms-v515-info">新建分类后，可在文章编辑器里直接选择。</p>
+    </form>
+  </div>
+  <div class="cms-dialog-actions"><button class="cms-btn-secondary" type="button" data-v515-close>完成</button></div>
+</dialog>
 <div id="cms-toast" class="toast" role="status" aria-live="polite"></div>
 </body></html>
