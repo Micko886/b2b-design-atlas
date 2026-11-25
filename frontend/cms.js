@@ -31,7 +31,7 @@ const fieldSpecs={
  ],
  article:[
   ['title','文章标题','text',true],['subtitle','文章摘要','long',true],['category','文章分类','text',true],
-  ['author','作者','text',true],['cover_site','封面关联网站 ID','text'],['published_at','发布日期（YYYY-MM-DD）','text'],
+  ['author','作者','text',true],['cover_site','封面关联网站 ID','text'],['cover_image','媒体封面 URL','text'],['published_at','发布日期（YYYY-MM-DD）','text'],
   ['reading_minutes','阅读时长（分钟）','number'],['featured','精选文章','bool'],
   ['tags','关键词（JSON 数组）','json'],['takeaways','核心观点（JSON 数组）','json'],
   ['sections','文章章节（JSON 数组）','json'],['references','关联引用（JSON 数组）','json']
@@ -117,7 +117,7 @@ function formField(spec,values,editable){
    const pretty=typeof value==='string'?value:JSON.stringify(value,null,2);
    input='<textarea '+attr+disabled+' rows="7" spellcheck="false">'+h(pretty)+'</textarea>';
  }else if(type==='long')input='<textarea '+attr+disabled+' rows="4"'+(required?' required':'')+'>'+h(value)+'</textarea>';
- else input='<input '+attr+disabled+' type="'+(type==='url'?'url':type==='number'?'number':'text')+'" value="'+h(value)+'"'+(required?' required':'')+'>';
+ else input='<input '+attr+(name==='category'&&state.kind==='article'?' list="v51-categories"':'')+disabled+' type="'+(type==='url'?'url':type==='number'?'number':'text')+'" value="'+h(value)+'"'+(required?' required':'')+'>';
  return '<div class="cms-field" data-json="'+(type==='json')+'" data-multiline="'+(type==='long')+'"><label for="'+inputName+'">'+h(label)+(required?' *':'')+'</label>'+input+'</div>';
 }
 function renderForm(item){
@@ -279,15 +279,15 @@ async function changeKind(kind){
 }
 // V51 · Structured editorial studio, taxonomy, media and bulk workflow.
 function linesFrom(selector){
- const input=$(selector);return input?input.value.split('\\n').map(x=>x.trim()).filter(Boolean):[];
+ const input=$(selector);return input?input.value.split('\n').map(x=>x.trim()).filter(Boolean):[];
 }
 function articleSection(section={},index=0,editable=true){
  const disabled=editable?'':' disabled';
  return '<div class="cms-v51-section" data-v51-section><div class="cms-v51-section-top"><strong>章节 '+(index+1)+'</strong>'
  +(editable?'<div><button type="button" data-v51-move="-1" aria-label="上移章节">↑</button><button type="button" data-v51-move="1" aria-label="下移章节">↓</button><button type="button" data-v51-remove aria-label="删除章节">删除</button></div>':'')+'</div>'
  +'<label>章节标题<input data-v51-title maxlength="180" required'+disabled+' value="'+h(section.title||'')+'" placeholder="为这一节写一个明确的标题"></label>'
- +'<label>正文段落 <small>空行分隔不同段落</small><textarea data-v51-paragraphs rows="7"'+disabled+' placeholder="每段正文直接输入，不再编写 JSON">'+h((section.paragraphs||[]).join('\\n\\n'))+'</textarea></label>'
- +'<label>要点列表 <small>每行一个要点</small><textarea data-v51-bullets rows="3"'+disabled+' placeholder="要点 1\\n要点 2">'+h((section.bullets||[]).join('\\n'))+'</textarea></label>'
+ +'<label>正文段落 <small>空行分隔不同段落</small><textarea data-v51-paragraphs rows="7"'+disabled+' placeholder="每段正文直接输入，不再编写 JSON">'+h((section.paragraphs||[]).join('\n\n'))+'</textarea></label>'
+ +'<label>要点列表 <small>每行一个要点</small><textarea data-v51-bullets rows="3"'+disabled+' placeholder="要点 1\n要点 2">'+h((section.bullets||[]).join('\n'))+'</textarea></label>'
  +'<label>重点提示<textarea data-v51-callout rows="2"'+disabled+' placeholder="可选的重点结论">'+h(section.callout||'')+'</textarea></label>'
  +'</div>';
 }
@@ -295,8 +295,8 @@ function articleStudio(v,editable){
  const disabled=editable?'':' disabled';
  const categorySuggestions=(state.taxonomy.article||[]).map(x=>'<option value="'+h(x)+'"></option>').join('');
  return '<section class="cms-v51-studio"><div class="cms-v51-studio-head"><div><span class="section-eyebrow">VISUAL EDITOR · V51</span><h3>结构化文章编辑器</h3><p>可视化编辑正文、标签和观点，保存后仍进入原有审核流程。</p></div><span class="cms-v51-studio-badge">所见即结构</span></div>'
- +'<div class="cms-v51-taxonomy"><label>文章标签 <small>每行一个关键词</small><textarea id="v51-tags" rows="3"'+disabled+'>'+h((v.tags||[]).join('\\n'))+'</textarea></label>'
- +'<label>核心观点 <small>每行一条摘要</small><textarea id="v51-takeaways" rows="3"'+disabled+'>'+h((v.takeaways||[]).join('\\n'))+'</textarea></label></div>'
+ +'<div class="cms-v51-taxonomy"><label>文章标签 <small>每行一个关键词</small><textarea id="v51-tags" rows="3"'+disabled+'>'+h((v.tags||[]).join('\n'))+'</textarea></label>'
+ +'<label>核心观点 <small>每行一条摘要</small><textarea id="v51-takeaways" rows="3"'+disabled+'>'+h((v.takeaways||[]).join('\n'))+'</textarea></label></div>'
  +'<datalist id="v51-categories">'+categorySuggestions+'</datalist>'
  +'<div class="cms-v51-chapter-head"><strong>文章章节</strong>'+(editable?'<button type="button" data-v51-add>＋ 添加章节</button>':'')+'</div>'
  +'<div id="cms-v51-sections">'+(v.sections||[]).map((s,i)=>articleSection(s,i,editable)).join('')+'</div>'
