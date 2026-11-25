@@ -22,6 +22,10 @@ on:
       - '.github/workflows/cms-browser.yml'
   workflow_dispatch:
 
+concurrency:
+  group: cms-browser-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
