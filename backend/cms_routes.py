@@ -589,12 +589,27 @@ def cms_item(kind,slug,session):
                            WHERE kind=? AND slug=?""",(kind,slug))
     base=base_item(kind,slug)
     if not row and not base:user_auth.error(404,"内容不存在。")
+    # Editing a file-backed resource creates a CMS draft, but does not remove
+    # the still-public original. Review comparison must use the actual public
+    # baseline, including archived tombstones and previously released snapshots.
+    # This deliberately mirrors published_overrides() instead of returning
+    # null for every source-derived draft.
+    if row and row["published_json"]:
+        published=parse_json(row["published_json"])
+    elif base and row:
+        with user_auth.db() as db:
+            archived=db.one("""SELECT 1 AS archived FROM atlas_cms_history
+                              WHERE kind=? AND slug=? AND action='archive' LIMIT 1""",
+                            (kind,slug))
+        published=None if archived or row["status"]=="archived" else base
+    else:
+        published=base if not row else None
     return {
         "kind":kind,"slug":slug,"source":"cms" if row else "repository",
         "status":row["status"] if row else "source",
         "revision":row["revision"] if row else 0,
         "payload":parse_json(row["draft_json"]) if row else base,
-        "published":parse_json(row["published_json"]) if row and row["published_json"] else base if not row else None,
+        "published":published,
         "published_at":row["published_at"] if row else None,
         "history":history,"schedule":schedule
     }
