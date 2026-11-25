@@ -252,7 +252,13 @@ function updateCreateFields(){
  if(kind==='module')f.splice(1,0,['site_id','关联网站 ID',true]);
  if(kind==='pattern')f.push(['principle','核心原则',true]);
  if(kind==='article')f.push(['author','作者',true]);
- target.innerHTML=f.map(([id,label,required])=>'<label>'+h(label)+'<input name="'+id+'" '+(id==='url'?'type="url"':'type="text"')+' required maxlength="1800" placeholder="'+h(label)+'"></label>').join('');
+ target.innerHTML=f.map(([id,label,required])=>{
+   if(kind==='article'&&id==='sector')return '<label>'+h(label)+'<select name="sector" required>'
+     +'<option value="">选择文章分类</option>'
+     +state.categoryRecords.map(cat=>'<option value="'+h(cat.id)+'">'+h(cat.name)+' · '+h(cat.id)+'</option>').join('')
+     +'</select></label>';
+   return '<label>'+h(label)+'<input name="'+id+'" '+(id==='url'?'type="url"':'type="text"')+' required maxlength="1800" placeholder="'+h(label)+'"></label>';
+ }).join('');
 }
 async function createNew(e){
  e.preventDefault();if(mode!=='admin')return;
@@ -578,7 +584,10 @@ function boot(){
  $('#cms-status').addEventListener('change',e=>{state.status=e.target.value;drawItems()});
  $('#cms-refresh').addEventListener('click',async()=>{try{await loadKind(true);message('内容列表已刷新')}catch(e){message(e.message,false)}});
  $('#cms-export').addEventListener('click',exportCms);
- $('#cms-new').addEventListener('click',()=>{updateCreateFields();$('#cms-create-dialog').showModal()});
+ $('#cms-new').addEventListener('click',async()=>{
+   if(mode==='admin'&&state.kind==='article')try{await loadCmsTaxonomy()}catch(err){message(err.message,false)}
+   updateCreateFields();$('#cms-create-dialog').showModal()
+ });
  $('#cms-create-kind').addEventListener('change',updateCreateFields);
  $('#cms-categories-open').addEventListener('click',openCategoryManager);
  $('#cms-v515-add').addEventListener('click',()=>chooseCategory());
