@@ -764,7 +764,31 @@ def register_cms_routes(app: FastAPI):
         require_admin(request);ensure_cms()
         with user_auth.db() as db:
             rows=db.all("SELECT id,file_name,mime_type,byte_size,sha256,created_at FROM atlas_cms_media ORDER BY created_at DESC LIMIT 150")
-        return {"items":[{**r,"url":"/api/media/"+r["id"]} for r in rows]}
+            entries=db.all("SELECT kind,slug,draft_json,published_json FROM atlas_cms_entries")
+        # Usage includes both drafts and published CMS snapshots, deduplicated
+        # by content item. Never return account information or media bytes here.
+        usage={}
+        for entry in entries:
+            identifiers=set()
+            for field in ("draft_json","published_json"):
+                try:document=parse_json(entry[field]) if entry[field] else {}
+                except (TypeError,ValueError):continue
+                if not isinstance(document,dict):continue
+                media_urls=[document.get("cover_image","")]
+                if isinstance(document.get("sections"),list):
+                    for chapter in document["sections"]:
+                        if not isinstance(chapter,dict):continue
+                        media_urls.append(chapter.get("image",""))
+                        for block in chapter.get("blocks",[]):
+                            if isinstance(block,dict) and block.get("type")=="image":
+                                media_urls.append(block.get("src",""))
+                identifiers.update(u.rsplit("/",1)[-1] for u in media_urls if isinstance(u,str) and
+                                   re.fullmatch(r"/api/media/[0-9a-f-]{36}",u))
+            for mid in identifiers:
+                usage.setdefault(mid,[]).append({"kind":entry["kind"],"slug":entry["slug"]})
+        return {"items":[{**r,"url":"/api/media/"+r["id"],
+                    "usage_count":len(usage.get(r["id"],[])),
+                    "used_by":usage.get(r["id"],[])[:12]} for r in rows]}
 
     @app.post("/api/admin/media",include_in_schema=False,status_code=201)
     def media_upload(data:MediaUpload,request:Request):
