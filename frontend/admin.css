@@ -464,3 +464,17 @@ html[data-theme=dark] .sector-bar>i{background:linear-gradient(90deg,#5976e7,#9a
 .atlas-growth-disclaimer{margin:11px 0 25px;font-size:10px;color:var(--muted);line-height:1.8}
 @media(max-width:900px){.atlas-growth-grid{grid-template-columns:1fr}.atlas-growth-wide{grid-column:1}.atlas-growth-head{align-items:start;flex-direction:column}}
 @media(max-width:590px){.atlas-growth-actions{width:100%}.atlas-growth-actions label{flex:1}.atlas-growth-actions select{width:100%;min-width:0}.atlas-growth-panel{padding:17px 14px}.atlas-growth-head h2{font-size:20px}}
+
+/* V51.12 / channel-specific acquisition trend chart */
+.atlas-growth-trend{min-height:185px;padding:5px 0 7px}
+.atlas-growth-trend svg{display:block;width:100%;height:auto;max-height:250px;overflow:visible}
+.atlas-growth-chart-key{display:flex;justify-content:flex-end;gap:17px;flex-wrap:wrap;margin:0 0 10px;font-size:10px;font-weight:750;color:var(--muted-strong)}
+.atlas-growth-chart-key span{display:flex;gap:6px;align-items:center}
+.atlas-growth-chart-key i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.atlas-growth-chart-key i.sessions{background:var(--blue)}
+.atlas-growth-chart-key i.registrations{background:var(--teal)}
+.atlas-growth-chart-key i.saves{background:var(--orange)}
+.atlas-growth-line-sessions,.atlas-growth-line-signups,.atlas-growth-line-saves{stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.atlas-growth-line-sessions{stroke:var(--blue)}
+.atlas-growth-line-signups{stroke:var(--teal)}
+.atlas-growth-line-saves{stroke:var(--orange)}
