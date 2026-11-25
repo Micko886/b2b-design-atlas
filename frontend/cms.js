@@ -1094,15 +1094,10 @@ function refreshArticleHealth(){
     characters+=String(block.text||(block.items||[]).join(' ')||'').length;
     if(block.type==='image'){
      images++;
-     const node=[...$$('[data-cms-block][data-block-type="image"]')].find(el=>
-        el.closest('[data-v51-section]')===$$('[data-v51-section]')[chapter] &&
-        [...el.parentElement.children].filter(x=>x.matches('[data-cms-block][data-block-type="image"]')).indexOf(el)===
-         section.blocks.slice(0,index+1).filter(x=>x.type==='image').length-1);
      // Stable editor order: chapter and block index (not a database row number).
      if(!String(block.src||'').trim())issues.push({label:'章节 '+(chapter+1)+'：图片块尚未选择图片',chapter,index,action:'image'});
      else if(!String(block.alt||'').trim())issues.push({label:'章节 '+(chapter+1)+'：图片缺少替代文字 ALT',chapter,index,action:'alt'});
      if(block.src&&!String(block.caption||'').trim())issues.push({label:'章节 '+(chapter+1)+'：建议补充图注或来源',chapter,index,action:'caption',advisory:true});
-     void node;
     }
    });
   }else{
@@ -1147,7 +1142,7 @@ function articleStudio(v,editable){
  return '<section class="cms-v51-studio"><div class="cms-v51-studio-head"><div><span class="section-eyebrow">文章正文</span><h3>逐章编辑正文</h3><p>可以添加章节、段落和图片；预览不会公开尚未发布的内容。</p></div></div>'
  +'<div class="cms-v531-editor-bar"><div><strong>文章结构</strong><span id="cms-article-stat">正在计算章节和字数…</span></div>'
  +'<div class="cms-v531-undo-actions">'+(editable?'<button type="button" data-article-undo disabled title="撤销章节或内容块的增删、移动、转换">↶ 撤销结构修改</button><button type="button" data-article-redo disabled title="重做上一次结构修改">↷ 重做</button>':'')+'</div></div>'
- +'<p class="cms-v531-undo-note">结构操作最多保留 20 步撤销记录；正文输入继续使用浏览器的 Ctrl/⌘+Z。撤销后会自动保存为草稿。</p>'
+ +'<p class="cms-v531-undo-note">仅记录最近 20 次结构操作的章节快照（含当时的文字）；正文输入可使用浏览器的 Ctrl/⌘+Z。撤销后会自动保存草稿。</p>'
  +'<div class="cms-v51-taxonomy"><label>文章标签 <small>每行一个关键词</small><textarea id="v51-tags" rows="3"'+disabled+'>'+h((v.tags||[]).join('\n'))+'</textarea></label>'
  +'<label>核心观点 <small>每行一条摘要</small><textarea id="v51-takeaways" rows="3"'+disabled+'>'+h((v.takeaways||[]).join('\n'))+'</textarea></label></div>'
  +'<div class="cms-v512-suggestions"><span>常用标签</span>'+(state.tagSuggestions.length?state.tagSuggestions.slice(0,12).map(tag=>'<button type="button" data-v512-tag="'+h(tag)+'"'+(editable?'':' disabled')+'>'+h(tag)+'</button>').join(''):'<small>暂无常用标签</small>')+'</div>'
