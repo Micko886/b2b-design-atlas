@@ -85,18 +85,18 @@ class UnifiedNavigationContracts(unittest.TestCase):
         cls.admin_css=(STATIC/"assets/admin.css").read_text(encoding="utf-8")
         cls.cms_css=(STATIC/"assets/cms.css").read_text(encoding="utf-8")
 
-    def test_both_pages_share_identical_five_primary_workspaces(self):
-        for name in ("运营概览","内容管理","审核队列","发布日历","数据分析"):
+    def test_both_pages_share_six_primary_workspaces(self):
+        for name in ("工作台","内容管理","媒体资源","审核发布","运营中心","系统设置"):
             with self.subTest(name=name):
                 self.assertIn(name,self.admin)
                 self.assertIn(name,self.cms)
-        self.assertIn("atlas-v521-nav",self.admin)
-        self.assertIn("atlas-v521-nav",self.cms)
+        self.assertIn("atlas-v530-nav",self.admin)
+        self.assertIn("atlas-v530-nav",self.cms)
 
     def test_all_cms_action_ids_exist_once_and_belong_to_settings_or_sidebar(self):
         for action in ("cms-new","cms-refresh","cms-review-shortcut","cms-schedules-open",
                        "cms-media-open","cms-categories-open","cms-tags-open","cms-team-open",
-                       "cms-export","cms-logout"):
+                       "cms-export","cms-logout","cms-settings-open"):
             with self.subTest(action=action):
                 self.assertEqual(self.cms.count('id="'+action+'"'),1)
         self.assertIn('id="cms-tools-menu" hidden',self.cms)
@@ -112,7 +112,8 @@ class UnifiedNavigationContracts(unittest.TestCase):
 
     def test_settings_and_logout_fail_closed(self):
         self.assertIn("$('#cms-tools-menu').hidden=true",self.cms_js)
-        self.assertIn("$('#cms-tools-menu').hidden=!(can('media')",self.cms_js)
+        self.assertIn("$('#cms-tools-menu').hidden=!(can('taxonomy')",self.cms_js)
+        self.assertIn("$('#cms-settings-open').hidden=!(can('taxonomy')",self.cms_js)
         self.assertIn("async function logoutCms()",self.cms_js)
         self.assertIn("async function logoutAdmin()",self.admin_js)
         self.assertIn("'/api/auth/logout'",self.cms_js)
@@ -128,16 +129,17 @@ class UnifiedNavigationContracts(unittest.TestCase):
                 self.assertEqual(non_iterable,[])
 
     def test_review_queue_and_calendar_deep_links(self):
-        self.assertIn("status=review",self.admin)
-        self.assertIn("workspace=schedule",self.admin)
-        self.assertIn("routeParams.get('status')==='review'",self.cms_js)
-        self.assertIn("routeParams.get('workspace')==='schedule'",self.cms_js)
+        for route in ("workspace=review","workspace=schedule","workspace=media","workspace=settings"):
+            self.assertIn(route,self.admin)
+        for workspace in ("review","schedule","media","settings"):
+            self.assertIn("routeParams.get('workspace')==='"+workspace+"'",self.cms_js)
+        self.assertIn("openReviewQueue()",self.cms_js)
         self.assertIn("openScheduleQueue()",self.cms_js)
 
     def test_workspace_highlight_tracks_editorial_context(self):
         self.assertIn("function markWorkspace(name)",self.cms_js)
         self.assertIn("markWorkspace('review')",self.cms_js)
-        self.assertIn("markWorkspace('schedule')",self.cms_js)
+        self.assertIn("markWorkspace('operations')",self.cms_js)
         self.assertIn("markWorkspace('content')",self.cms_js)
         self.assertIn("markWorkspace(state.status==='review'?'review':'content')",self.cms_js)
         self.assertIn('data-owner-only hidden',self.cms)
@@ -151,10 +153,10 @@ class UnifiedNavigationContracts(unittest.TestCase):
         self.assertIn("html[data-theme=dark]",self.admin_css)
 
     def test_updated_asset_versions(self):
-        self.assertIn("admin.js?v=51.21",self.admin)
-        self.assertIn("admin.css?v=51.21",self.admin)
-        self.assertIn("cms.js?v=5280",self.cms)
-        self.assertIn("cms.css?v=5280",self.cms)
+        self.assertIn("admin.js?v=5300",self.admin)
+        self.assertIn("admin.css?v=5300",self.admin)
+        self.assertIn("cms.js?v=5300",self.cms)
+        self.assertIn("cms.css?v=5300",self.cms)
 
 if __name__=="__main__":
     unittest.main()
