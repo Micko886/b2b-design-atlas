@@ -13,7 +13,7 @@
   const typeIcons = ['globe','layers','shapes','article'];
   const typeStyles = ['website','section','pattern','insight'];
   const typeLabels = ['网站案例','页面模块','设计模式','研究文章'];
-  const state = {data:null,range:14,query:'',expanded:false,fetching:false,trafficDays:30,traffic:null,trafficFetching:false};
+  const state = {data:null,range:14,query:'',expanded:false,fetching:false,trafficDays:30,traffic:null,trafficFetching:false,growth:null,growthChannel:'all',growthFetching:false};
   let toastTimer = 0;
 
   function savedTheme(){
@@ -288,6 +288,133 @@
     setTimeout(()=>URL.revokeObjectURL(url),1500);
     toast('真实运营报表已导出');
   }
+  // V51.8–V51.12 · Real acquisition, session and conversion intelligence.
+  const growthNames={direct:'直接 / 未识别',organic:'自然搜索',social:'社交媒体',
+    referral:'外部引荐',paid:'付费推广',email:'邮件渠道',
+    desktop:'桌面设备',tablet:'平板设备',mobile:'移动设备',unknown:'未识别'};
+  function growthLabel(value){return growthNames[value]||value||'未分类'}
+  function growthNumber(value){return number(Number(value)||0)}
+  function growthPercent(n,total){return total?Math.round(1000*n/total)/10:0}
+  function growthEmpty(message='该时间范围暂无记录，采集到真实访问后自动显示。'){
+    return '<p class="atlas-traffic-empty">'+esc(message)+'</p>';
+  }
+  function growthBarRows(rows,nameKey='key',countKey='sessions',maxRows=10){
+    if(!rows||!rows.length)return growthEmpty();
+    const maximum=Math.max(1,...rows.map(r=>Number(r[countKey])||0));
+    return rows.slice(0,maxRows).map(x=>{
+      const count=Number(x[countKey])||0;
+      const title=growthLabel(x[nameKey]);
+      return '<div class="atlas-growth-bar-row"><div class="atlas-growth-bar-head"><strong title="'+esc(title)+'">'
+       +esc(title)+'</strong><span>'+growthNumber(count)+'</span></div>'
+       +'<div class="atlas-growth-bar-track"><i style="width:'+Math.max(2,100*count/maximum).toFixed(1)+'%"></i></div></div>';
+    }).join('');
+  }
+  function renderGrowthLocked(){
+    setText('#atlas-growth-note','真实渠道、会话及转化分析仅向管理员开放。');
+    $('#atlas-growth-metrics').innerHTML=growthEmpty('管理员登录后查看。');
+    for(const key of ['channels','sources','campaigns','funnel','devices','scroll','landings','content'])
+      $('#atlas-growth-'+key).innerHTML=growthEmpty('PRIVATE ANALYTICS');
+    $('#atlas-growth-export').disabled=true;
+  }
+  function renderGrowth(d){
+    state.growth=d;
+    const t=d.totals||{};
+    setText('#atlas-growth-note','统计区间：'+d.since+' — '+d.through+'（UTC） · '+d.tracking_since);
+    const kpis=[
+      ['sessions','匿名会话数','按匿名标签页估算','globe'],
+      ['engaged_sessions','有互动会话','搜索／多次浏览／深度滚动','mouse-pointer-click'],
+      ['registrations','注册转化','服务端确认的真实注册','users'],
+      ['first_saves','收藏转化','当前会话首次新增收藏','quality'],
+      ['external_clicks','官网跳转','向外部网站的真实点击','arrow-up-right']
+    ];
+    $('#atlas-growth-metrics').innerHTML=kpis.map(([key,title,help,ic])=>
+      '<article class="atlas-traffic-kpi"><div class="atlas-traffic-kpi-top">'+icon(ic)+'<span>'+esc(help)+'</span></div>'
+      +'<strong>'+growthNumber(t[key])+'</strong><span>'+esc(title)+'</span></article>').join('');
+    const channels=d.channels||[];
+    $('#atlas-growth-channels').innerHTML=channels.length?
+       '<table class="atlas-growth-table"><thead><tr><th>渠道</th><th>会话</th><th>浏览</th><th>注册</th><th>收藏</th><th>注册率</th></tr></thead><tbody>'
+       +channels.map(row=>'<tr><td><span class="atlas-growth-channel-dot"></span>'+esc(growthLabel(row.key))+'</td>'
+          +'<td>'+growthNumber(row.sessions)+'</td><td>'+growthNumber(row.views)+'</td>'
+          +'<td>'+growthNumber(row.registrations)+'</td><td>'+growthNumber(row.first_saves)+'</td>'
+          +'<td>'+growthPercent(row.registrations,row.sessions)+'%</td></tr>').join('')
+       +'</tbody></table>':growthEmpty();
+    $('#atlas-growth-sources').innerHTML=growthBarRows(d.sources);
+    $('#atlas-growth-campaigns').innerHTML=growthBarRows(d.campaigns);
+    $('#atlas-growth-landings').innerHTML=growthBarRows(d.landing_pages);
+    const funnel=[
+      ['到访会话',t.sessions||0,100],
+      ['有互动会话',t.engaged_sessions||0,growthPercent(t.engaged_sessions,t.sessions)],
+      ['完成注册',t.registrations||0,growthPercent(t.registrations,t.sessions)],
+      ['会话内首次收藏',t.first_saves||0,growthPercent(t.first_saves,t.sessions)],
+      ['本次注册后收藏',t.signup_to_save||0,growthPercent(t.signup_to_save,t.sessions)]
+    ];
+    $('#atlas-growth-funnel').innerHTML='<p class="atlas-growth-method">以下是同一统计周期的会话及转化行为，不代表每个访客都依次经过全部步骤。</p>'
+       +funnel.map(([label,n,pct])=>'<div class="atlas-growth-step"><span>'+esc(label)+'</span><strong>'+growthNumber(n)
+           +'</strong><small>'+pct+'%</small><i style="width:'+Math.max(0,Math.min(100,pct))+'%"></i></div>').join('');
+    $('#atlas-growth-devices').innerHTML='<h4>访问设备</h4>'+growthBarRows(d.devices);
+    $('#atlas-growth-scroll').innerHTML='<h4>达到的滚动深度</h4>'
+      +((d.scroll_depth||[]).map(row=>'<div class="atlas-growth-bar-row"><div class="atlas-growth-bar-head"><strong>'+row.depth+'% 页面</strong><span>'+growthNumber(row.sessions)+' 会话</span></div>'
+         +'<div class="atlas-growth-bar-track"><i style="width:'+growthPercent(row.sessions,t.sessions)+'%"></i></div></div>').join(''));
+    const contents=d.content||[];
+    $('#atlas-growth-content').innerHTML=contents.length?
+       '<table class="atlas-growth-table"><thead><tr><th>内容页</th><th>浏览</th><th>预览</th><th>站内点击</th><th>外链</th></tr></thead><tbody>'
+       +contents.slice(0,14).map(row=>'<tr><td><a rel="noopener" target="_blank" href="'+esc(row.path)+'">'+esc(row.path)+'</a></td>'
+         +'<td>'+growthNumber(row.views)+'</td><td>'+growthNumber(row.previews)+'</td>'
+         +'<td>'+growthNumber(row.content_clicks)+'</td><td>'+growthNumber(row.external_clicks)+'</td></tr>').join('')
+       +'</tbody></table>':growthEmpty();
+    $('#atlas-growth-export').disabled=false;
+  }
+  async function loadGrowth(){
+    if(mode!=='admin'){renderGrowthLocked();return}
+    if(state.growthFetching)return;
+    state.growthFetching=true;
+    setText('#atlas-growth-note','正在查询真实来源、转化与浏览行为…');
+    const btn=$('#atlas-growth-export');btn.disabled=true;
+    try{
+      const url='/api/admin/growth?days='+state.trafficDays+'&channel='+encodeURIComponent(state.growthChannel);
+      const response=await fetch(url,{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+      if(!response.ok)throw Error(response.status===401?'登录已过期':response.status===403?'当前账户没有管理员权限':'HTTP '+response.status);
+      renderGrowth(await response.json());
+    }catch(err){
+      state.growth=null;
+      setText('#atlas-growth-note','真实运营归因统计暂不可用：'+err.message);
+      $('#atlas-growth-metrics').innerHTML=growthEmpty('接口暂不可用，不代表流量为零。');
+    }finally{state.growthFetching=false}
+  }
+  function exportGrowthCsv(){
+    if(mode!=='admin'||!state.growth)return;
+    const d=state.growth,lines=[];
+    const protect=value=>{
+      const text=String(value??'');
+      return '"'+(/^[=+\-@\t\r]/.test(text)?"'"+text:text).replace(/"/g,'""')+'"';
+    };
+    const push=(...values)=>lines.push(values.map(protect).join(','));
+    const section=(name,headers,items,columns)=>{
+      push(name);push(...headers);
+      for(const row of items||[])push(...columns.map(key=>row[key]));
+      lines.push('');
+    };
+    push('B2B Atlas · 真正运营数据分析','V51.12');
+    push('UTC 日期范围',d.since,d.through,'渠道筛选',d.channel_filter);
+    push('说明','会话为匿名标签页估算；注册和收藏转化来自服务端成功操作；未采集历史不得回填');
+    lines.push('');
+    section('每天的真实会话与行为',['日期','会话天数','浏览','搜索','外链','注册','首次收藏'],d.daily,
+       ['date','sessions','views','searches','external_clicks','registrations','first_saves']);
+    const fields=['key','sessions','views','searches','external_clicks','registrations','first_saves'];
+    const headers=['分组','会话','浏览','搜索','外链','注册','首次收藏'];
+    for(const key of ['channels','sources','mediums','campaigns','referrers','devices','landing_pages'])
+      section(key,headers,d[key],fields);
+    section('内容表现（全站、不按渠道筛选）',['URL','浏览','预览','站内点击','外链'],d.content,
+      ['path','views','previews','content_clicks','external_clicks']);
+    section('滚动深度',['阈值','达到会话数'],d.scroll_depth,['depth','sessions']);
+    const bytes='\ufeff'+lines.join('\r\n');
+    const url=URL.createObjectURL(new Blob([bytes],{type:'text/csv;charset=utf-8'}));
+    const a=document.createElement('a');
+    a.href=url;a.download='atlas-growth-'+d.days+'d-'+d.channel_filter+'-'+d.through+'.csv';
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+    toast('渠道与转化报表已导出');
+  }
   function showError(message){
     const box=$('#dashboard-notice');
     box.innerHTML='<div>'+icon('alert')+'<span>运营数据读取失败：'+esc(message)+'</span></div><span>RETRY</span>';
@@ -304,7 +431,7 @@
       const data=await result.json();
       if(mode==='preview'&&(data.private||data.administrator))throw new Error('预览接口包含不应公开的数据，已阻止显示');
       render(data);
-      await loadTraffic();
+      await Promise.all([loadTraffic(),loadGrowth()]);
       return true;
     }catch(error){showError(error.message);return false}
     finally{state.fetching=false;btn.disabled=false}
@@ -351,13 +478,18 @@
       const range=event.target.closest('[data-days]');
       if(range){state.range=Number(range.dataset.days);if(state.data)renderActivity(state.data);return}
       const trafficDays=event.target.closest('[data-traffic-days]');
-      if(trafficDays&&mode==='admin'){state.trafficDays=Number(trafficDays.dataset.trafficDays);loadTraffic();return}
+      if(trafficDays&&mode==='admin'){state.trafficDays=Number(trafficDays.dataset.trafficDays);loadTraffic();loadGrowth();return}
       const nav=event.target.closest('[data-nav-section]');
       if(nav){setNavActive(nav.dataset.navSection);closeSidebar()}
     });
     $('#refresh-button').addEventListener('click',()=>{load().then(success=>{if(success)toast('运营资料已刷新')})});
     $('#export-button').addEventListener('click',exportSummary);
     $('#atlas-traffic-export').addEventListener('click',exportTrafficCsv);
+    $('#atlas-growth-filter').addEventListener('change',e=>{
+      if(mode!=='admin')return;
+      state.growthChannel=e.target.value;loadGrowth();
+    });
+    $('#atlas-growth-export').addEventListener('click',exportGrowthCsv);
     $('#queue-search').addEventListener('input',event=>{state.query=event.target.value;state.expanded=false;renderQueue()});
     $('#queue-more').addEventListener('click',()=>{state.expanded=!state.expanded;renderQueue()});
     $('#mobile-nav').addEventListener('click',()=>{
