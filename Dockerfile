@@ -48,6 +48,7 @@ COPY tests/test_analytics.py /srv/atlas/tests/test_analytics.py
 COPY tests/test_analytics_growth.py /srv/atlas/tests/test_analytics_growth.py
 COPY tests/test_cms_studio_v513.py /srv/atlas/tests/test_cms_studio_v513.py
 COPY tests/test_cms_v514.py /srv/atlas/tests/test_cms_v514.py
+COPY tests/test_cms_v515.py /srv/atlas/tests/test_cms_v515.py
 RUN bash -n /srv/atlas/scripts/backup-postgres.sh /srv/atlas/scripts/verify-postgres-backup.sh \
  && python -m unittest discover -s /srv/atlas/tests -p "test_cms_visibility.py" -v \
  && python -m unittest discover -s /srv/atlas/tests -p "test_restore_guard.py" -v \
@@ -57,6 +58,7 @@ RUN bash -n /srv/atlas/scripts/backup-postgres.sh /srv/atlas/scripts/verify-post
  && python -m unittest discover -s /srv/atlas/tests -p "test_analytics.py" -v \
  && python -m unittest discover -s /srv/atlas/tests -p "test_analytics_growth.py" -v \
  && python -m unittest discover -s /srv/atlas/tests -p "test_cms_studio_v513.py" -v \
- && python -m unittest discover -s /srv/atlas/tests -p "test_cms_v514.py" -v
+ && python -m unittest discover -s /srv/atlas/tests -p "test_cms_v514.py" -v \
+ && python -m unittest discover -s /srv/atlas/tests -p "test_cms_v515.py" -v
 EXPOSE 8000
 CMD ["python","run.py"]
