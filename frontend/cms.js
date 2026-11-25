@@ -247,7 +247,33 @@ function reviewBrief(item){
  +(original?'<div class="cms-review-changes"><strong>对比已发布内容 · '+changed.length+' 项字段变化</strong>'
  +(changed.length?'<div class="cms-review-chips">'+changed.slice(0,20).map(k=>'<span>'+h(labels[k]||k)+'</span>').join('')+'</div>':'<p>草稿与当前公开内容一致。</p>')+'</div>'
  :'<div class="cms-review-changes"><strong>首次发布审查</strong><p>没有可对比的公开快照，请重点核对媒体、链接和正文。</p></div>')
- +'<p class="cms-review-helper">退回操作会记录审核原因，已发布内容仍保持公开版本。</p></div>';
+ +'<p class="cms-review-helper">退回操作会记录审核原因，已发布内容仍保持公开版本。</p>'
+ +'<button type="button" class="cms-review-diff-btn" data-review-diff>打开逐段版本对比 ↗</button></div>';
+}
+async function openReviewDiff(revision=0){
+ if(!can('view')||!state.selected)return;
+ const item=state.selected,dialog=$('#cms-diff-dialog');
+ if(!dialog.open)dialog.showModal();
+ $('#cms-diff-results').innerHTML='<p class="cms-loading">正在读取版本快照…</p>';
+ $('#cms-diff-summary').textContent='读取中…';
+ try{
+   const result=await api('/api/admin/content/'+item.kind+'/'+item.slug+'/diff?revision='+Number(revision||0));
+   const select=$('#cms-diff-baseline');
+   select.innerHTML='<option value="0">当前公开版本</option>'
+    +(result.revisions||[]).map(row=>'<option value="'+row.revision+'">历史 v'+row.revision+' · '+h(row.action)+'</option>').join('');
+   select.value=String(revision||0);
+   $('#cms-diff-left-title').textContent=result.baseline_label;
+   const summary=result.summary||{};
+   $('#cms-diff-summary').textContent='变化字段 '+result.changed_fields.length+' 项 · 新增 / 修改 '+(summary.added||0)+' 行 · 移除 / 修改 '+(summary.removed||0)+' 行';
+   const changes=result.chunks||[];
+   $('#cms-diff-results').innerHTML=changes.length?changes.map(chunk=>{
+     const total=Math.max(chunk.before?.length||0,chunk.after?.length||0);
+     const rows=Array.from({length:Math.max(total,1)},(_,i)=>
+       '<div class="cms-diff-row" data-diff-tag="'+h(chunk.tag)+'">'
+        +'<pre>'+h(chunk.before?.[i]||'')+'</pre><pre>'+h(chunk.after?.[i]||'')+'</pre></div>').join('');
+     return rows+(chunk.collapsed?'<div class="cms-diff-collapsed">… 已折叠 '+chunk.collapsed+' 行未变化正文</div>':'');
+   }).join(''):'<p class="cms-loading">暂无正文差异。</p>';
+ }catch(e){$('#cms-diff-results').innerHTML='<div class="cms-error">'+h(e.message)+'</div>'}
 }
 function renderForm(item){
  const isPreview=mode==='preview',values=item.payload||{},editable=can('edit');
@@ -1171,7 +1197,9 @@ function boot(){
    if(e.target.closest('[data-v515-close]')){$('#cms-categories-dialog').close();return}
    if(e.target.closest('[data-autosave-retry]')){if(autosavePaused){message('已暂停覆盖：请备份当前内容并刷新记录。',false);return}await persistDraft(false);return}
    const tag=e.target.closest('[data-v512-tag]');if(tag){const field=$('#v51-tags');if(!field)return;const existing=linesFrom('#v51-tags');if(!existing.includes(tag.dataset.v512Tag)){field.value=[...existing,tag.dataset.v512Tag].join(String.fromCharCode(10));markDraftDirty();refreshArticlePreview()}return}
-   const convert=e.target.closest('[data-block-convert]');
+   if(e.target.closest('[data-review-diff]')){await openReviewDiff();return}
+    if(e.target.closest('[data-v518-close-diff]')){$('#cms-diff-dialog').close();return}
+    const convert=e.target.closest('[data-block-convert]');
    if(convert){convertLegacyChapter(convert.closest('[data-v51-section]'));return}
    const addBlock=e.target.closest('[data-block-add]');
    if(addBlock){const mode=addBlock.closest('[data-blocks-mode]'),list=mode.querySelector('[data-block-list]');
@@ -1233,6 +1261,7 @@ function boot(){
    updateCreateFields();$('#cms-create-dialog').showModal()
  });
  $('#cms-create-kind').addEventListener('change',updateCreateFields);
+ $('#cms-diff-baseline').addEventListener('change',e=>openReviewDiff(Number(e.target.value)));
  $('#cms-tags-open').addEventListener('click',openTagManager);
  $('#cms-tag-add').addEventListener('click',()=>chooseTag());
  $('#cms-tag-form').addEventListener('submit',saveTag);
