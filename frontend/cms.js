@@ -454,7 +454,7 @@ async function optimizeMediaFile(original){
      for(const quality of [0.86,0.74,0.62]){
        const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',quality));
        if(blob&&blob.type==='image/webp'&&blob.size>0&&blob.size<=1500000)
-         return new File([blob],(original.name.replace(/\\.[^.]+$/,'')||'atlas-image')+'.webp',{type:'image/webp'});
+         return new File([blob],(original.name.slice(0,original.name.lastIndexOf('.'))||'atlas-image')+'.webp',{type:'image/webp'});
      }
    }
    throw Error(original.name+'：图片优化后仍超过 1.5MB，请使用更小的图片。');
