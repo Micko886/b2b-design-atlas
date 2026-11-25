@@ -5,9 +5,9 @@
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#f5f7fb">
 <title>内容管理 · B2B Atlas Control Room</title>
-<link rel="stylesheet" href="/assets/admin.css?v=5150">
-<link rel="stylesheet" href="/assets/cms.css?v=5150">
-<script defer src="/assets/cms.js?v=5150"></script>
+<link rel="stylesheet" href="/assets/admin.css?v=5180">
+<link rel="stylesheet" href="/assets/cms.css?v=5180">
+<script defer src="/assets/cms.js?v=5180"></script>
 </head>
 <body data-cms-mode="__CMS_MODE__">
 <svg xmlns="http://www.w3.org/2000/svg" class="icon-sprite" aria-hidden="true">
@@ -33,7 +33,7 @@
 </svg>
 <div class="dashboard-layout cms-layout">
  <aside class="sidebar" id="cms-sidebar">
-  <div class="sidebar-brand"><div class="brand-symbol" aria-hidden="true"><span></span><span></span><span></span><span></span></div><div class="brand-wordmark"><strong>B2B Atlas</strong><small>CONTROL ROOM</small></div><span class="brand-version">V51.15</span></div>
+  <div class="sidebar-brand"><div class="brand-symbol" aria-hidden="true"><span></span><span></span><span></span><span></span></div><div class="brand-wordmark"><strong>B2B Atlas</strong><small>CONTROL ROOM</small></div><span class="brand-version">V51.18</span></div>
   <div class="workspace-chip"><span class="workspace-chip-icon">A</span><span><strong>Atlas Workspace</strong><small>Content Studio</small></span></div>
   <nav class="side-nav" aria-label="内容管理导航">
    <span class="nav-group-label">MANAGEMENT <span>01</span></span>
@@ -120,7 +120,33 @@
     <h2>发布排期中心</h2><p>统一查看待发布、已发布、失败与取消的排期。可直接打开对应内容进行调整。</p></div>
     <button type="button" data-v514-close="schedules" aria-label="关闭">×</button></div>
   <div class="cms-v514-dialog-tools"><span id="cms-schedule-count">加载中…</span><button type="button" id="cms-schedule-refresh" class="cms-btn-secondary">刷新排期</button></div>
-  <div id="cms-schedule-items" class="cms-v514-schedule-list" role="list"><p class="cms-loading">正在读取发布计划…</p></div>
+  <div class="cms-calendar-controls">
+ <div class="cms-calendar-view" role="group" aria-label="日历视图">
+   <button type="button" id="cms-calendar-month" data-cal-view="month" aria-pressed="true">月历</button>
+   <button type="button" id="cms-calendar-week" data-cal-view="week" aria-pressed="false">周历</button>
+ </div>
+ <div class="cms-calendar-navigation">
+   <button type="button" data-cal-shift="-1" aria-label="上一时间段">‹</button>
+   <button type="button" id="cms-calendar-today">今天</button>
+   <button type="button" data-cal-shift="1" aria-label="下一时间段">›</button>
+   <strong id="cms-calendar-label">正在加载…</strong>
+ </div>
+ <label class="cms-calendar-filter">状态
+  <select id="cms-calendar-status">
+   <option value="all">全部计划</option>
+   <option value="pending">待发布</option>
+   <option value="published">已发布</option>
+   <option value="failed">发布失败</option>
+   <option value="stale">版本失效</option>
+   <option value="cancelled">已取消</option>
+  </select>
+ </label>
+</div>
+<div class="cms-calendar-head" aria-hidden="true"><span>周一</span><span>周二</span><span>周三</span><span>周四</span><span>周五</span><span>周六</span><span>周日</span></div>
+<div id="cms-calendar-grid" class="cms-calendar-grid" role="grid" aria-label="内容发布月历"></div>
+<div class="cms-calendar-legend"><span><i class="pending"></i>待发布</span><span><i class="published"></i>已发布</span><span><i class="failed"></i>需处理</span><small>审核员可将待发布内容拖动至其他日期，时间保留不变</small></div>
+<div class="cms-v515-schedule-divider"><strong>排期明细</strong><span>按状态和日期追踪内容</span></div>
+<div id="cms-schedule-items" class="cms-v514-schedule-list" role="list"><p class="cms-loading">正在读取发布计划…</p></div>
   <p id="cms-schedule-note" class="cms-v514-note">免费开发环境按公开目录请求触发到期检查，休眠期间无法保证准点执行。</p>
   <div class="cms-dialog-actions"><button type="button" class="cms-btn-secondary" data-v514-close="schedules">完成</button></div>
 </dialog>
