@@ -437,20 +437,54 @@ async function changeKind(kind){
 function linesFrom(selector){
  const input=$(selector);return input?input.value.split('\n').map(x=>x.trim()).filter(Boolean):[];
 }
-function articleSection(section={},index=0,editable=true){
+// V51.17 · Type-safe editorial blocks; legacy sections remain editable.
+const articleBlockTypes={paragraph:'正文段落',heading:'小标题',quote:'引用',callout:'重点提示',
+ list:'要点列表',image:'图片',table:'表格',link:'外部链接'};
+function articleBlock(block={},index=0,editable=true){
+ const type=articleBlockTypes[block.type]?block.type:'paragraph';
  const disabled=editable?'':' disabled';
- return '<div class="cms-v51-section" data-v51-section><div class="cms-v51-section-top"><strong>章节 '+(index+1)+'</strong>'
- +(editable?'<div><button type="button" data-v51-move="-1" aria-label="上移章节">↑</button><button type="button" data-v51-move="1" aria-label="下移章节">↓</button><button type="button" data-v51-remove aria-label="删除章节">删除</button></div>':'')+'</div>'
- +'<label>章节标题<input data-v51-title maxlength="180" required'+disabled+' value="'+h(section.title||'')+'" placeholder="为这一节写一个明确的标题"></label>'
- +'<label>正文段落 <small>空行分段 · 选中文字后使用工具栏排版</small></label>'
- +(editable?'<div class="cms-v514-toolbar" role="toolbar" aria-label="正文格式工具"><button type="button" data-v514-format="bold" title="加粗选中文字">B 加粗</button><button type="button" data-v514-format="italic" title="斜体选中文字"><i>I</i> 斜体</button><button type="button" data-v514-format="code" title="代码样式">代码</button></div>':'')
- +'<textarea data-v51-paragraphs rows="7"'+disabled+' placeholder="直接输入正文，空行分隔段落">'+h((section.paragraphs||[]).join('\n\n'))+'</textarea>'
- +'<label>要点列表 <small>每行一个要点</small><textarea data-v51-bullets rows="3"'+disabled+' placeholder="要点 1\n要点 2">'+h((section.bullets||[]).join('\n'))+'</textarea></label>'
- +'<label>重点提示<textarea data-v51-callout rows="2"'+disabled+' placeholder="可选的重点结论">'+h(section.callout||'')+'</textarea></label>'
- +'<div class="cms-v513-image-row"><label>章节配图<input data-v513-image value="'+h(section.image||'')+'" readonly placeholder="尚未选择图片"></label>'
- +(editable?'<button type="button" data-v513-pick-image>选择图片</button><button type="button" data-v513-clear-image>移除配图</button>':'')+'</div>'
- +'<label>配图说明<input data-v513-caption value="'+h(section.image_caption||'')+'" maxlength="240"'+disabled+' placeholder="填写图片来源或说明"></label>'
- +'</div>';
+ const value=type==='list'?(block.items||[]).join('\n'):
+   type==='table'?(block.rows||[]).map(row=>row.join('\t')).join('\n'):block.text||'';
+ const controls=editable?'<div class="cms-block-tools"><button type="button" data-block-move="-1" aria-label="上移内容块">↑</button>'
+   +'<button type="button" data-block-move="1" aria-label="下移内容块">↓</button>'
+   +'<button type="button" data-block-remove aria-label="删除内容块">×</button></div>':'';
+ const textKind=type==='table'?'表格数据：列用 Tab 分隔，每行一条':
+   type==='list'?'每行一个列表要点':type==='quote'?'引用文字':type==='heading'?'小标题文字':
+   type==='callout'?'要强调的结论':type==='link'?'链接显示文字':'正文（支持加粗、斜体和行内代码）';
+ const text=type==='image'?'':('<label>'+textKind+'<textarea data-block-text rows="'+(type==='paragraph'?5:3)+'"'+disabled+' placeholder="'+h(textKind)+'">'+h(value)+'</textarea></label>');
+ const format=editable&&['paragraph','quote','callout'].includes(type)?'<div class="cms-block-inline-tools"><button type="button" data-block-format="bold">加粗</button>'
+  +'<button type="button" data-block-format="italic">斜体</button><button type="button" data-block-format="code">行内代码</button></div>':'';
+ const media=type==='image'?'<div class="cms-block-image-picker"><label>已选媒体 URL<input data-block-image readonly value="'+h(block.src||'')+'" placeholder="点击选择媒体库图片"></label>'
+   +(editable?'<button type="button" data-block-pick-image>选择图片</button>':'')
+   +'</div><label>图片替代文字（无障碍及 SEO）<input data-block-alt maxlength="240"'+disabled+' value="'+h(block.alt||'')+'" placeholder="简洁说明图片主体"></label>'
+   +'<label>图注与来源<input data-block-caption maxlength="240"'+disabled+' value="'+h(block.caption||'')+'" placeholder="说明图片来源"></label>'
+   +(block.src&&/^\/api\/media\/[0-9a-f-]{36}$/.test(block.src)?'<img class="cms-block-preview-image" alt="'+h(block.alt||'媒体缩略图')+'" src="'+h(block.src)+'">':''):'';
+ const link=type==='link'?'<label>链接 URL<input data-block-url type="url"'+disabled+' value="'+h(block.url||'')+'" placeholder="https://example.com"></label>':'';
+ return '<div class="cms-editor-block" data-cms-block data-block-type="'+type+'" draggable="'+String(editable)+'">'
+  +'<div class="cms-editor-block-head"><span class="cms-block-drag" title="拖动排序" aria-hidden="true">⠿</span><strong>'+String(index+1).padStart(2,'0')+' · '+articleBlockTypes[type]+'</strong>'
+  +controls+'</div><div class="cms-editor-block-body">'+format+text+media+link+'</div></div>';
+}
+function articleSection(section={},index=0,editable=true){
+ const disabled=editable?'':' disabled',usesBlocks=Array.isArray(section.blocks);
+ const head='<div class="cms-v51-section-top"><strong>章节 '+(index+1)+'</strong>'
+  +(editable?'<div><button type="button" data-v51-move="-1" aria-label="上移章节">↑</button><button type="button" data-v51-move="1" aria-label="下移章节">↓</button><button type="button" data-v51-remove aria-label="删除章节">删除</button></div>':'')+'</div>'
+  +'<label>章节标题<input data-v51-title maxlength="180" required'+disabled+' value="'+h(section.title||'')+'" placeholder="为这一节写一个明确的标题"></label>';
+ const legacy='<div data-legacy-article '+(usesBlocks?'hidden':'')+'>'
+  +'<label>正文段落 <small>空行分段 · 可转换为块编辑</small></label>'
+  +(editable?'<div class="cms-v514-toolbar" role="toolbar" aria-label="正文格式工具"><button type="button" data-v514-format="bold">B 加粗</button><button type="button" data-v514-format="italic">斜体</button><button type="button" data-v514-format="code">代码</button></div>':'')
+  +'<textarea data-v51-paragraphs rows="7"'+disabled+' placeholder="直接输入正文，空行分隔段落">'+h((section.paragraphs||[]).join('\n\n'))+'</textarea>'
+  +'<label>要点列表<textarea data-v51-bullets rows="3"'+disabled+'>'+h((section.bullets||[]).join('\n'))+'</textarea></label>'
+  +'<label>重点提示<textarea data-v51-callout rows="2"'+disabled+'>'+h(section.callout||'')+'</textarea></label>'
+  +'<div class="cms-v513-image-row"><label>章节配图<input data-v513-image value="'+h(section.image||'')+'" readonly></label>'
+  +(editable?'<button type="button" data-v513-pick-image>选择图片</button><button type="button" data-v513-clear-image>移除配图</button>':'')+'</div>'
+  +'<label>配图说明<input data-v513-caption maxlength="240"'+disabled+' value="'+h(section.image_caption||'')+'"></label>'
+  +(editable?'<button type="button" class="cms-block-convert" data-block-convert>转换为专业块编辑器 ↗</button>':'')+'</div>';
+ const editor='<div data-blocks-mode '+(!usesBlocks?'hidden':'')+'>'
+  +'<div class="cms-editor-block-list" data-block-list>'+((section.blocks||[]).map((b,i)=>articleBlock(b,i,editable)).join(''))+'</div>'
+  +(editable?'<div class="cms-block-add-row"><select data-block-add-type aria-label="添加内容块的类型">'
+      +Object.entries(articleBlockTypes).map(([key,label])=>'<option value="'+key+'">'+label+'</option>').join('')+'</select>'
+      +'<button type="button" data-block-add>＋ 添加内容块</button><small>拖动卡片排序，支持上移和下移</small></div>':'')+'</div>';
+ return '<div class="cms-v51-section cms-v517-section" data-v51-section>'+head+legacy+editor+'</div>';
 }
 function articleStudio(v,editable){
  const disabled=editable?'':' disabled';
