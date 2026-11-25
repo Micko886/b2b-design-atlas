@@ -177,8 +177,8 @@ function takeFields(){
    base.takeaways=linesFrom('#v51-takeaways');
    base.sections=Array.from(document.querySelectorAll('[data-v51-section]')).map(block=>({
      title:block.querySelector('[data-v51-title]').value.trim(),
-     paragraphs:block.querySelector('[data-v51-paragraphs]').value.split(/\\n\\s*\\n/).map(x=>x.trim()).filter(Boolean),
-     bullets:block.querySelector('[data-v51-bullets]').value.split('\\n').map(x=>x.trim()).filter(Boolean),
+     paragraphs:block.querySelector('[data-v51-paragraphs]').value.split(new RegExp(String.fromCharCode(10)+'\\s*'+String.fromCharCode(10))).map(x=>x.trim()).filter(Boolean),
+     bullets:block.querySelector('[data-v51-bullets]').value.split(String.fromCharCode(10)).map(x=>x.trim()).filter(Boolean),
      callout:block.querySelector('[data-v51-callout]').value.trim()
    }));
    if(!base.sections.length)throw Error('请至少保留一个文章章节。');
@@ -303,7 +303,7 @@ function articleStudio(v,editable){
  +'<p class="cms-v51-guidance">每章可以包含正文、要点与高亮提示。上传媒体后复制图片地址，可用于封面或素材引用。</p></section>';
 }
 function reindexSections(){
- $('#cms-v51-sections [data-v51-section]').forEach((el,i)=>el.querySelector('.cms-v51-section-top strong').textContent='章节 '+(i+1));
+ document.querySelectorAll('#cms-v51-sections [data-v51-section]').forEach((el,i)=>el.querySelector('.cms-v51-section-top strong').textContent='章节 '+(i+1));
 }
 function updateBulkToolbar(){
  const bar=$('#cms-bulk-toolbar');if(!bar)return;
@@ -344,7 +344,8 @@ async function refreshMedia(){
      +'<img src="'+h(item.url)+'" alt="'+h(item.file_name)+'" loading="lazy">'
      +'<strong title="'+h(item.file_name)+'">'+h(item.file_name)+'</strong>'
      +'<small>'+(item.byte_size/1024).toFixed(0)+' KB · '+h(item.created_at.slice(0,10))+'</small>'
-     +'<button type="button" data-v51-copy-media="'+h(item.url)+'">复制图片地址</button></div>').join('')
+     +'<button type="button" data-v51-copy-media="'+h(item.url)+'">复制图片地址</button>'
+     +(state.selected?.kind==='article'?'<button type="button" data-v51-use-media="'+h(item.url)+'">设为当前文章封面</button>':'')+'</div>').join('')
      :'<p class="cms-loading">暂无上传图片。可以上传 JPG、PNG 或 WebP。</p>';
  }catch(e){message(e.message,false)}
 }
@@ -383,8 +384,9 @@ function boot(){
    const restore=e.target.closest('[data-restore]');if(restore){await restoreRevision(Number(restore.dataset.restore));return}
    const bulkCheck=e.target.closest('[data-bulk-select]');if(bulkCheck){const slug=bulkCheck.dataset.bulkSelect;if(bulkCheck.checked)state.selectedSlugs.add(slug);else state.selectedSlugs.delete(slug);updateBulkToolbar();return}
    if(e.target.closest('[data-v51-add]')){const root=$('#cms-v51-sections');root.insertAdjacentHTML('beforeend',articleSection({},root.children.length,true));reindexSections();state.dirty=true;return}
-   if(e.target.closest('[data-v51-remove]')){const blocks=$('#cms-v51-sections [data-v51-section]');if(blocks.length<=1){message('至少保留一个章节',false);return}e.target.closest('[data-v51-section]').remove();reindexSections();state.dirty=true;return}
+   if(e.target.closest('[data-v51-remove]')){const blocks=document.querySelectorAll('#cms-v51-sections [data-v51-section]');if(blocks.length<=1){message('至少保留一个章节',false);return}e.target.closest('[data-v51-section]').remove();reindexSections();state.dirty=true;return}
    const move=e.target.closest('[data-v51-move]');if(move){const block=move.closest('[data-v51-section]'),target=Number(move.dataset.v51Move)<0?block.previousElementSibling:block.nextElementSibling;if(target){if(Number(move.dataset.v51Move)<0)target.before(block);else target.after(block);reindexSections();state.dirty=true}return}
+   const useMedia=e.target.closest('[data-v51-use-media]');if(useMedia){const target=$('#field-cover_image');if(target){target.value=useMedia.dataset.v51UseMedia;state.dirty=true;$('#cms-media-dialog').close();message('封面已选择，请保存草稿')}return}
    const copy=e.target.closest('[data-v51-copy-media]');if(copy){try{await navigator.clipboard.writeText(location.origin+copy.dataset.v51CopyMedia);message('图片地址已复制')}catch{message('请从媒体列表中手动复制地址',false)}return}
    if(e.target.closest('[data-media-close]')){$('#cms-media-dialog').close();return}
    if(e.target.closest('[data-dialog-close]')){$('#cms-create-dialog').close();return}
