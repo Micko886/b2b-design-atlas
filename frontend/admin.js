@@ -13,7 +13,7 @@
   const typeIcons = ['globe','layers','shapes','article'];
   const typeStyles = ['website','section','pattern','insight'];
   const typeLabels = ['网站案例','页面模块','设计模式','研究文章'];
-  const state = {data:null,range:14,query:'',expanded:false,fetching:false};
+  const state = {data:null,range:14,query:'',expanded:false,fetching:false,trafficDays:30,traffic:null,trafficFetching:false};
   let toastTimer = 0;
 
   function savedTheme(){
@@ -193,6 +193,101 @@
     setText('#report-date',Number.isNaN(dt.getTime())?'最近同步时间未知':new Intl.DateTimeFormat('zh-CN',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(dt));
     $('#export-button').disabled=false;
   }
+  // V51.7 · Genuine private analytics; preview remains public-data-only.
+  function renderTrafficLocked(){
+    setText('#atlas-traffic-summary','管理员登录后可查看真实匿名事件与收藏排行。公开预览不会查询这些数据。');
+    $('#atlas-traffic-kpis').innerHTML='<div class="atlas-traffic-empty">仅对已授权管理员开放。<a href="/login?next=%2Fadmin%23traffic">登录后台 →</a></div>';
+    for(const name of ['chart','pages','searches','saved'])
+      $('#atlas-traffic-'+name).innerHTML='<div class="atlas-traffic-empty">PRIVATE ANALYTICS · 登录后查看</div>';
+  }
+  function trafficChart(daily){
+    if(!daily.length)return '<p class="atlas-traffic-empty">暂无统计区间数据。</p>';
+    const width=820,height=190,left=35,right=14,top=15,bottom=30;
+    const max=Math.max(1,...daily.map(x=>Math.max(Number(x.views)||0,Number(x.searches)||0)));
+    const x=i=>left+(daily.length===1?0:i/(daily.length-1))*(width-left-right);
+    const y=n=>height-bottom-(Number(n)||0)/max*(height-top-bottom);
+    const line=key=>daily.map((v,i)=>(i?'L':'M')+x(i).toFixed(1)+','+y(v[key]).toFixed(1)).join(' ');
+    const labels=[0,Math.floor((daily.length-1)/2),daily.length-1].map(i=>
+       '<text x="'+x(i).toFixed(1)+'" y="182" text-anchor="middle">'+esc(daily[i].date.slice(5))+'</text>').join('');
+    return '<div class="atlas-traffic-chart-key"><span><i class="views"></i>页面浏览</span><span><i class="searches"></i>站内搜索</span></div>'
+       +'<svg viewBox="0 0 820 190" role="img" aria-label="真实日访问量与搜索量趋势，最多 '+max+' 次">'
+       +'<path class="atlas-traffic-gridline" d="M35 15H806 M35 87H806 M35 160H806"/>'
+       +'<text class="atlas-traffic-axis" x="3" y="20">'+max+'</text><text class="atlas-traffic-axis" x="18" y="163">0</text>'
+       +'<path class="atlas-traffic-views-line" d="'+line('views')+'"/>'
+       +'<path class="atlas-traffic-search-line" d="'+line('searches')+'"/>'
+       +'<g class="atlas-traffic-axis">'+labels+'</g></svg>';
+  }
+  function renderTrafficList(id,rows,type){
+    const root=$('#atlas-traffic-'+id);
+    if(!rows.length){root.innerHTML='<p class="atlas-traffic-empty">当前没有'+(type==='saved'?'收藏':type==='search'?'搜索':'浏览')+'记录；上线后产生数据时自动显示。</p>';return}
+    const countKey=type==='pages'?'views':type==='search'?'searches':'count';
+    const max=Math.max(1,...rows.map(x=>Number(x[countKey])||0));
+    root.innerHTML=rows.slice(0,10).map((x,i)=>{
+      const label=type==='pages'?x.label:type==='saved'?x.label:x.term;
+      const url=type==='pages'?x.path:type==='saved'?x.url:null;
+      const title=url?'<a target="_blank" rel="noopener" href="'+esc(url)+'">'+esc(label)+'</a>':'<span>'+esc(label)+'</span>';
+      const count=Number(x[countKey])||0;
+      return '<div class="atlas-traffic-rank"><span class="atlas-traffic-rank-number">'+String(i+1).padStart(2,'0')+'</span>'
+        +'<div class="atlas-traffic-rank-body"><div class="atlas-traffic-rank-label">'+title+'<strong>'+number(count)+'</strong></div>'
+        +'<div class="atlas-traffic-rank-track"><i style="width:'+Math.max(2,Math.round(100*count/max))+'%"></i></div></div></div>';
+    }).join('');
+  }
+  function renderTraffic(d){
+    state.traffic=d;
+    setText('#atlas-traffic-summary','已统计 '+d.since+' 至 '+d.through+'（UTC） · '+d.collected_since);
+    $('[data-traffic-days]').forEach(b=>{b.classList.toggle('active',Number(b.dataset.trafficDays)===state.trafficDays);b.setAttribute('aria-pressed',String(Number(b.dataset.trafficDays)===state.trafficDays))});
+    const t=d.totals||{};
+    const stats=[
+      ['page_views','浏览次数',state.trafficDays+' 天真实记录','globe'],
+      ['searches','搜索次数',state.trafficDays+' 天真实搜索','magnifier'],
+      ['active_saves','当前收藏','全量数据快照','quality'],
+      ['registered_users','注册账户','全量账户数','users'],
+      ['new_users','新增账户',state.trafficDays+' 天真实注册','calendar']
+    ];
+    $('#atlas-traffic-kpis').innerHTML=stats.map(([key,label,note,ic])=>
+      '<article class="atlas-traffic-kpi"><div class="atlas-traffic-kpi-top">'+icon(ic)+'<span>'+esc(note)+'</span></div>'
+      +'<strong>'+number(t[key])+'</strong><span>'+esc(label)+'</span></article>').join('');
+    $('#atlas-traffic-chart').innerHTML=trafficChart(d.daily||[]);
+    renderTrafficList('pages',d.top_pages||[],'pages');
+    renderTrafficList('searches',d.top_searches||[],'search');
+    renderTrafficList('saved',d.top_saved||[],'saved');
+    $('#atlas-traffic-export').disabled=false;
+  }
+  async function loadTraffic(){
+    if(mode!=='admin'){renderTrafficLocked();return}
+    if(state.trafficFetching)return;
+    state.trafficFetching=true;
+    setText('#atlas-traffic-summary','正在查询真实运营数据…');
+    try{
+      const response=await fetch('/api/admin/analytics?days='+state.trafficDays,{
+        credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+      if(!response.ok)throw Error(response.status===403?'管理员权限不足':response.status===401?'登录已过期':'HTTP '+response.status);
+      renderTraffic(await response.json());
+    }catch(err){
+      setText('#atlas-traffic-summary','运营统计暂不可用：'+err.message);
+      $('#atlas-traffic-kpis').innerHTML='<p class="atlas-traffic-empty">数据获取失败，并非没有访问。请点击刷新重试。</p>';
+      state.traffic=null;$('#atlas-traffic-export').disabled=true;
+    }finally{state.trafficFetching=false}
+  }
+  function exportTrafficCsv(){
+    const d=state.traffic;if(!d||mode!=='admin')return;
+    const safe=x=>{
+      const value=String(x??'').replace(/"/g,'""');
+      return '"'+(/^[=+\-@\t\r]/.test(value)?"'"+value:value)+'"';
+    };
+    const rows=[['B2B Atlas · real analytics'],['period',d.since,d.through],
+       ['section','date','page views','searches'],...d.daily.map(x=>['daily',x.date,x.views,x.searches]),
+       [],['section','page','views'],...d.top_pages.map(x=>['page',x.path,x.views]),
+       [],['section','search term','count'],...d.top_searches.map(x=>['search',x.term,x.searches]),
+       [],['section','saved resource','count'],...d.top_saved.map(x=>['saved',x.key,x.count])];
+    const csv='\ufeff'+rows.map(row=>row.map(safe).join(',')).join('\r\n');
+    const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+    const link=document.createElement('a');
+    link.href=url;link.download='atlas-real-analytics-'+d.period_days+'d-'+d.through+'.csv';
+    document.body.appendChild(link);link.click();link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+    toast('真实运营报表已导出');
+  }
   function showError(message){
     const box=$('#dashboard-notice');
     box.innerHTML='<div>'+icon('alert')+'<span>运营数据读取失败：'+esc(message)+'</span></div><span>RETRY</span>';
@@ -209,6 +304,7 @@
       const data=await result.json();
       if(mode==='preview'&&(data.private||data.administrator))throw new Error('预览接口包含不应公开的数据，已阻止显示');
       render(data);
+      await loadTraffic();
       return true;
     }catch(error){showError(error.message);return false}
     finally{state.fetching=false;btn.disabled=false}
@@ -254,11 +350,14 @@
       if(theme){applyTheme(theme.dataset.setTheme);return}
       const range=event.target.closest('[data-days]');
       if(range){state.range=Number(range.dataset.days);if(state.data)renderActivity(state.data);return}
+      const trafficDays=event.target.closest('[data-traffic-days]');
+      if(trafficDays&&mode==='admin'){state.trafficDays=Number(trafficDays.dataset.trafficDays);loadTraffic();return}
       const nav=event.target.closest('[data-nav-section]');
       if(nav){setNavActive(nav.dataset.navSection);closeSidebar()}
     });
     $('#refresh-button').addEventListener('click',()=>{load().then(success=>{if(success)toast('运营资料已刷新')})});
     $('#export-button').addEventListener('click',exportSummary);
+    $('#atlas-traffic-export').addEventListener('click',exportTrafficCsv);
     $('#queue-search').addEventListener('input',event=>{state.query=event.target.value;state.expanded=false;renderQueue()});
     $('#queue-more').addEventListener('click',()=>{state.expanded=!state.expanded;renderQueue()});
     $('#mobile-nav').addEventListener('click',()=>{
