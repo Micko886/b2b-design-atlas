@@ -327,3 +327,76 @@ test('V53.0 admin and CMS navigation share six labels',async({page})=>{
  await page.setViewportSize({width:320,height:760});
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });
+
+test('V53.1 article structural undo redo restores chapters and blocks safely',async({page})=>{
+ const {records}=await mockCms(page);
+ records.article.payload.sections=[{title:'Research overview',blocks:[
+  {type:'paragraph',text:'Introduction text'},
+  {type:'quote',text:'Important evidence'},
+  {type:'image',src:'/api/media/11111111-1111-4111-8111-111111111111',alt:'Product dashboard',caption:'Research image'}
+ ]}];
+ await page.goto(origin+'/admin/content?kind=article&edit=demo-article');
+ await expect(page.locator('[data-cms-block]')).toHaveCount(3);
+ await expect(page.locator('[data-article-undo]')).toBeDisabled();
+ await page.locator('[data-cms-block]').nth(1).locator('[data-block-remove]').click();
+ await expect(page.locator('[data-cms-block]')).toHaveCount(2);
+ await expect(page.locator('[data-article-undo]')).toBeEnabled();
+ await page.locator('[data-article-undo]').click();
+ await expect(page.locator('[data-cms-block]')).toHaveCount(3);
+ await expect(page.locator('[data-cms-block]').nth(1).locator('[data-block-text]')).toHaveValue('Important evidence');
+ await page.locator('[data-article-redo]').click();
+ await expect(page.locator('[data-cms-block]')).toHaveCount(2);
+ await page.locator('[data-article-undo]').click();
+ await page.locator('[data-cms-block]').first().locator('[data-block-move="1"]').click();
+ await expect(page.locator('[data-cms-block]').first().locator('[data-block-text]')).toHaveValue('Important evidence');
+ await page.locator('[data-article-undo]').click();
+ await expect(page.locator('[data-cms-block]').first().locator('[data-block-text]')).toHaveValue('Introduction text');
+});
+
+test('V53.1 article image SEO inspector detects missing ALT and offers focused correction',async({page})=>{
+ const {records}=await mockCms(page);
+ records.article.payload.sections=[{title:'Intro',blocks:[
+  {type:'paragraph',text:'B2B visual references'},
+  {type:'image',src:'/api/media/11111111-1111-4111-8111-111111111111',alt:'',caption:''}
+ ]}];
+ await page.goto(origin+'/admin/content?kind=article&edit=demo-article');
+ await expect(page.locator('#cms-article-stat')).toContainText('1 个章节');
+ await expect(page.locator('#cms-article-health-status')).toContainText('1 项需要处理');
+ await expect(page.locator('[data-article-health-action="alt"]')).toHaveCount(1);
+ await page.locator('[data-article-health-action="alt"]').click();
+ await expect(page.locator('[data-block-alt]')).toBeFocused();
+ await page.locator('[data-block-alt]').fill('Industrial product overview screenshot');
+ await expect(page.locator('[data-article-health-action="alt"]')).toHaveCount(0);
+ await expect(page.locator('#cms-article-health-status')).toContainText('替代文字已检查');
+ await expect(page.locator('[data-article-health-action="caption"]')).toHaveCount(1);
+ await page.locator('[data-article-health-action="caption"]').click();
+ await expect(page.locator('[data-block-caption]')).toBeFocused();
+ await page.locator('[data-block-caption]').fill('Product study · Image owner');
+ await expect(page.locator('.cms-v531-health-clear')).toBeVisible();
+});
+
+test('V53.1 legacy article conversion can be undone and redone without losing text',async({page})=>{
+ const {records}=await mockCms(page);
+ records.article.payload.sections=[{title:'Legacy section',paragraphs:['Original research'],bullets:['Evidence'],callout:'Remember buyers',
+ image:'/api/media/11111111-1111-4111-8111-111111111111',image_caption:'Original image caption'}];
+ await page.goto(origin+'/admin/content?kind=article&edit=demo-article');
+ await expect(page.locator('[data-article-health-action="convert"]')).toBeVisible();
+ await page.locator('[data-article-health-action="convert"]').click();
+ await expect(page.locator('[data-blocks-mode]')).toBeVisible();
+ await expect(page.locator('[data-cms-block]')).toHaveCount(4);
+ await page.locator('[data-article-undo]').click();
+ await expect(page.locator('[data-legacy-article]')).toBeVisible();
+ await expect(page.locator('[data-v51-paragraphs]')).toHaveValue('Original research');
+ await page.locator('[data-article-redo]').click();
+ await expect(page.locator('[data-blocks-mode]')).toBeVisible();
+ await expect(page.locator('[data-cms-block]')).toHaveCount(4);
+});
+
+test('V53.1 article toolbar and image audit fit mobile viewport without overflowing',async({page})=>{
+ await mockCms(page);
+ await page.setViewportSize({width:320,height:800});
+ await page.goto(origin+'/admin/content?kind=article&edit=demo-article');
+ await expect(page.locator('.cms-v531-editor-bar')).toBeVisible();
+ await expect(page.locator('.cms-v531-media-health')).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
+});
