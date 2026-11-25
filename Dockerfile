@@ -40,11 +40,13 @@ COPY tests/test_restore_guard.py /srv/atlas/tests/test_restore_guard.py
 COPY tests/test_admin_guards.py /srv/atlas/tests/test_admin_guards.py
 COPY tests/test_cms_v51.py /srv/atlas/tests/test_cms_v51.py
 COPY tests/test_cms_taxonomy.py /srv/atlas/tests/test_cms_taxonomy.py
+COPY tests/test_analytics.py /srv/atlas/tests/test_analytics.py
 RUN bash -n /srv/atlas/scripts/backup-postgres.sh /srv/atlas/scripts/verify-postgres-backup.sh \
  && python -m unittest discover -s /srv/atlas/tests -p "test_cms_visibility.py" -v \
  && python -m unittest discover -s /srv/atlas/tests -p "test_restore_guard.py" -v \
  && python -m unittest discover -s /srv/atlas/tests -p "test_admin_guards.py" -v \
  && python -m unittest discover -s /srv/atlas/tests -p "test_cms_v51.py" -v \
- && python -m unittest discover -s /srv/atlas/tests -p "test_cms_taxonomy.py" -v
+ && python -m unittest discover -s /srv/atlas/tests -p "test_cms_taxonomy.py" -v \
+ && python -m unittest discover -s /srv/atlas/tests -p "test_analytics.py" -v
 EXPOSE 8000
 CMD ["python","run.py"]
