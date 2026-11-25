@@ -532,3 +532,87 @@
 
 /* Respect explicit hidden state even for grid/flex layout elements. */
 .cms-metrics[hidden],.cms-workflow-guide[hidden]{display:none!important}
+
+
+/* V52.2 · Editorial UX rebuild: one clear canvas instead of stacked dashboards. */
+body.cms-editor-active .atlas-v521-page-head,
+body.cms-editor-active .atlas-v521-quicknav,
+body.cms-editor-active #cms-notice,
+body.cms-editor-active .dashboard-footer {display:none!important}
+body.cms-editor-active .atlas-v521-layout .cms-content {padding-top:16px;padding-bottom:30px}
+body.cms-editor-active .atlas-v521-layout .cms-split.cms-editing {width:min(100%,1180px);max-width:1180px;margin:0 auto}
+body.cms-editor-active .cms-editor.panel {border:1px solid var(--line);border-radius:16px;overflow:clip;box-shadow:0 10px 36px rgba(14,33,61,.035)}
+body.cms-editor-active .cms-edit-topbar {position:sticky;top:0;z-index:9;border-radius:0;box-shadow:none;padding:13px 28px;min-height:63px}
+body.cms-editor-active .cms-edit-context {font-size:11px;color:var(--muted);letter-spacing:.01em}
+body.cms-editor-active .cms-edit-quick-actions button {font-size:12px;min-height:36px}
+body.cms-editor-active .cms-edit-quick-actions button:first-child {background:var(--blue);border-color:var(--blue);color:#fff}
+body.cms-editor-active .cms-edit-quick-actions button:last-child {background:var(--surface);border-color:var(--line-strong);color:var(--ink-strong)}
+body.cms-editor-active .cms-edit-quick-actions button:disabled {opacity:.45}
+.cms-easy-mode .cms-easy-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:24px 32px 15px}
+.cms-easy-mode .cms-easy-heading{min-width:0}
+.cms-easy-mode .cms-easy-kicker{display:block;color:var(--muted);font-weight:720;letter-spacing:.04em;font-size:10px;margin-bottom:5px}
+.cms-easy-mode .cms-easy-heading h2{font-size:24px;line-height:1.25;letter-spacing:-.04em;margin:0;color:var(--ink-strong);overflow-wrap:anywhere}
+.cms-easy-mode .cms-easy-heading p{color:var(--muted);font-size:12px;margin:8px 0 0;line-height:1.5}
+.cms-easy-mode .cms-easy-header-side{display:flex;align-items:center;gap:13px;flex:none}
+.cms-easy-mode .cms-easy-public-link{font-size:12px;color:var(--blue);font-weight:700;white-space:nowrap;text-decoration:none}
+.cms-easy-mode .cms-easy-public-link:hover{text-decoration:underline}
+.cms-easy-mode .atlas-v521-editor-tabs {display:flex;justify-content:flex-start;align-items:center;gap:20px;margin:0 32px;max-width:none;padding:0;border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;overflow-x:auto}
+.cms-easy-mode .atlas-v521-editor-tabs>button {flex:0 0 auto;border:0;border-bottom:2px solid transparent;border-radius:0;box-shadow:none!important;padding:11px 1px 10px;background:transparent;color:var(--muted);font-size:12px;font-weight:730}
+.cms-easy-mode .atlas-v521-editor-tabs>button:hover {background:transparent;color:var(--ink-strong)}
+.cms-easy-mode .atlas-v521-editor-tabs>button[aria-selected=true]{color:var(--blue);border:0;border-bottom:2px solid var(--blue);background:transparent}
+body.cms-editor-active .cms-easy-mode .cms-editor-content {padding:16px 32px 28px}
+.cms-easy-mode .cms-form:has(.cms-easy-intro) {max-width:none;margin:0;gap:20px}
+.cms-easy-mode .cms-easy-intro {display:block;padding:0;margin:0}
+.cms-easy-mode .cms-easy-intro h3 {font-size:15px;letter-spacing:-.025em;margin:0 0 5px;color:var(--ink-strong);font-weight:800}
+.cms-easy-mode .cms-easy-intro p {font-size:12px;line-height:1.6;margin:0;color:var(--muted)}
+.cms-easy-mode .cms-easy-layout {display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,360px);align-items:start;gap:32px}
+.cms-easy-mode .cms-easy-fields {min-width:0;display:grid;gap:16px}
+.cms-easy-mode .cms-field {gap:6px}
+.cms-easy-mode .cms-easy-fields .cms-field label{font-size:12px;color:var(--ink-strong);font-weight:730}
+.cms-easy-mode .cms-easy-fields .cms-field input,
+.cms-easy-mode .cms-easy-fields .cms-field textarea {font-size:14px;min-height:42px;line-height:1.55;padding:11px 13px;border-radius:9px;background:var(--surface)}
+.cms-easy-mode .cms-easy-fields .cms-field textarea {min-height:118px;resize:vertical}
+.cms-easy-mode .cms-easy-visual{min-width:0;border:1px solid var(--line);background:var(--surface-2);border-radius:13px;padding:16px;display:grid;gap:10px}
+.cms-easy-mode .cms-easy-visual>strong {font-size:13px;color:var(--ink-strong)}
+.cms-easy-mode .cms-easy-visual>p {font-size:11px;color:var(--muted);margin:0;line-height:1.5}
+.cms-easy-mode .cms-easy-shot {display:grid;place-items:center;aspect-ratio:4/3;overflow:hidden;min-height:180px;border:1px dashed var(--line-strong);border-radius:9px;background:var(--surface);color:var(--muted)}
+.cms-easy-mode .cms-easy-shot img {width:100%;height:100%;object-fit:cover;object-position:top}
+.cms-easy-mode .cms-easy-shot img[hidden],.cms-easy-mode .cms-easy-shot div[hidden]{display:none!important}
+.cms-easy-mode #cms-site-image-empty {font-size:12px;padding:20px;text-align:center}
+.cms-easy-mode .cms-easy-upload {border:1px solid var(--blue);border-radius:9px;background:var(--blue);color:#fff;font-size:12px;font-weight:750;padding:11px 14px;cursor:pointer}
+.cms-easy-mode .cms-easy-upload:hover {filter:brightness(.94)}
+.cms-easy-mode .cms-easy-visual small {font-size:11px;color:var(--muted);line-height:1.55}
+.cms-easy-mode .cms-easy-advanced {border:1px solid var(--line);border-radius:11px;overflow:hidden;margin-top:0}
+.cms-easy-mode .cms-easy-advanced summary {list-style:none;cursor:pointer;padding:14px 17px;color:var(--ink-strong);font-size:12px;font-weight:790;display:flex;justify-content:space-between;gap:8px}
+.cms-easy-mode .cms-easy-advanced summary::after{content:"⌄";color:var(--muted);font-size:15px;margin-left:auto}
+.cms-easy-mode .cms-easy-advanced[open] summary::after{content:"⌃"}
+.cms-easy-mode .cms-easy-advanced summary::-webkit-details-marker {display:none}
+.cms-easy-mode .cms-easy-advanced summary span {color:var(--muted);font-size:11px;font-weight:450}
+.cms-easy-mode .cms-easy-extra {padding:4px 17px 17px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.cms-easy-mode .cms-easy-extra .cms-field[data-multiline=true],
+.cms-easy-mode .cms-easy-extra .cms-field:has(#field-design_strengths){grid-column:1/-1}
+.cms-easy-mode .cms-easy-save-note {display:flex;align-items:center;gap:11px;padding:8px 2px 0;border:0;font-size:11px;color:var(--muted)}
+.cms-easy-mode .cms-easy-save-note #cms-autosave-status {font-weight:600;font-size:11px;flex:1}
+.cms-easy-mode .cms-easy-save-note button {border:0;background:transparent;color:var(--blue);font-size:11px;font-weight:700;cursor:pointer;padding:5px 7px}
+.cms-easy-mode .cms-easy-save-note button:not(:focus-visible) {display:none}
+.cms-easy-mode .cms-easy-save-note:has(#cms-autosave-status[data-state=error]) button {display:inline-flex}
+.cms-easy-mode [data-editor-pane="review"],.cms-easy-mode [data-editor-pane="history"] {padding:18px 32px 28px}
+@media(max-width:880px) {
+ .cms-easy-mode .cms-easy-layout{grid-template-columns:minmax(0,1fr);gap:18px}
+ .cms-easy-mode .cms-easy-visual{max-width:none}
+ .cms-easy-mode .cms-easy-shot{aspect-ratio:16/9}
+}
+@media(max-width:600px) {
+ body.cms-editor-active .atlas-v521-layout .cms-content{padding:8px 10px 22px}
+ body.cms-editor-active .cms-edit-topbar{position:static;padding:10px 14px;gap:10px;min-height:0}
+ body.cms-editor-active .cms-edit-context{display:none}
+ body.cms-editor-active .cms-edit-quick-actions{margin-left:auto}
+ body.cms-editor-active .cms-edit-quick-actions button{padding:9px 10px;font-size:11px}
+ .cms-easy-mode .cms-easy-header{padding:18px 16px 10px;align-items:flex-start;flex-direction:column;gap:8px}
+ .cms-easy-mode .cms-easy-heading h2{font-size:21px}
+ .cms-easy-mode .cms-easy-header-side{width:100%;justify-content:space-between}
+ .cms-easy-mode .atlas-v521-editor-tabs{margin:0 16px;gap:16px}
+ body.cms-editor-active .cms-easy-mode .cms-editor-content {padding:14px 16px 24px}
+ .cms-easy-mode .cms-easy-extra{grid-template-columns:1fr}
+ .cms-easy-mode .cms-easy-advanced summary{flex-wrap:wrap}
+}
