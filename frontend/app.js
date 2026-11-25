@@ -59,12 +59,58 @@ function analyticsEvent(type,query='',pathOverride=''){
     keepalive:true,headers:{'Content-Type':'application/json'},
     body:JSON.stringify({type,path:pathOverride||location.pathname,query})}).catch(()=>{});
 }
+// V51.8–V51.12: tab-scoped, short-lived, random first-party session.
+const entrySource={
+ referrer:(document.referrer||'').slice(0,220),
+ utm_source:(new URLSearchParams(location.search).get('utm_source')||'').slice(0,80),
+ utm_medium:(new URLSearchParams(location.search).get('utm_medium')||'').slice(0,80),
+ utm_campaign:(new URLSearchParams(location.search).get('utm_campaign')||'').slice(0,80)
+};
+let growthFirst=true,growthFallback=null,scrollPath='',scrollSent=new Set();
+function growthAllowed(){return navigator.doNotTrack!=='1'&&navigator.globalPrivacyControl!==true}
+function growthSid(){
+ if(!growthAllowed()||!globalThis.crypto?.randomUUID)return null;
+ const now=Date.now();
+ try{
+   const existing=JSON.parse(sessionStorage.getItem('atlas-visitor-session')||'null');
+   if(existing&&/^[0-9a-f-]{36}$/.test(existing.id)&&now-existing.last<1800000&&now>=existing.last){
+     existing.last=now;sessionStorage.setItem('atlas-visitor-session',JSON.stringify(existing));
+     return existing.id;
+   }
+   const fresh={id:crypto.randomUUID(),last:now};
+   sessionStorage.setItem('atlas-visitor-session',JSON.stringify(fresh));
+   return fresh.id;
+ }catch(_){
+   if(!growthFallback||now-growthFallback.last>1800000)
+     growthFallback={id:crypto.randomUUID(),last:now};
+   growthFallback.last=now;return growthFallback.id;
+ }
+}
+function growthSend(event,path=location.pathname,target='',depth=0){
+ const session=growthSid();if(!session)return;
+ const attribution=growthFirst?entrySource:{};
+ growthFirst=false;
+ const device=innerWidth<720?'mobile':innerWidth<1100?'tablet':'desktop';
+ fetch('/api/analytics/growth',{method:'POST',credentials:'omit',cache:'no-store',
+   keepalive:true,headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({event,session,path,target,depth,device,...attribution})}).catch(()=>{});
+}
+function growthScroll(){
+ const path=location.pathname;
+ if(!/^\/(websites|sections|patterns|insights)(\/[a-z0-9-]+)?$/.test(path))return;
+ if(path!==scrollPath){scrollPath=path;scrollSent=new Set()}
+ const doc=document.documentElement,scrollable=Math.max(1,doc.scrollHeight-innerHeight);
+ const percent=100*scrollY/scrollable;
+ for(const depth of [25,50,75,90])if(percent>=depth&&!scrollSent.has(depth)){
+   scrollSent.add(depth);growthSend('scroll',path,'',depth)
+ }
+}
 function analyticsPage(){
  const path=location.pathname,now=Date.now();
  if(path===lastAnalyticsPath&&now-lastAnalyticsAt<8000)return;
  lastAnalyticsPath=path;lastAnalyticsAt=now;
  if(path==='/'||/^\/(websites|sections|patterns|insights)(\/[a-z0-9-]+)?$/.test(path))
-   analyticsEvent('page_view');
+   {analyticsEvent('page_view');growthSend('page_view',path);scrollPath=path;scrollSent=new Set()}
 }
 function analyticsSearch(value){
  clearTimeout(searchAnalyticsTimer);
@@ -75,7 +121,7 @@ function analyticsSearch(value){
    const cleaned=query.toLowerCase().replace(/\s+/g,' ');
    if(sentSearchTerms.has(searchPath+'|'+cleaned))return;
    sentSearchTerms.add(searchPath+'|'+cleaned);
-   analyticsEvent('search',cleaned,searchPath);
+   analyticsEvent('search',cleaned,searchPath);growthSend('search',searchPath);
  },1200);
 }
 function go(to){let next=new URL(to,location.origin);if(next.origin!==location.origin){location.href=to;return}history.pushState({},'',next.pathname+next.search+next.hash);render();analyticsPage();window.scrollTo(0,0)}
@@ -335,6 +381,9 @@ function authDestination(){return normalizeNext(new URLSearchParams(location.sea
 async function api(url,options={}){
  const headers={'Content-Type':'application/json',...options.headers};
  if(state.auth?.csrf_token)headers['X-CSRF-Token']=state.auth.csrf_token;
+ if(url==='/api/auth/register'||(url==='/api/me/library'&&options.method==='POST')){
+   const sid=growthSid();if(sid)headers['X-Atlas-Session']=sid;
+ }
  const response=await fetch(url,{...options,credentials:'same-origin',headers,cache:'no-store'});
  let body={};try{body=await response.json()}catch{}
  if(!response.ok){let message=typeof body.detail==='string'?body.detail:response.status===401?'会话已过期，请重新登录。':response.status===503?'账号服务暂时不可用，请稍后重试。':'操作失败，请重试。';const e=new Error(message);e.status=response.status;throw e}
@@ -677,12 +726,26 @@ async function toggleIn(k,collection){
  }
 }
 function exportBoard(){if(!state.board.length)return;let lines=['# B2B Atlas — Project reference brief','','Generated from your local design board.','','## References',''];state.board.forEach((k,i)=>{let x=byKey(k);if(!x)return;lines.push('### '+(i+1)+'. '+cardInfo(x).name,'','- Source: '+(x.url||cardInfo(x).url),'- Reference: '+cardInfo(x).sub,'- Observation: '+(x.lesson||x.takeaway||site(x.site_id)?.takeaway||''),'- Project note: '+(state.notesByKey[k]||''),'')});let a=document.createElement('a'),u=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/markdown'}));a.href=u;a.download='b2b-atlas-research.md';a.click();setTimeout(()=>URL.revokeObjectURL(u),2000);notify('Research brief exported')}
-document.addEventListener('click',ev=>{let link=ev.target.closest('a[data-link]');if(link){ev.preventDefault();closeOverlay();go(link.dataset.link);return}let target=ev.target.closest('[data-action]');if(!target)return;let a=target.dataset.action,k=target.dataset.key,v=target.dataset.value;if(a==='save')toggleIn(k,'saved');else if(a==='board')toggleIn(k,'board');else if(a==='compare-toggle')toggleCompare(target.dataset.siteId);else if(a==='compare-clear')clearCompare();else if(a==='comparison-save')saveComparison();else if(a==='comparison-update')saveComparison(target.dataset.id);else if(a==='comparison-delete')deleteComparison(target.dataset.id);else if(a==='comparison-export')exportComparison();else if(a==='preview')quickPreview(k);else if(a==='image')expandImage();else if(a==='global-search')globalSearch();else if(a==='close-overlay')closeOverlay();else if(a==='mobile-menu'){const n=$('#mobile-menu');n.hidden=!n.hidden;target.setAttribute('aria-expanded',String(!n.hidden))}else if(a==='copy'){navigator.clipboard?.writeText(v).then(()=>notify(v+' copied'),()=>notify('Copy unavailable'))}else if(a==='density')updateListing('density',v);else if(a==='category')updateListing(location.pathname.startsWith('/sections')?'category':'sector',v);else if(a==='filter-remove'){updateListing(target.dataset.field,'');$('[data-field="'+target.dataset.field+'"]').forEach(input=>input.value='')}else if(a==='reset-filters'){go(location.pathname)}else if(a==='thumb'){let n=Number(target.dataset.index);currentScreen=n;let x=currentScreens[n];if(!x)return;$('#detail-image').src=x.url;$('#detail-image').alt=x.label;$('#detail-hero').dataset.index=n;$('#capture-label').textContent=x.label;$('#capture-source').href=x.source;$$('.capture-thumbs button').forEach((b,i)=>{b.classList.toggle('selected',i===n);b.setAttribute('aria-pressed',String(i===n))})}else if(a==='anchor'){ev.preventDefault();document.getElementById(target.dataset.target)?.scrollIntoView({behavior:'smooth',block:'start'})}else if(a==='share-article'){const u=location.href;if(navigator.clipboard?.writeText){navigator.clipboard.writeText(u).then(()=>notify('文章链接已复制'),()=>notify('复制失败，请从地址栏复制'))}else notify('请从地址栏复制文章链接')}else if(a==='folder-delete')folderDelete(target.dataset.folderid);else if(a==='folder-remove-item')folderRemove(target.dataset.folderid,k);else if(a==='export-personal')personalExport();else if(a==='logout')logOut();else if(a==='import-legacy')importLegacy();else if(a==='export-board')exportBoard()});
+document.addEventListener('click',ev=>{
+ const external=ev.target.closest('a[href]');
+ if(external&&/^\/(websites|sections|patterns|insights)(\/|$)/.test(location.pathname)){
+   try{const dest=new URL(external.href,location.origin);
+     if(/^https?:$/.test(dest.protocol)&&dest.origin!==location.origin)
+       growthSend('external_click',location.pathname);
+   }catch(_){}
+ }
+ let link=ev.target.closest('a[data-link]');if(link){
+   const destination=link.dataset.link;
+   if(/^\/(websites|sections|patterns|insights)\/[a-z0-9-]+$/.test(destination))
+     growthSend('content_click',location.pathname,destination);
+   ev.preventDefault();closeOverlay();go(destination);return
+ }let target=ev.target.closest('[data-action]');if(!target)return;let a=target.dataset.action,k=target.dataset.key,v=target.dataset.value;if(a==='save')toggleIn(k,'saved');else if(a==='board')toggleIn(k,'board');else if(a==='compare-toggle')toggleCompare(target.dataset.siteId);else if(a==='compare-clear')clearCompare();else if(a==='comparison-save')saveComparison();else if(a==='comparison-update')saveComparison(target.dataset.id);else if(a==='comparison-delete')deleteComparison(target.dataset.id);else if(a==='comparison-export')exportComparison();else if(a==='preview'){growthSend('preview',location.pathname);quickPreview(k)}else if(a==='image')expandImage();else if(a==='global-search')globalSearch();else if(a==='close-overlay')closeOverlay();else if(a==='mobile-menu'){const n=$('#mobile-menu');n.hidden=!n.hidden;target.setAttribute('aria-expanded',String(!n.hidden))}else if(a==='copy'){navigator.clipboard?.writeText(v).then(()=>notify(v+' copied'),()=>notify('Copy unavailable'))}else if(a==='density')updateListing('density',v);else if(a==='category')updateListing(location.pathname.startsWith('/sections')?'category':'sector',v);else if(a==='filter-remove'){updateListing(target.dataset.field,'');$('[data-field="'+target.dataset.field+'"]').forEach(input=>input.value='')}else if(a==='reset-filters'){go(location.pathname)}else if(a==='thumb'){let n=Number(target.dataset.index);currentScreen=n;let x=currentScreens[n];if(!x)return;$('#detail-image').src=x.url;$('#detail-image').alt=x.label;$('#detail-hero').dataset.index=n;$('#capture-label').textContent=x.label;$('#capture-source').href=x.source;$$('.capture-thumbs button').forEach((b,i)=>{b.classList.toggle('selected',i===n);b.setAttribute('aria-pressed',String(i===n))})}else if(a==='anchor'){ev.preventDefault();document.getElementById(target.dataset.target)?.scrollIntoView({behavior:'smooth',block:'start'})}else if(a==='share-article'){const u=location.href;if(navigator.clipboard?.writeText){navigator.clipboard.writeText(u).then(()=>notify('文章链接已复制'),()=>notify('复制失败，请从地址栏复制'))}else notify('请从地址栏复制文章链接')}else if(a==='folder-delete')folderDelete(target.dataset.folderid);else if(a==='folder-remove-item')folderRemove(target.dataset.folderid,k);else if(a==='export-personal')personalExport();else if(a==='logout')logOut();else if(a==='import-legacy')importLegacy();else if(a==='export-board')exportBoard()});
 document.addEventListener('change',ev=>{let t=ev.target;if(t.dataset.field)updateListing(t.dataset.field,t.value);if(t.dataset.folderAdd)folderAssign(t.value,t.dataset.folderAdd);if(t.id==='insights-sort'){setQuery('sort',t.value==='latest'?'':t.value);renderInsightResults()}});
 document.addEventListener('input',ev=>{let t=ev.target;if(t.id==='library-search'){clearTimeout(searchTimer);searchTimer=setTimeout(()=>updateListing('q',t.value),120);analyticsSearch(t.value)}else if(t.id==='global-search'){renderGlobalMatches(t.value);analyticsSearch(t.value)}else if(t.id==='insights-search'){setQuery('q',t.value);renderInsightResults();analyticsSearch(t.value)}else if(t.dataset.note){state.notesByKey[t.dataset.note]=t.value;clearTimeout(noteTimer);noteTimer=setTimeout(async()=>{if(!loggedIn())return;try{await api('/api/me/library/note',{method:'PATCH',body:JSON.stringify({key:t.dataset.note,note:t.value})})}catch(e){notify('笔记未保存：'+e.message)}},650)}});
 document.addEventListener('submit',ev=>{if(ev.target.id==='home-search'){ev.preventDefault();analyticsSearch(ev.target.elements.q.value.trim());go('/websites?q='+encodeURIComponent(ev.target.elements.q.value.trim()))}else if(ev.target.id==='auth-form'){ev.preventDefault();submitAuth(ev.target)}else if(ev.target.id==='password-request-form'||ev.target.id==='password-reset-form'){ev.preventDefault();submitRecovery(ev.target)}else if(ev.target.id==='profile-form'){ev.preventDefault();submitProfile(ev.target)}else if(ev.target.id==='password-form'){ev.preventDefault();submitPassword(ev.target)}else if(ev.target.id==='folder-create-form'){ev.preventDefault();saveFolder(ev.target)}else if(ev.target.id==='folder-edit-form'){ev.preventDefault();saveFolder(ev.target,true)}else if(ev.target.classList.contains('library-annotation-form')){ev.preventDefault();annotationSave(ev.target)}});
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape'){closeOverlay();$('#mobile-menu').hidden=true}else if((ev.ctrlKey||ev.metaKey)&&ev.key.toLowerCase()==='k'){ev.preventDefault();globalSearch()}else if(ev.key==='/'&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)&&$('#library-search')){ev.preventDefault();$('#library-search').focus()}});
 window.addEventListener('popstate',()=>{render();analyticsPage();window.scrollTo(0,0)});
+window.addEventListener('scroll',growthScroll,{passive:true});
 async function load(){try{let urls=['/api/source-library','/api/module-library','/assets/research.json','/assets/patterns.json','/assets/screenshot-palettes.json','/assets/articles.json?v=39'];let results=await Promise.all(urls.map(async(u,i)=>{let r=await fetch(u);if(!r.ok&&i<4)throw Error(u+' returned '+r.status);return r.ok?r.json():{}}));state.sites=results[0].sites||[];state.notes=results[0].notes||[];state.modules=results[1].modules||[];state.profiles=results[2]||{};state.patterns=results[3]||[];state.palettes=results[4]||{};state.articles=results[5]?.articles||[];state.articleCategories=results[5]?.categories||[];state.articleEditorialNotice=results[5]?.editorial_notice||'';await syncAuth();render();analyticsPage()}catch(err){console.error('B2B Atlas bootstrap',err);app.innerHTML='<div class="shell empty standalone"><h1>Library unavailable</h1><p>Unable to load the curated data right now. Refresh to retry.</p><button class="primary-button" onclick="location.reload()">Try again</button></div>'}}
 load();
 })();
