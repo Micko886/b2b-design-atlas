@@ -36,6 +36,40 @@ class V51ContractTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             cms_routes.MediaUpload(name="bad.svg",mime="image/svg+xml",content="A"*20)
 
+    def test_invalid_tags_rejected(self):
+        payload=self.article()
+        payload["tags"]=["ok",{"bad":"object"}]
+        with self.assertRaises(HTTPException) as error:
+            cms_routes.cleaned("article","editorial-sample",payload)
+        self.assertEqual(error.exception.status_code,422)
+
+    def test_too_many_takeaways_rejected(self):
+        payload=self.article()
+        payload["takeaways"]=["thought"]*31
+        with self.assertRaises(HTTPException):
+            cms_routes.cleaned("article","editorial-sample",payload)
+
+    def test_invalid_reading_minutes_rejected(self):
+        payload=self.article()
+        payload["reading_minutes"]=0
+        with self.assertRaises(HTTPException):
+            cms_routes.cleaned("article","editorial-sample",payload)
+
+    def test_nonexistent_cover_rejected_before_publish(self):
+        from unittest.mock import patch, MagicMock
+        mock_conn=MagicMock()
+        mock_conn.one.return_value=None
+        mock_db=MagicMock()
+        mock_db.__enter__.return_value=mock_conn
+        mock_db.__exit__.return_value=False
+        with patch.object(cms_routes.seo_routes,"catalog",return_value={"sites":{},"modules":{}}), \
+             patch.object(cms_routes,"ensure_cms"), \
+             patch.object(cms_routes.user_auth,"db",return_value=mock_db):
+            payload=self.article()
+            with self.assertRaises(HTTPException) as error:
+                cms_routes.verify_links("article",payload)
+        self.assertEqual(error.exception.status_code,422)
+
     def test_absent_sections_rejected(self):
         payload=self.article()
         payload["sections"]=[]
