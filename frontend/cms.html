@@ -83,6 +83,23 @@
   <svg class="icon" aria-hidden="true"><use href="#i-download"></use></svg>
   <strong>拖拽图片到这里上传</strong><span>或点击选择图片 · JPG / PNG / WebP · 自动优化超过 1.5MB 的文件</span>
  </button><div id="cms-media-grid" class="cms-v51-media-grid"></div><div class="cms-dialog-actions"><button class="cms-btn-secondary" type="button" data-media-close>关闭</button></div></dialog>
+<dialog id="cms-crop-dialog" class="cms-dialog cms-v519-crop-dialog" aria-label="媒体裁剪与焦点设置">
+ <div class="cms-dialog-head"><div><span class="section-eyebrow">MEDIA STUDIO / SAFE DERIVATIVE</span>
+   <h2>图片裁剪与视觉焦点</h2><p>裁剪会生成一张新的 WebP 图片，原始资源及现有文章引用保持不变。</p></div>
+   <button type="button" data-crop-close aria-label="关闭图片裁剪">×</button></div>
+ <div class="cms-v519-crop-canvas-wrap"><canvas id="cms-crop-canvas" width="640" height="360" role="img" aria-label="当前图片裁剪预览"></canvas></div>
+ <div class="cms-v519-crop-controls">
+   <label>裁剪比例<select id="cms-crop-ratio">
+     <option value="16:9">16:9 · 横向封面</option><option value="4:3">4:3 · 文章插图</option>
+     <option value="1:1">1:1 · 方形</option><option value="3:4">3:4 · 纵向</option>
+   </select></label>
+   <label>左右焦点 <span id="cms-crop-x-label">50%</span><input type="range" id="cms-crop-x" min="0" max="100" value="50"></label>
+   <label>上下焦点 <span id="cms-crop-y-label">50%</span><input type="range" id="cms-crop-y" min="0" max="100" value="50"></label>
+ </div>
+ <p id="cms-crop-notice" class="cms-v514-note" role="status">选择图片后，可以通过比例和焦点控制裁剪范围。</p>
+ <div class="cms-dialog-actions"><button type="button" class="cms-btn-secondary" data-crop-close>取消</button>
+   <button type="button" id="cms-crop-save" class="cms-btn-primary">生成并保存裁剪图片</button></div>
+</dialog>
 <dialog id="cms-categories-dialog" class="cms-dialog cms-v515-dialog" aria-label="文章分类管理">
   <div class="cms-dialog-head"><div><span class="section-eyebrow">TAXONOMY / CONTENT STUDIO</span><h2>文章分类管理</h2><p>分类名称和说明可独立维护，已关联文章的分类受到删除保护。</p></div><button type="button" data-v515-close aria-label="关闭分类管理">×</button></div>
   <div class="cms-v515-layout">
