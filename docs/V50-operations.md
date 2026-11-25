@@ -1,7 +1,7 @@
 # V50 · Admin acceptance, PostgreSQL backup & recovery
 
 ## Verified infrastructure (2026-11-25)
-- Render Web Service: `srv-dc1tlouc6qcc73brcgd0`, last verified V49 deploy `dep-dc34r7ifngtc73ctsed0` = live.
+- Render Web Service: `srv-dc1tlouc6qcc73brcgd0`, V50 CMS visibility release `dep-dc34ut0m7kps73d6fb7g` verified live (2026-11-25). New restore-safety build must be verified separately.
 - PostgreSQL: `dpg-dc2liq3m8hqs73fturcg-a`, PostgreSQL 17, free, `available`. Expiration: **2026-12-24 09:31 UTC**. Verify your actual instance status again in the Render dashboard.
 - The database's external IP allowlist is empty. That is an appropriate production restriction; do not open it to `0.0.0.0/0`.
 - Accounts, password hashes, session tokens (hashes), collections, annotations, comparisons, CMS entries and CMS history reside in PostgreSQL. Immutable original catalog and screenshots live in repository/deploy artifacts.
@@ -38,9 +38,16 @@ export ATLAS_RESTORE_CONFIRM='DISPOSABLE_DATABASE_ONLY'
 bash scripts/verify-postgres-backup.sh /secure/atlas-backups/atlas-postgres-YYYYMMDDTHHMMSSZ.dump.age restore-to-disposable-db
 ```
 
-Do not supply the production database as a restore target. For migration: create a new supported PostgreSQL service, validate network/credentials, take a fresh encrypted snapshot, restore into the new empty database, verify table counts and account/CMS behavior, change `ATLAS_USERS_DATABASE_URL` through Render's private environment settings, deploy and check the app, then retain the old database until all tests pass.
+Restoration now refuses a target unless its database name starts with `atlas_restore_` or `disposable_atlas_`; it also rejects the same host, port and database as `ATLAS_BACKUP_DATABASE_URL` if the source is set. This is an additional safety check, **not** a substitute for verifying the restore URL by hand. Do not supply the production database as a restore target. For migration: create a new supported PostgreSQL service, validate network/credentials, take a fresh encrypted snapshot, restore into the new empty database, verify table counts and account/CMS behavior, change `ATLAS_USERS_DATABASE_URL` through Render's private environment settings, deploy and check the app, then retain the old database until all tests pass.
 
 ## Outstanding production acceptance
 At initial V50 assessment no public HTTPS session could be established from the execution environment, and Render's query connector cannot access the allowlisted database. Thus administrator login, live CMS mutation and true backup/restore are **not confirmed** by this repository commit. Do not confuse deploy success with full acceptance.
 
 **Deadline**: Migrate/renew the free PostgreSQL instance **before 2026-12-24**. A script committed to GitHub does not safeguard your data until someone runs it, verifies it, and stores encrypted copies outside the expiring database.
+
+
+## V50 hardening follow-up
+- `tests/test_cms_visibility.py` protects archived draft privacy and published-snapshot visibility.
+- `tests/test_restore_guard.py` blocks production-like restore targets. Docker build now invokes all `test_*.py` tests and checks backup shell syntax.
+- No backup archive, restore proof, or new offsite storage has yet been produced by these scripts. A scheduled backup requires a trusted runner, protected age private key, suitable connectivity and storage retention controls.
+- The online admin smoke test is available but cannot be marked PASS until executed from an HTTPS-capable runner with credentials kept private.
