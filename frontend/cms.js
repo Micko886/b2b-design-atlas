@@ -700,13 +700,13 @@ function renderForm(item){
     +'<button type="button" class="primary" data-transition="publish" '+(isPending?'disabled title="请先取消现有排期"':'')+'>审核并立即发布</button>'
     +'<button type="button" data-transition="reject" class="cms-review-reject">退回修改</button></div>'
     +'<label class="cms-v514-reason">审核意见（退回时必填）<textarea id="cms-review-reason" maxlength="400" rows="3" placeholder="说明需要修改的内容、引用或设计问题"></textarea></label>'
-    +'<div class="cms-v514-release-box"><label>预约发布时间（当前设备本地时间）<input id="cms-schedule-local" type="datetime-local" aria-label="选择计划发布时间"></label>'
+    +'<details class="cms-review-schedule"'+(isPending?' open':'')+'><summary>预约发布时间 <span>可选 · 不立即发布</span></summary><div class="cms-v514-release-box"><label>预约发布时间（当前设备本地时间）<input id="cms-schedule-local" type="datetime-local" aria-label="选择计划发布时间"></label>'
     +'<button type="button" data-schedule-save>保存发布排期</button>'
     +(isPending?'<button type="button" data-schedule-cancel>取消排期</button>':'')
     +'</div>'
     +(isPending?'<p class="cms-v514-schedule-state">已预约 · '+h(schedule.publish_at)+' UTC · v'+schedule.revision+'</p>':'')
     +(schedule?.status==='failed'||schedule?.status==='stale'?'<p class="cms-v514-schedule-error">'+h(schedule.error||'原排期已失效')+'</p>':'')
-    +'<small>仅针对已审核的当前版本。免费开发环境采用下一次目录访问触发到期发布。</small>'
+    +'<small>仅针对已审核的当前版本。免费开发环境采用下一次目录访问触发到期发布。</small></details>'
     :s==='published'?'<div class="cms-v514-review-buttons"><button type="button" class="warn" data-transition="archive">归档下线</button></div>'
     :'<p>当前内容状态为 '+h(statusText[s]||s)+'，无法直接执行发布审核。</p>')
    +'</section>':'';
