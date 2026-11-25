@@ -292,6 +292,14 @@ def merge_editorial_tags(base_articles,stored_rows,overrides):
     return sorted(({**value,"usage":article_tag_usage(value["name"],base_articles,stored_rows)}
                    for value in result.values()),key=lambda x:(-x["usage"],x["name"].casefold()))
 
+def all_editorial_tags():
+    ensure_cms()
+    base=base_maps()["articles"]
+    with user_auth.db() as db:
+        rows=db.all("SELECT slug,draft_json,published_json FROM atlas_cms_entries WHERE kind='article'")
+        overrides=db.all("SELECT name,description,status,created_at,updated_at FROM atlas_cms_tags ORDER BY created_at,name")
+    return merge_editorial_tags(base,rows,overrides)
+
 def cleaned(kind,slug,payload):
     if not SLUG.fullmatch(slug):user_auth.error(400,"URL 标识只能使用小写英文、数字与短横线。")
     if not isinstance(payload,dict):user_auth.error(422,"内容必须是 JSON 对象。")
@@ -480,6 +488,75 @@ def register_cms_routes(app: FastAPI):
             })
         return await call_next(request)
 
+    @app.get("/api/admin/tags",include_in_schema=False)
+    def list_tags(request:Request):
+        require_admin(request)
+        return {"items":all_editorial_tags()}
+
+    @app.post("/api/admin/tags",include_in_schema=False,status_code=201)
+    def create_tag(data:TagData,request:Request):
+        session=require_admin(request,mutate=True);ensure_cms()
+        validate_tag_data(data)
+        name=data.name.strip()
+        if name.casefold() in {v["name"].casefold() for v in all_editorial_tags()}:
+            user_auth.error(409,"该标签已经存在，您可以直接编辑说明。")
+        with user_auth.db() as db:
+            if db.one("SELECT name FROM atlas_cms_tags WHERE LOWER(name)=LOWER(?)",(name,)):
+                user_auth.error(409,"该标签已登记或已停用。")
+            now=utc_now();uid=session["user_id"]
+            db.execute("""INSERT INTO atlas_cms_tags
+                (name,description,status,created_by,updated_by,created_at,updated_at)
+                VALUES(?,?,'active',?,?,?,?)""",
+                (name,data.description.strip(),uid,uid,now,now))
+            db.execute("""INSERT INTO atlas_cms_tag_history
+                (id,tag_name,action,actor_id,snapshot_json,created_at)
+                VALUES(?,?,?,?,?,?)""",
+                (str(uuid.uuid4()),name,"create",uid,json.dumps(data.dict(),ensure_ascii=False),now))
+        return {"ok":True,"name":name}
+
+    @app.put("/api/admin/tags/{tag_name}",include_in_schema=False)
+    def update_tag(tag_name:str,data:TagData,request:Request):
+        session=require_admin(request,mutate=True);ensure_cms()
+        validate_tag_data(data)
+        if tag_name.casefold()!=data.name.strip().casefold():
+            user_auth.error(422,"标签名称不可直接更改。请新建标签，再调整引用文章。")
+        if tag_name.casefold() not in {v["name"].casefold() for v in all_editorial_tags()}:
+            user_auth.error(404,"标签不存在。")
+        with user_auth.db() as db:
+            now=utc_now();uid=session["user_id"]
+            db.execute("""INSERT INTO atlas_cms_tags
+                (name,description,status,created_by,updated_by,created_at,updated_at)
+                VALUES(?,?,'active',?,?,?,?)
+                ON CONFLICT(name) DO UPDATE SET description=excluded.description,
+                  status='active',updated_by=excluded.updated_by,updated_at=excluded.updated_at""",
+                (data.name.strip(),data.description.strip(),uid,uid,now,now))
+            db.execute("""INSERT INTO atlas_cms_tag_history
+                (id,tag_name,action,actor_id,snapshot_json,created_at)
+                VALUES(?,?,?,?,?,?)""",
+                (str(uuid.uuid4()),tag_name,"edit",uid,json.dumps(data.dict(),ensure_ascii=False),now))
+        return {"ok":True,"name":tag_name}
+
+    @app.delete("/api/admin/tags/{tag_name}",include_in_schema=False)
+    def delete_tag(tag_name:str,request:Request):
+        session=require_admin(request,mutate=True);ensure_cms()
+        current=all_editorial_tags()
+        item=next((x for x in current if x["name"].casefold()==tag_name.casefold()),None)
+        if not item:user_auth.error(404,"标签不存在。")
+        if item["usage"]>0:user_auth.error(409,"标签仍被文章或草稿使用，请先修改引用。")
+        with user_auth.db() as db:
+            now=utc_now();uid=session["user_id"]
+            db.execute("""INSERT INTO atlas_cms_tags
+                (name,description,status,created_by,updated_by,created_at,updated_at)
+                VALUES(?,?,'deleted',?,?,?,?)
+                ON CONFLICT(name) DO UPDATE SET status='deleted',
+                  updated_by=excluded.updated_by,updated_at=excluded.updated_at""",
+                (tag_name,"",uid,uid,now,now))
+            db.execute("""INSERT INTO atlas_cms_tag_history
+                (id,tag_name,action,actor_id,snapshot_json,created_at)
+                VALUES(?,?,?,?,?,?)""",
+                (str(uuid.uuid4()),tag_name,"delete",uid,json.dumps({"name":tag_name},ensure_ascii=False),now))
+        return {"ok":True,"name":tag_name}
+
     @app.get("/api/admin/categories",include_in_schema=False)
     def list_categories(request:Request):
         require_admin(request);ensure_cms()
@@ -577,7 +654,10 @@ def register_cms_routes(app: FastAPI):
             for tag in article.get("tags",[]):
                 if not isinstance(tag,str) or not tag.strip() or len(tag)>32:continue
                 tag_counts[tag.strip()]=tag_counts.get(tag.strip(),0)+1
-        common_tags=sorted(tag_counts,key=lambda x:(-tag_counts[x],x))[:30]
+        try:
+            common_tags=[x["name"] for x in all_editorial_tags()][:40]
+        except Exception:
+            common_tags=sorted(tag_counts,key=lambda x:(-tag_counts[x],x))[:40]
         return {"categories":result,"article_tags":common_tags}
 
     @app.get("/api/admin/media",include_in_schema=False)
@@ -716,8 +796,11 @@ def register_cms_routes(app: FastAPI):
             history=db.all("SELECT * FROM atlas_cms_history ORDER BY created_at")
             categories=db.all("SELECT id,name,description,status,created_at,updated_at FROM atlas_cms_categories ORDER BY created_at")
             category_history=db.all("SELECT * FROM atlas_cms_category_history ORDER BY created_at")
-        return JSONResponse({"version":2,"exported_at":utc_now(),"entries":entries,
+            tags=db.all("SELECT name,description,status,created_at,updated_at FROM atlas_cms_tags ORDER BY name")
+            tag_history=db.all("SELECT * FROM atlas_cms_tag_history ORDER BY created_at")
+        return JSONResponse({"version":3,"exported_at":utc_now(),"entries":entries,
              "history":history,"categories":categories,"category_history":category_history,
+             "tags":tags,"tag_history":tag_history,
              "note":"CMS 内容及分类操作快照，不含账号、用户私人数据或媒体二进制文件。"},
             headers={"Cache-Control":"no-store","Content-Disposition":'attachment; filename="atlas-cms-export.json"'})
 
