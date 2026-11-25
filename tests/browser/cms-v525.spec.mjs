@@ -530,3 +530,18 @@ test('V53.2 media workspace controls fit 320px mobile viewport',async({page})=>{
  await expect(page.locator('.cms-v532-toolbar')).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });
+
+test('V53.7 review schedule stays optional and expands on demand',async({page})=>{
+ const {records}=await mockCms(page);
+ records.site.status='review';
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await expect(page.locator('[data-editor-tab="review"]')).toHaveAttribute('aria-selected','true');
+ const schedule=page.locator('.cms-review-schedule');
+ await expect(schedule).toBeVisible();
+ await expect(schedule).not.toHaveAttribute('open','');
+ await expect(page.locator('#cms-schedule-local')).toBeHidden();
+ await schedule.locator('summary').click();
+ await expect(schedule).toHaveAttribute('open','');
+ await expect(page.locator('#cms-schedule-local')).toBeVisible();
+ await expect(page.locator('[data-transition="publish"]')).toBeVisible();
+});
