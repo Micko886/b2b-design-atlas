@@ -131,6 +131,14 @@ class UnifiedNavigationContracts(unittest.TestCase):
         self.assertIn("routeParams.get('workspace')==='schedule'",self.cms_js)
         self.assertIn("openScheduleQueue()",self.cms_js)
 
+    def test_workspace_highlight_tracks_editorial_context(self):
+        self.assertIn("function markWorkspace(name)",self.cms_js)
+        self.assertIn("markWorkspace('review')",self.cms_js)
+        self.assertIn("markWorkspace('schedule')",self.cms_js)
+        self.assertIn("markWorkspace('content')",self.cms_js)
+        self.assertIn("markWorkspace(state.status==='review'?'review':'content')",self.cms_js)
+        self.assertIn('data-owner-only hidden',self.cms)
+
     def test_theme_and_responsive_layout_preserved(self):
         for html in (self.admin,self.cms):
             self.assertIn('data-set-theme="light"',html)
