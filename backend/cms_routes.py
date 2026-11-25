@@ -72,6 +72,13 @@ SCHEMA = [
         created_at TEXT NOT NULL
     )""",
     """CREATE INDEX IF NOT EXISTS atlas_cms_media_created ON atlas_cms_media(created_at)""",
+    """CREATE TABLE IF NOT EXISTS atlas_cms_media_meta (
+       media_id TEXT PRIMARY KEY REFERENCES atlas_cms_media(id) ON DELETE CASCADE,
+       alt_text TEXT NOT NULL DEFAULT '',
+       caption TEXT NOT NULL DEFAULT '',
+       updated_by TEXT NOT NULL REFERENCES atlas_users(id),
+       updated_at TEXT NOT NULL
+    )""",
     """CREATE TABLE IF NOT EXISTS atlas_cms_categories (
        id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL,
        status TEXT NOT NULL CHECK(status IN ('active','deleted')),
@@ -550,6 +557,13 @@ class MediaUpload(BaseModel):
     mime: Literal["image/jpeg","image/png","image/webp"]
     content: str = Field(min_length=16,max_length=2800000)
 
+class MediaMetadata(BaseModel):
+    alt_text: str = Field(default="",max_length=240)
+    caption: str = Field(default="",max_length=320)
+
+class MediaBulkDelete(BaseModel):
+    ids: list[str] = Field(min_length=1,max_length=20)
+
 class BulkItem(BaseModel):
     slug: str = Field(min_length=1,max_length=111)
     expected_revision: int = Field(ge=1)
@@ -810,14 +824,21 @@ def register_cms_routes(app: FastAPI):
         return {"categories":result,"article_tags":common_tags}
 
     @app.get("/api/admin/media",include_in_schema=False)
-    def media_list(request:Request):
+    def media_list(request:Request,q:str="",usage:str="all",file_type:str="all",
+                   seo:str="all",offset:int=0,limit:int=150):
         require_admin(request);ensure_cms()
+        if len(q)>160 or usage not in ("all","used","unused") or file_type not in ("all","jpeg","png","webp") or seo not in ("all","missing","ready"):
+            user_auth.error(422,"媒体搜索条件无效。")
+        if not 0<=offset<=100000 or not 1<=limit<=150:
+            user_auth.error(422,"媒体分页参数无效。")
         with user_auth.db() as db:
-            rows=db.all("SELECT id,file_name,mime_type,byte_size,sha256,created_at FROM atlas_cms_media ORDER BY created_at DESC LIMIT 150")
+            rows=db.all("SELECT id,file_name,mime_type,byte_size,sha256,created_at FROM atlas_cms_media ORDER BY created_at DESC,id DESC")
             entries=db.all("SELECT kind,slug,draft_json,published_json FROM atlas_cms_entries")
-        # Usage includes both drafts and published CMS snapshots, deduplicated
-        # by content item. Never return account information or media bytes here.
-        usage={}
+            notes=db.all("SELECT media_id,alt_text,caption,updated_at FROM atlas_cms_media_meta")
+        metadata={item["media_id"]:item for item in notes}
+        # Count references across drafts AND public snapshots; one content item
+        # contributes one usage even if the image appears repeatedly.
+        usage_map={}
         for entry in entries:
             identifiers=set()
             for field in ("draft_json","published_json"):
@@ -837,10 +858,27 @@ def register_cms_routes(app: FastAPI):
                 identifiers.update(u.rsplit("/",1)[-1] for u in media_urls if isinstance(u,str) and
                                    re.fullmatch(r"/api/media/[0-9a-f-]{36}",u))
             for mid in identifiers:
-                usage.setdefault(mid,[]).append({"kind":entry["kind"],"slug":entry["slug"]})
-        return {"items":[{**r,"url":"/api/media/"+r["id"],
-                    "usage_count":len(usage.get(r["id"],[])),
-                    "used_by":usage.get(r["id"],[])[:12]} for r in rows]}
+                usage_map.setdefault(mid,[]).append({"kind":entry["kind"],"slug":entry["slug"]})
+        search=q.casefold().strip()
+        found=[]
+        for row in rows:
+            media_id=row["id"];info=metadata.get(media_id,{})
+            alt_text=info.get("alt_text","");caption=info.get("caption","")
+            users=usage_map.get(media_id,[])
+            record={**row,"url":"/api/media/"+media_id,
+                    "alt_text":alt_text,"caption":caption,"metadata_updated_at":info.get("updated_at"),
+                    "seo_status":"ready" if alt_text.strip() else "missing",
+                    "usage_count":len(users),"used_by":users[:20]}
+            if search and search not in (" ".join([row["file_name"],alt_text,caption]+
+                                                    [link["slug"] for link in users])).casefold():continue
+            if usage=="used" and not users:continue
+            if usage=="unused" and users:continue
+            if file_type!="all" and row["mime_type"]!="image/"+("jpeg" if file_type=="jpeg" else file_type):continue
+            if seo=="missing" and alt_text.strip():continue
+            if seo=="ready" and not alt_text.strip():continue
+            found.append(record)
+        return {"items":found[offset:offset+limit],"total":len(found),"offset":offset,
+                "limit":limit,"has_more":offset+limit<len(found)}
 
     @app.post("/api/admin/media",include_in_schema=False,status_code=201)
     def media_upload(data:MediaUpload,request:Request):
@@ -865,23 +903,56 @@ def register_cms_routes(app: FastAPI):
                        (mid,file_name or "image",detected,data.content,len(contents),hashlib.sha256(contents).hexdigest(),session["user_id"],utc_now()))
         return {"id":mid,"url":"/api/media/"+mid,"name":file_name,"mime":detected,"size":len(contents)}
 
-    @app.delete("/api/admin/media/{media_id}",include_in_schema=False)
-    def delete_media(media_id:str,request:Request):
-        require_admin(request,mutate=True);ensure_cms()
-        try: uuid.UUID(media_id)
-        except ValueError: user_auth.error(404,"图片不存在。")
-        target="/api/media/"+media_id
+    @app.put("/api/admin/media/{media_id}/metadata",include_in_schema=False)
+    def update_media_metadata(media_id:str,data:MediaMetadata,request:Request):
+        session=require_admin(request,mutate=True,permission="media");ensure_cms()
+        try:uuid.UUID(media_id)
+        except ValueError:user_auth.error(404,"图片不存在。")
+        alt_text=data.alt_text.strip();caption=data.caption.strip()
         with user_auth.db() as db:
             if not db.one("SELECT id FROM atlas_cms_media WHERE id=?",(media_id,)):
                 user_auth.error(404,"图片不存在。")
-            # Check all CMS drafts and published snapshots. Archive/history
-            # retains immutable audit snapshots, but active references forbid deletion.
-            refs=db.all("SELECT kind,slug,draft_json,published_json FROM atlas_cms_entries")
+            # Portable SQLite/PostgreSQL upsert. The original image is immutable.
+            db.execute("""INSERT INTO atlas_cms_media_meta(media_id,alt_text,caption,updated_by,updated_at)
+                       VALUES(?,?,?,?,?)
+                       ON CONFLICT(media_id) DO UPDATE SET
+                         alt_text=excluded.alt_text,caption=excluded.caption,
+                         updated_by=excluded.updated_by,updated_at=excluded.updated_at""",
+                       (media_id,alt_text,caption,session["user_id"],utc_now()))
+        return {"ok":True,"id":media_id,"alt_text":alt_text,"caption":caption}
+
+    def safely_delete_media(db,ids):
+        # Validate ALL requested media first, then delete in one DB transaction.
+        if len(set(ids))!=len(ids):
+            user_auth.error(422,"批量删除包含重复图片，请重新选择。")
+        for media_id in ids:
+            try:uuid.UUID(media_id)
+            except ValueError:user_auth.error(422,"媒体 ID 不合法。")
+        for media_id in ids:
+            if not db.one("SELECT id FROM atlas_cms_media WHERE id=?",(media_id,)):
+                user_auth.error(404,"有图片已不存在，请刷新列表。")
+        refs=db.all("SELECT draft_json,published_json FROM atlas_cms_entries")
+        for media_id in ids:
+            target="/api/media/"+media_id
             for row in refs:
-                for field in ("draft_json","published_json"):
-                    if target in (row[field] or ""):
-                        user_auth.error(409,"该图片仍被内容引用，请先替换并保存对应文章。")
+                if any(target in (row[field] or "") for field in ("draft_json","published_json")):
+                    user_auth.error(409,"有图片仍被草稿或公开内容引用。请先替换并发布或归档对应内容，重新检查引用后再删除。")
+        for media_id in ids:
+            db.execute("DELETE FROM atlas_cms_media_meta WHERE media_id=?",(media_id,))
             db.execute("DELETE FROM atlas_cms_media WHERE id=?",(media_id,))
+
+    @app.post("/api/admin/media/bulk-delete",include_in_schema=False)
+    def bulk_delete_media(data:MediaBulkDelete,request:Request):
+        require_admin(request,mutate=True,permission="media");ensure_cms()
+        with user_auth.db() as db:
+            safely_delete_media(db,data.ids)
+        return {"ok":True,"deleted":len(data.ids)}
+
+    @app.delete("/api/admin/media/{media_id}",include_in_schema=False)
+    def delete_media(media_id:str,request:Request):
+        require_admin(request,mutate=True,permission="media");ensure_cms()
+        with user_auth.db() as db:
+            safely_delete_media(db,[media_id])
         return {"ok":True}
 
     @app.get("/api/media/{media_id}",include_in_schema=False)
