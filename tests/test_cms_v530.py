@@ -76,6 +76,14 @@ class V530WorkspaceTests(unittest.TestCase):
         self.assertIn(".cms-v530-settings-tools",self.css)
         self.assertIn(".atlas-v530-nav",self.admin_css)
 
+    def test_first_autosave_unlocks_submit_after_busy_state(self):
+        self.assertIn("function syncBusyButtonState(button,disabled)",self.js)
+        self.assertIn("if(state.busy)button.dataset.cmsBeforeBusy=disabled?'1':'0'",self.js)
+        self.assertIn("button.disabled=state.busy?true:disabled",self.js)
+        self.assertIn("syncBusyButtonState($('[data-editor-submit]'),false)",self.js)
+        self.assertIn("button.disabled=button.dataset.cmsBeforeBusy==='1'",self.js)
+        self.assertIn("site editor autosaves and reviewer transitions work",self.browser)
+
     def test_browser_regression_includes_navigation_roles_and_no_db_writes(self):
         for term in ("V53.0 unified review inbox opens all four types",
                      "V53.0 media and settings are separate role-gated entries",
