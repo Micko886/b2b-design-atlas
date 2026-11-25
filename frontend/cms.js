@@ -73,6 +73,7 @@ function markDraftDirty(){
  clearTimeout(autosaveTimer);
  if(!autosavePaused)autosaveTimer=setTimeout(()=>persistDraft(true),3200);
  try{keepRecovery(takeFields())}catch(_){}
+ if(state.selected?.kind==='article')refreshArticleHealth();
 }
 function syncBusyButtonState(button,disabled){
  if(!button)return;
@@ -729,6 +730,7 @@ const history=item.history||[];
   +'<div data-editor-pane="history" hidden>'+timeline+'</div>';
  root.hidden=false;
  setStudioMode(true);
+ if(item.kind==='article')refreshArticleHealth();
  setEditorTab(state.editorTab||'content');
  syncScheduleEditor(item);
  $('#cms-empty').hidden=true;
@@ -743,26 +745,15 @@ async function selectItem(slug,push=false){
    const result=mode==='admin'?await api('/api/admin/content/'+state.kind+'/'+slug):
     {kind:state.kind,slug,source:'repository',status:'public',revision:0,payload:state.records[slug],history:[]};
    state.selected=result;
+   resetArticleStructureHistory();
    if(result.kind==='module')await loadSiteChoices();
    state.editorTab=result.status==='review'&&can('review')?'review':'content';
    renderForm(result);drawItems();if(push)history.pushState({},'',editorUrl(slug));await offerDraftRecovery(result);
  }catch(e){setStudioMode(false);$('#cms-empty').innerHTML='<div class="cms-error">'+h(e.message)+'</div>';message(e.message,false)}
 }
-function takeFields(){
- const base=JSON.parse(JSON.stringify(state.selected.payload)),controls=$$('#cms-edit-form [data-field]');
- for(const el of controls){
-   const name=el.dataset.field,type=el.dataset.type,value=el.value;
-   if(type==='json'){
-     try{base[name]=JSON.parse(value)}catch{throw Error('「'+name+'」需要填写有效 JSON。')}
-   }else if(type==='lines')base[name]=value.split('\n').map(x=>x.trim()).filter(Boolean);
-   else if(type==='bool')base[name]=value==='true';
-   else if(type==='number')base[name]=value===''?null:Number(value);
-   else base[name]=value.trim();
- }
- if(state.selected.kind==='article'){
-   base.tags=linesFrom('#v51-tags');
-   base.takeaways=linesFrom('#v51-takeaways');
-   base.sections=Array.from(document.querySelectorAll('[data-v51-section]')).map(section=>{
+// One serializer for save, undo/redo and live image SEO inspection.
+function readArticleSections(){
+ return Array.from(document.querySelectorAll('[data-v51-section]')).map(section=>{
      const title=section.querySelector('[data-v51-title]').value.trim();
      const mode=section.querySelector('[data-blocks-mode]');
      if(mode&&!mode.hidden){
@@ -784,7 +775,23 @@ function takeFields(){
        image:section.querySelector('[data-v513-image]').value.trim(),
        image_caption:section.querySelector('[data-v513-caption]').value.trim()
      };
-   });
+   })
+}
+function takeFields(){
+ const base=JSON.parse(JSON.stringify(state.selected.payload)),controls=$$('#cms-edit-form [data-field]');
+ for(const el of controls){
+   const name=el.dataset.field,type=el.dataset.type,value=el.value;
+   if(type==='json'){
+     try{base[name]=JSON.parse(value)}catch{throw Error('「'+name+'」需要填写有效 JSON。')}
+   }else if(type==='lines')base[name]=value.split('\n').map(x=>x.trim()).filter(Boolean);
+   else if(type==='bool')base[name]=value==='true';
+   else if(type==='number')base[name]=value===''?null:Number(value);
+   else base[name]=value.trim();
+ }
+ if(state.selected.kind==='article'){
+   base.tags=linesFrom('#v51-tags');
+   base.takeaways=linesFrom('#v51-takeaways');
+   base.sections=readArticleSections();
    if(!base.sections.length)throw Error('请至少保留一个文章章节。');
  }
  return base;
@@ -1018,6 +1025,7 @@ function installBlockDrag(){
    const el=e.target.closest('[data-cms-block]');
    if(!draggedCmsBlock||!el||el===draggedCmsBlock||el.parentElement!==draggedCmsBlock.parentElement)return;
    e.preventDefault();
+   if(!captureArticleStructure())return;
    const rect=el.getBoundingClientRect();
    if(e.clientY<rect.top+rect.height/2)el.before(draggedCmsBlock);
    else el.after(draggedCmsBlock);
@@ -1028,17 +1036,126 @@ function installBlockDrag(){
    draggedCmsBlock=null
  });
 }
+// V53.1 · Undo/redo structural changes without overriding the browser's native text undo.
+const articleStructureHistory={key:'',undo:[],redo:[]};
+function resetArticleStructureHistory(){
+ articleStructureHistory.key=state.selected?.kind+':'+state.selected?.slug;
+ articleStructureHistory.undo=[];articleStructureHistory.redo=[];
+ syncArticleStructureButtons();
+}
+function ensureArticleStructureHistory(){
+ const key=state.selected?.kind+':'+state.selected?.slug;
+ if(articleStructureHistory.key!==key)resetArticleStructureHistory();
+}
+function syncArticleStructureButtons(){
+ const undo=$('[data-article-undo]'),redo=$('[data-article-redo]');
+ if(undo)undo.disabled=!can('edit')||!articleStructureHistory.undo.length||state.busy;
+ if(redo)redo.disabled=!can('edit')||!articleStructureHistory.redo.length||state.busy;
+}
+function captureArticleStructure(){
+ if(!can('edit')||state.selected?.kind!=='article'||state.busy)return false;
+ ensureArticleStructureHistory();
+ const snapshot=JSON.stringify(readArticleSections());
+ if(articleStructureHistory.undo.at(-1)!==snapshot){
+  articleStructureHistory.undo.push(snapshot);
+  if(articleStructureHistory.undo.length>20)articleStructureHistory.undo.shift();
+ }
+ articleStructureHistory.redo.length=0;
+ syncArticleStructureButtons();
+ return true;
+}
+function restoreArticleStructure(direction){
+ if(!can('edit')||state.selected?.kind!=='article'||state.busy)return;
+ ensureArticleStructureHistory();
+ const history=articleStructureHistory,source=direction==='undo'?history.undo:history.redo,
+  target=direction==='undo'?history.redo:history.undo;
+ if(!source.length)return;
+ const previous=source.pop(),current=JSON.stringify(readArticleSections());
+ target.push(current);if(target.length>20)target.shift();
+ const sections=JSON.parse(previous);
+ if(!Array.isArray(sections)||!sections.length)return;
+ $('#cms-v51-sections').innerHTML=sections.map((section,i)=>articleSection(section,i,true)).join('');
+ reindexSections();markDraftDirty();refreshArticlePreview();refreshArticleHealth();
+ syncArticleStructureButtons();
+ message(direction==='undo'?'已撤销上一次结构修改':'已重做结构修改');
+}
+// Prepublish photo audit, computed locally from unsaved article blocks.
+function refreshArticleHealth(){
+ if(state.selected?.kind!=='article')return;
+ const status=$('#cms-article-health-status'),details=$('#cms-article-health-list'),stats=$('#cms-article-stat');
+ if(!status||!details||!stats)return;
+ const sections=readArticleSections(),issues=[];
+ let blocks=0,images=0,characters=0;
+ sections.forEach((section,chapter)=>{
+  characters+=String(section.title||'').length;
+  if(Array.isArray(section.blocks)){
+   section.blocks.forEach((block,index)=>{
+    blocks++;
+    characters+=String(block.text||(block.items||[]).join(' ')||'').length;
+    if(block.type==='image'){
+     images++;
+     const node=[...$$('[data-cms-block][data-block-type="image"]')].find(el=>
+        el.closest('[data-v51-section]')===$$('[data-v51-section]')[chapter] &&
+        [...el.parentElement.children].filter(x=>x.matches('[data-cms-block][data-block-type="image"]')).indexOf(el)===
+         section.blocks.slice(0,index+1).filter(x=>x.type==='image').length-1);
+     // Stable editor order: chapter and block index (not a database row number).
+     if(!String(block.src||'').trim())issues.push({label:'章节 '+(chapter+1)+'：图片块尚未选择图片',chapter,index,action:'image'});
+     else if(!String(block.alt||'').trim())issues.push({label:'章节 '+(chapter+1)+'：图片缺少替代文字 ALT',chapter,index,action:'alt'});
+     if(block.src&&!String(block.caption||'').trim())issues.push({label:'章节 '+(chapter+1)+'：建议补充图注或来源',chapter,index,action:'caption',advisory:true});
+     void node;
+    }
+   });
+  }else{
+   blocks+=(section.paragraphs||[]).length+(section.bullets?.length?1:0)+(section.callout?1:0);
+   characters+=(section.paragraphs||[]).join('').length;
+   if(section.image){images++;issues.push({label:'章节 '+(chapter+1)+'：旧版配图没有独立 ALT 字段',chapter,action:'convert'})}
+  }
+ });
+ const cover=$('#field-cover_image')?.value||'';
+ if(cover)images++;
+ stats.textContent=sections.length+' 个章节 · '+blocks+' 个正文块 · '+characters+' 字符';
+ const required=issues.filter(x=>!x.advisory).length;
+ status.textContent=images+' 张图片 · '+(required?required+' 项需要处理':'替代文字已检查')+(issues.some(x=>x.advisory)?' · 有图注建议':'');
+ status.dataset.health=required?'warning':'ok';
+ details.innerHTML=issues.length?issues.map(item=>
+  '<button type="button" class="cms-v531-health-row" data-article-health-chapter="'+item.chapter+'"'
+  +(item.index!==undefined?' data-article-health-block="'+item.index+'"':'')
+  +' data-article-health-action="'+item.action+'"><span>'+h(item.label)+'</span><strong>'
+  +(item.action==='convert'?'转换章节':item.action==='image'?'选择图片':'定位编辑')+' ↗</strong></button>').join('')
+  :'<p class="cms-v531-health-clear">图片检查通过。这里检查文章配图的缺失项，不会自动发布内容。</p>';
+}
+function focusArticleHealth(button){
+ const chapter=$$('#cms-v51-sections [data-v51-section]')[Number(button.dataset.articleHealthChapter)];
+ if(!chapter)return;
+ if(button.dataset.articleHealthAction==='convert'){
+  if(!captureArticleStructure())return;
+  convertLegacyChapter(chapter);
+  const field=chapter.querySelector('[data-block-alt]');if(field)field.focus();
+  refreshArticleHealth();syncArticleStructureButtons();return;
+ }
+ const block=$$('[data-cms-block]',chapter)[Number(button.dataset.articleHealthBlock)];
+ if(!block)return;
+ const action=button.dataset.articleHealthAction;
+ if(action==='image'){const pick=block.querySelector('[data-block-pick-image]');if(pick)pick.click();return}
+ const input=block.querySelector(action==='alt'?'[data-block-alt]':'[data-block-caption]');
+ if(input){input.focus();input.scrollIntoView({block:'center',behavior:'smooth'})}
+}
+
 function articleStudio(v,editable){
  const disabled=editable?'':' disabled';
  const categorySuggestions=(state.taxonomy.article||[]).map(x=>'<option value="'+h(x)+'"></option>').join('');
  return '<section class="cms-v51-studio"><div class="cms-v51-studio-head"><div><span class="section-eyebrow">文章正文</span><h3>逐章编辑正文</h3><p>可以添加章节、段落和图片；预览不会公开尚未发布的内容。</p></div></div>'
+ +'<div class="cms-v531-editor-bar"><div><strong>文章结构</strong><span id="cms-article-stat">正在计算章节和字数…</span></div>'
+ +'<div class="cms-v531-undo-actions">'+(editable?'<button type="button" data-article-undo disabled title="撤销章节或内容块的增删、移动、转换">↶ 撤销结构修改</button><button type="button" data-article-redo disabled title="重做上一次结构修改">↷ 重做</button>':'')+'</div></div>'
+ +'<p class="cms-v531-undo-note">结构操作最多保留 20 步撤销记录；正文输入继续使用浏览器的 Ctrl/⌘+Z。撤销后会自动保存为草稿。</p>'
  +'<div class="cms-v51-taxonomy"><label>文章标签 <small>每行一个关键词</small><textarea id="v51-tags" rows="3"'+disabled+'>'+h((v.tags||[]).join('\n'))+'</textarea></label>'
  +'<label>核心观点 <small>每行一条摘要</small><textarea id="v51-takeaways" rows="3"'+disabled+'>'+h((v.takeaways||[]).join('\n'))+'</textarea></label></div>'
  +'<div class="cms-v512-suggestions"><span>常用标签</span>'+(state.tagSuggestions.length?state.tagSuggestions.slice(0,12).map(tag=>'<button type="button" data-v512-tag="'+h(tag)+'"'+(editable?'':' disabled')+'>'+h(tag)+'</button>').join(''):'<small>暂无常用标签</small>')+'</div>'
  +'<datalist id="v51-categories">'+categorySuggestions+'</datalist>'
  +'<div class="cms-v51-chapter-head"><strong>文章章节</strong>'+(editable?'<button type="button" data-v51-add>＋ 添加章节</button>':'')+'</div>'
  +'<div id="cms-v51-sections">'+(v.sections||[]).map((s,i)=>articleSection(s,i,editable)).join('')+'</div>'
- +'<p class="cms-v51-guidance">每章可以包含正文、要点与高亮提示。上传媒体后可设为文章封面；图片发布前会检查是否存在。</p>'
+ +'<div class="cms-v531-media-health"><div class="cms-v531-health-head"><div><strong>图片 SEO 自检</strong><p>检查缺图、替代文字 ALT 和图注。点击问题会定位到相应内容块。</p></div><span id="cms-article-health-status" role="status">等待检查…</span></div><div id="cms-article-health-list"></div></div>'
+ +'<p class="cms-v51-guidance">每章可以包含正文、要点与高亮提示。上传媒体后可设为文章封面；完整 SEO 检查可在顶部「SEO 与质量」运行。</p>'
  +'<div class="cms-v512-preview-actions"><button type="button" data-v512-preview aria-expanded="false">预览当前文章（无需保存）</button><small>仅在本页渲染，不会公开未保存的内容</small></div>'
  +'<section id="cms-v512-preview" class="cms-v512-preview" hidden><div class="cms-v512-preview-heading"><strong>文章排版预览</strong><span>PRIVATE · UNSAVED</span></div>'
  +'<p id="cms-v512-preview-error" hidden role="alert"></p><div id="cms-v512-preview-content"></div></section></section>';
@@ -1810,20 +1927,21 @@ function boot(){
    if(e.target.closest('[data-review-diff]')){await openReviewDiff();return}
     if(e.target.closest('[data-v518-close-diff]')){$('#cms-diff-dialog').close();return}
     const convert=e.target.closest('[data-block-convert]');
-   if(convert){convertLegacyChapter(convert.closest('[data-v51-section]'));return}
+   if(convert){if(captureArticleStructure())convertLegacyChapter(convert.closest('[data-v51-section]'));return}
    const addBlock=e.target.closest('[data-block-add]');
-   if(addBlock){const mode=addBlock.closest('[data-blocks-mode]'),list=mode.querySelector('[data-block-list]');
+   if(addBlock){if(!captureArticleStructure())return;const mode=addBlock.closest('[data-blocks-mode]'),list=mode.querySelector('[data-block-list]');
      const type=mode.querySelector('[data-block-add-type]').value;
      list.insertAdjacentHTML('beforeend',articleBlock({type},list.children.length,true));
      reindexBlocks(list);markDraftDirty();refreshArticlePreview();return}
    const removeBlock=e.target.closest('[data-block-remove]');
    if(removeBlock){const el=removeBlock.closest('[data-cms-block]'),list=el.parentElement;
      if(list.children.length<=1){message('每章至少保留一个内容块',false);return}
+     if(!captureArticleStructure())return;
      el.remove();reindexBlocks(list);markDraftDirty();refreshArticlePreview();return}
    const moveBlock=e.target.closest('[data-block-move]');
    if(moveBlock){const el=moveBlock.closest('[data-cms-block]'),n=Number(moveBlock.dataset.blockMove);
      const near=n<0?el.previousElementSibling:el.nextElementSibling;
-     if(near){if(n<0)near.before(el);else near.after(el);
+     if(near&&captureArticleStructure()){if(n<0)near.before(el);else near.after(el);
        reindexBlocks(el.parentElement);markDraftDirty();refreshArticlePreview()}
      return}
    const blockFormat=e.target.closest('[data-block-format]');
@@ -1833,9 +1951,12 @@ function boot(){
    if(e.target.closest('[data-seo-check]')){await runSeoAudit();return}
     const formatter=e.target.closest('[data-v514-format]');if(formatter){applyArticleFormat(formatter);return}
    if(e.target.closest('[data-v512-preview]')){toggleArticlePreview();return}
-   if(e.target.closest('[data-v51-add]')){const root=$('#cms-v51-sections');root.insertAdjacentHTML('beforeend',articleSection({blocks:[{type:'paragraph',text:''}]},root.children.length,true));reindexSections();markDraftDirty();refreshArticlePreview();return}
-   if(e.target.closest('[data-v51-remove]')){const blocks=document.querySelectorAll('#cms-v51-sections [data-v51-section]');if(blocks.length<=1){message('至少保留一个章节',false);return}e.target.closest('[data-v51-section]').remove();reindexSections();markDraftDirty();return}
-   const move=e.target.closest('[data-v51-move]');if(move){const block=move.closest('[data-v51-section]'),target=Number(move.dataset.v51Move)<0?block.previousElementSibling:block.nextElementSibling;if(target){if(Number(move.dataset.v51Move)<0)target.before(block);else target.after(block);reindexSections();markDraftDirty()}return}
+   if(e.target.closest('[data-article-undo]')){restoreArticleStructure('undo');return}
+   if(e.target.closest('[data-article-redo]')){restoreArticleStructure('redo');return}
+   const health=e.target.closest('[data-article-health-action]');if(health){focusArticleHealth(health);return}
+   if(e.target.closest('[data-v51-add]')){if(!captureArticleStructure())return;const root=$('#cms-v51-sections');root.insertAdjacentHTML('beforeend',articleSection({blocks:[{type:'paragraph',text:''}]},root.children.length,true));reindexSections();markDraftDirty();refreshArticlePreview();return}
+   if(e.target.closest('[data-v51-remove]')){const blocks=document.querySelectorAll('#cms-v51-sections [data-v51-section]');if(blocks.length<=1){message('至少保留一个章节',false);return}if(!captureArticleStructure())return;e.target.closest('[data-v51-section]').remove();reindexSections();markDraftDirty();return}
+   const move=e.target.closest('[data-v51-move]');if(move){const block=move.closest('[data-v51-section]'),target=Number(move.dataset.v51Move)<0?block.previousElementSibling:block.nextElementSibling;if(target&&captureArticleStructure()){if(Number(move.dataset.v51Move)<0)target.before(block);else target.after(block);reindexSections();markDraftDirty()}return}
    const useInline=e.target.closest('[data-v513-use-inline]');
    if(useInline&&state.mediaTarget){
      const input=state.mediaTarget.querySelector('[data-block-image],[data-v513-image]');
