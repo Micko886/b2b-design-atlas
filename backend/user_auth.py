@@ -115,6 +115,24 @@ def ensure_ready():
         try:
             with db() as conn:
                 for sql in SCHEMA:conn.execute(sql)
+                # One-time owner provisioning. Credentials come only from
+                # private runtime environment variables, never source control.
+                bootstrap_id=os.getenv("ATLAS_BOOTSTRAP_ADMIN_ID","").strip().lower()
+                bootstrap_email=os.getenv("ATLAS_BOOTSTRAP_ADMIN_EMAIL","").strip().casefold()
+                bootstrap_password=os.getenv("ATLAS_BOOTSTRAP_ADMIN_PASSWORD","")
+                if bootstrap_id and bootstrap_email and bootstrap_password:
+                    try:uuid.UUID(bootstrap_id)
+                    except ValueError:raise RuntimeError("Invalid bootstrap administrator ID")
+                    if not EMAIL.fullmatch(bootstrap_email) or len(bootstrap_password)<24:
+                        raise RuntimeError("Invalid bootstrap administrator credentials")
+                    row=conn.one("SELECT id FROM atlas_users WHERE id=? OR email=?",
+                                 (bootstrap_id,bootstrap_email))
+                    if row and row["id"]!=bootstrap_id:
+                        raise RuntimeError("Bootstrap administrator address already belongs to another account")
+                    if not row:
+                        stamp=now()
+                        conn.execute("INSERT INTO atlas_users(id,email,display_name,password_hash,created_at,updated_at) VALUES(?,?,?,?,?,?)",
+                                     (bootstrap_id,bootstrap_email,"Atlas 管理员",hash_password(bootstrap_password),stamp,stamp))
             READY=True
         except HTTPException:raise
         except Exception:error(503,"账号数据库暂时不可用。")
