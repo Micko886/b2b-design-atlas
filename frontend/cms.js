@@ -955,9 +955,105 @@ async function cancelSchedule(){
  }catch(e){message(e.message,false)}
  finally{btnDisable(false)}
 }
+// V51.18 · Month/week editorial calendar with accessible move controls.
+let calendarCursor=new Date(),calendarView='month';
+function calendarDateKey(d){
+ const pad=n=>String(n).padStart(2,'0');
+ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+}
+function calendarVisibleRows(){
+ const status=$('#cms-calendar-status')?.value||'all';
+ return state.scheduleItems.filter(item=>status==='all'||item.status===status);
+}
+function calendarStart(){
+ const d=calendarView==='month'
+   ?new Date(calendarCursor.getFullYear(),calendarCursor.getMonth(),1)
+   :new Date(calendarCursor.getFullYear(),calendarCursor.getMonth(),calendarCursor.getDate());
+ d.setDate(d.getDate()-(d.getDay()+6)%7);
+ return d;
+}
+function paintCalendar(){
+ const root=$('#cms-calendar-grid');if(!root)return;
+ const start=calendarStart(),days=calendarView==='month'?42:7;
+ const today=calendarDateKey(new Date()),dateRows=new Map();
+ for(const item of calendarVisibleRows()){
+   const date=new Date(item.publish_at);if(!Number.isFinite(date.getTime()))continue;
+   const key=calendarDateKey(date);
+   if(!dateRows.has(key))dateRows.set(key,[]);
+   dateRows.get(key).push(item)
+ }
+ $('#cms-calendar-label').textContent=calendarView==='month'
+   ?calendarCursor.getFullYear()+'年 '+(calendarCursor.getMonth()+1)+'月'
+   :calendarDateKey(start)+' – '+calendarDateKey(new Date(start.getFullYear(),start.getMonth(),start.getDate()+6));
+ $('[data-cal-view]').forEach(btn=>btn.setAttribute('aria-pressed',String(btn.dataset.calView===calendarView)));
+ root.dataset.calendarView=calendarView;
+ const statusLabels={pending:'待发布',published:'已发布',failed:'发布失败',stale:'版本失效',cancelled:'已取消'};
+ root.innerHTML=Array.from({length:days},(_,i)=>{
+   const date=new Date(start.getFullYear(),start.getMonth(),start.getDate()+i);
+   const key=calendarDateKey(date),items=dateRows.get(key)||[];
+   const outside=calendarView==='month'&&date.getMonth()!==calendarCursor.getMonth();
+   const entries=items.slice(0,4).map(item=>{
+     const draggable=can('review')&&item.status==='pending'&&item.current_revision===item.revision;
+     return '<button type="button" class="cms-calendar-event" data-calendar-status="'+h(item.status)+'"'
+       +' data-v514-schedule-open="'+h(item.kind)+':'+h(item.slug)+'"'
+       +(draggable?' draggable="true" data-cal-drag="'+h(item.kind)+':'+h(item.slug)+'"':'')
+       +' title="'+h(item.slug)+' · '+h(statusLabels[item.status]||item.status)+'">'
+       +'<span>'+h(item.slug)+'</span><small>'+h(new Date(item.publish_at).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}))+'</small></button>'
+   }).join('');
+   return '<div role="gridcell" class="cms-calendar-day'+(outside?' outside':'')+(key===today?' today':'')+'" data-cal-date="'+key+'">'
+     +'<div class="cms-calendar-day-head"><time datetime="'+key+'">'+date.getDate()+'</time>'
+     +(items.length?'<span>'+items.length+' 项</span>':'')+'</div><div class="cms-calendar-events">'
+     +entries+(items.length>4?'<small>另有 '+(items.length-4)+' 项，查看明细</small>':'')
+     +'</div></div>';
+ }).join('');
+}
+function shiftCalendar(delta){
+ if(calendarView==='month')calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()+delta,1);
+ else calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth(),calendarCursor.getDate()+delta*7);
+ paintCalendar();
+}
+function installCalendarDrag(){
+ const root=$('#cms-calendar-grid');let current=null;
+ root.addEventListener('dragstart',e=>{
+   const source=e.target.closest('[data-cal-drag]');
+   if(!source||!can('review'))return;
+   current=source.dataset.calDrag;
+   if(e.dataTransfer){e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',current)}
+ });
+ root.addEventListener('dragover',e=>{
+   const day=e.target.closest('[data-cal-date]');
+   if(!day||!current||!can('review'))return;
+   e.preventDefault();if(e.dataTransfer)e.dataTransfer.dropEffect='move';
+ });
+ root.addEventListener('drop',async e=>{
+   const day=e.target.closest('[data-cal-date]'),name=current;current=null;
+   if(!day||!name||!can('review'))return;
+   e.preventDefault();
+   const [kind,slug]=name.split(':');
+   const item=state.scheduleItems.find(x=>x.kind===kind&&x.slug===slug);
+   if(!item||item.status!=='pending'||item.current_revision!==item.revision){
+      message('排期版本已更新，请刷新后再调整。',false);return
+   }
+   const old=new Date(item.publish_at);
+   const local=calendarDateKey(old),newDay=day.dataset.calDate;
+   if(local===newDay)return;
+   const hour=String(old.getHours()).padStart(2,'0'),minute=String(old.getMinutes()).padStart(2,'0');
+   const adjusted=new Date(newDay+'T'+hour+':'+minute+':00');
+   if(!Number.isFinite(adjusted.getTime())||adjusted.getTime()<Date.now()+65000){
+     message('请选择至少 1 分钟后的日期。',false);return
+   }
+   if(!confirm('将「'+slug+'」的发布日期调整为 '+newDay+' '+hour+':'+minute+'？'))return;
+   try{
+     await api('/api/admin/content/'+kind+'/'+slug+'/schedule',{
+       method:'POST',body:JSON.stringify({expected_revision:item.revision,publish_at:adjusted.toISOString()})});
+     await refreshSchedules();message('发布日期已调整');
+   }catch(err){message(err.message,false)}
+ });
+ root.addEventListener('dragend',()=>{current=null});
+}
 function paintScheduleQueue(){
  const box=$('#cms-schedule-items');
- const rows=state.scheduleItems||[];
+ const rows=calendarVisibleRows();
  $('#cms-schedule-count').textContent=rows.length+' 条排期记录';
  const labels={pending:'等待发布',published:'按计划发布',cancelled:'已取消',stale:'版本已失效',failed:'校验失败'};
  box.innerHTML=rows.length?rows.map(item=>
@@ -974,6 +1070,7 @@ async function refreshSchedules(){
    const res=await api('/api/admin/schedules');
    state.scheduleItems=res.items||[];
    paintScheduleQueue();
+   paintCalendar();
    $('#cms-schedule-note').textContent=res.execution_note||'到期检查随公开目录访问执行。';
  }catch(e){$('#cms-schedule-items').innerHTML='<div class="cms-error">'+h(e.message)+'</div>'}
 }
@@ -1144,6 +1241,13 @@ function boot(){
  $('#cms-review-shortcut').addEventListener('click',()=>{$('#cms-status').value='review';state.status='review';drawItems();$('#cms-items').scrollIntoView({block:'nearest',behavior:'smooth'});message('已筛选当前内容类型的待审核记录')});
  $('#cms-schedules-open').addEventListener('click',openScheduleQueue);
  $('#cms-schedule-refresh').addEventListener('click',refreshSchedules);
+ $('#cms-calendar-status').addEventListener('change',()=>{paintCalendar();paintScheduleQueue()});
+ $('#cms-calendar-today').addEventListener('click',()=>{calendarCursor=new Date();paintCalendar()});
+ $('[data-cal-view]').forEach(button=>button.addEventListener('click',()=>{
+   calendarView=button.dataset.calView;paintCalendar()
+ }));
+ $('[data-cal-shift]').forEach(button=>button.addEventListener('click',()=>shiftCalendar(Number(button.dataset.calShift))));
+ installCalendarDrag();
  $('#cms-team-open').addEventListener('click',openTeam);
  $('#cms-team-search').addEventListener('input',paintTeam);
  $('#cms-team-form').addEventListener('submit',grantTeamRole);
