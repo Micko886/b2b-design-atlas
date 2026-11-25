@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#f5f7fb">
-<title>内容工作台 · B2B Atlas Control Room</title>
+<title>内容管理 · B2B Atlas Control Room</title>
 <link rel="stylesheet" href="/assets/admin.css?v=5210">
 <link rel="stylesheet" href="/assets/cms.css?v=5280">
 <script defer src="/assets/cms.js?v=5280"></script>
@@ -35,23 +35,16 @@
  <aside class="sidebar" id="cms-sidebar">
   <div class="sidebar-brand"><div class="brand-symbol" aria-hidden="true"><span></span><span></span><span></span><span></span></div><div class="brand-wordmark"><strong>B2B Atlas</strong><small>CONTROL ROOM</small></div><span class="brand-version">V52.8</span></div>
   <div class="workspace-chip"><span class="workspace-chip-icon">A</span><span><strong>Atlas Workspace</strong><small>Content Studio</small></span></div>
-  <nav class="side-nav atlas-v521-nav" aria-label="统一管理导航">
-   <span class="nav-group-label">主要工作区 <span>WORKSPACE</span></span>
-   <a href="/admin" class="side-link" data-workspace-link="overview"><svg class="icon"><use href="#i-grid"></use></svg><span>运营概览</span></a>
+  <nav class="side-nav atlas-v521-nav atlas-v530-nav" aria-label="后台主导航">
+   <span class="nav-group-label">工作区 <span>WORKSPACE</span></span>
+   <a href="/admin" class="side-link" data-workspace-link="overview" data-owner-only hidden><svg class="icon"><use href="#i-grid"></use></svg><span>工作台</span></a>
    <a href="/admin/content?kind=site" class="side-link active" data-workspace-link="content"><svg class="icon"><use href="#i-layers"></use></svg><span>内容管理</span></a>
-   <button type="button" id="cms-review-shortcut" class="side-link atlas-side-button" data-workspace-link="review" hidden><svg class="icon"><use href="#i-check"></use></svg><span>审核队列</span></button>
-   <button type="button" id="cms-schedules-open" class="side-link atlas-side-button" data-workspace-link="schedule" hidden><svg class="icon"><use href="#i-clock"></use></svg><span>发布日历</span></button>
-   <a href="/admin#traffic" class="side-link" data-owner-only hidden><svg class="icon"><use href="#i-grid"></use></svg><span>数据分析</span></a>
-   <span class="nav-group-label nav-group-later">管理工具 <span>SETTINGS</span></span>
-   <details class="atlas-v521-settings" id="cms-tools-menu" hidden><summary class="side-link"><svg class="icon"><use href="#i-lock"></use></svg><span>资源与权限设置</span><span class="atlas-settings-chevron">⌄</span></summary>
-    <div class="atlas-v521-tools">
-     <button id="cms-media-open" type="button" class="side-link atlas-side-button" hidden>媒体资源库</button>
-     <button id="cms-categories-open" type="button" class="side-link atlas-side-button" hidden>文章分类</button>
-     <button id="cms-tags-open" type="button" class="side-link atlas-side-button" hidden>标签管理</button>
-     <button id="cms-team-open" type="button" class="side-link atlas-side-button" hidden>团队权限</button>
-     <button id="cms-export" type="button" class="side-link atlas-side-button" hidden>导出内容</button>
-    </div>
-   </details>
+   <button type="button" id="cms-media-open" class="side-link atlas-side-button" data-workspace-link="media" hidden><svg class="icon"><use href="#i-grid"></use></svg><span>媒体资源</span></button>
+   <button type="button" id="cms-review-shortcut" class="side-link atlas-side-button" data-workspace-link="review" hidden><svg class="icon"><use href="#i-check"></use></svg><span>审核发布</span><span class="cms-v530-count" id="cms-review-total" hidden></span></button>
+   <button type="button" id="cms-schedules-open" class="side-link atlas-side-button" data-workspace-link="operations" hidden><svg class="icon"><use href="#i-clock"></use></svg><span>运营中心</span></button>
+   <button type="button" id="cms-settings-open" class="side-link atlas-side-button" data-workspace-link="settings" hidden><svg class="icon"><use href="#i-lock"></use></svg><span>系统设置</span></button>
+   <span class="nav-group-label nav-group-later">常用入口 <span>QUICK LINKS</span></span>
+   <a href="/admin#traffic" class="side-link" data-owner-only hidden><svg class="icon"><use href="#i-grid"></use></svg><span>运营数据分析</span></a>
    <a href="/" class="side-link atlas-v521-front" target="_blank" rel="noopener"><svg class="icon"><use href="#i-arrow-up-right"></use></svg><span>查看前台</span></a>
   </nav>
   <div class="sidebar-bottom atlas-v521-sidebar-bottom"><div class="sidebar-account"><div class="account-avatar">A</div><div><strong>Atlas Studio</strong><small id="cms-role">正在验证访问权限</small></div></div><p class="atlas-v521-footnote">编辑与发布均受账号权限保护</p></div>
@@ -99,6 +92,23 @@
   </main>
  </div>
 </div>
+<dialog id="cms-review-dialog" class="cms-dialog cms-v530-dialog" aria-label="四类内容统一审核队列">
+ <div class="cms-dialog-head"><div><span class="section-eyebrow">REVIEW QUEUE</span><h2>审核发布</h2><p>汇总网站案例、页面模块、设计模式与文章的待审核稿，选中后查看修改对照再发布。</p></div><button type="button" data-v530-close="review" aria-label="关闭审核队列">×</button></div>
+ <div id="cms-review-queue-status" class="cms-v530-status" role="status">正在读取待审核内容…</div>
+ <div id="cms-review-queue" class="cms-v530-review-queue"></div>
+ <div class="cms-dialog-actions"><button type="button" id="cms-review-refresh" class="cms-btn-secondary">刷新队列</button><button type="button" class="cms-btn-primary" data-v530-close="review">完成</button></div>
+</dialog>
+<dialog id="cms-settings-dialog" class="cms-dialog cms-v530-dialog" aria-label="系统设置">
+ <div class="cms-dialog-head"><div><span class="section-eyebrow">WORKSPACE SETTINGS</span><h2>系统设置</h2><p>按账号权限显示可管理的项目。不常用的功能统一放在这里。</p></div><button type="button" data-v530-close="settings" aria-label="关闭系统设置">×</button></div>
+ <div id="cms-tools-menu" class="cms-v530-settings-tools" hidden>
+  <button id="cms-categories-open" type="button" class="cms-v530-tool" hidden><strong>文章分类</strong><span>整理文章栏目与说明</span></button>
+  <button id="cms-tags-open" type="button" class="cms-v530-tool" hidden><strong>标签管理</strong><span>维护编辑使用的标签</span></button>
+  <button id="cms-team-open" type="button" class="cms-v530-tool" hidden><strong>团队权限</strong><span>管理编辑与审核角色</span></button>
+  <button id="cms-export" type="button" class="cms-v530-tool" hidden><strong>导出内容</strong><span>生成备份与交接文件</span></button>
+ </div>
+ <p class="cms-v530-settings-foot">所有设置仍由服务器验证角色权限；这里不会向未授权账号开放管理操作。</p>
+ <div class="cms-dialog-actions"><button type="button" class="cms-btn-primary" data-v530-close="settings">完成</button></div>
+</dialog>
 <dialog id="cms-create-dialog" class="cms-dialog"><form id="cms-create-form" method="dialog"><div class="cms-dialog-head"><div><span class="section-eyebrow">NEW CONTENT</span><h2>创建一条内容</h2></div><button type="button" data-dialog-close aria-label="关闭">×</button></div><label>资源类型<select id="cms-create-kind" name="kind"><option value="site">Website · 网站</option><option value="module">Section · 页面模块</option><option value="pattern">Pattern · 设计模式</option><option value="article">Insight · 研究文章</option></select></label><label>URL 标识（英文小写）<input id="cms-create-slug" name="slug" required minlength="2" maxlength="111" pattern="[a-z0-9][a-z0-9-]*" placeholder="例如 new-industrial-website"></label><p>创建后 URL 标识不可更改。请使用简短、稳定的英文名称。</p><div class="cms-dialog-actions"><button type="button" class="cms-btn-secondary" data-dialog-close>取消</button><button type="submit" class="cms-btn-primary">创建草稿 ↗</button></div></form></dialog>
 <dialog id="cms-media-dialog" class="cms-dialog cms-v51-media-dialog"><div class="cms-dialog-head"><div><span class="section-eyebrow">ASSET LIBRARY / V51</span><h2>媒体资源库</h2><p>支持 JPG、PNG、WebP；大于 1.5MB 的图片在浏览器中自动缩放压缩，原图最大 12MB。</p></div><button type="button" data-media-close aria-label="关闭媒体资源库">×</button></div><div class="cms-v51-media-actions"><button type="button" id="cms-media-select" class="cms-btn-primary">选择图片上传</button><input type="file" id="cms-media-file" accept="image/jpeg,image/png,image/webp" multiple class="cms-upload-input" aria-label="选择要上传的图片"><span id="cms-media-status" role="status" aria-live="polite">请选择图片，单张上传最大 1.5MB（较大原图自动优化）。</span></div><button type="button" id="cms-media-drop" class="cms-v513-dropzone" aria-label="拖放文件或点击选择图片">
   <svg class="icon" aria-hidden="true"><use href="#i-download"></use></svg>
