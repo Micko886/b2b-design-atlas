@@ -2,7 +2,7 @@
 import unittest
 from unittest.mock import patch
 from fastapi import HTTPException
-from app import user_auth, admin_routes, cms_routes
+from app import user_auth, admin_routes, cms_routes, cms_access
 
 
 class FakeRequest:
@@ -17,9 +17,12 @@ class AdminGuards(unittest.TestCase):
         self.admin_session = {"user_id": self.admin_id, "csrf_token": "test-csrf"}
         self.user_session = {"user_id": self.guest_id, "csrf_token": "test-csrf"}
         self.admin_ids = patch.object(admin_routes, "ADMIN_IDS", {self.admin_id})
+        self.owner_ids = patch.object(cms_access, "OWNER_IDS", {self.admin_id})
         self.admin_ids.start()
+        self.owner_ids.start()
 
     def tearDown(self):
+        self.owner_ids.stop()
         self.admin_ids.stop()
 
     def test_no_session_rejected(self):
