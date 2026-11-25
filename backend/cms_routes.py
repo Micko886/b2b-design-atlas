@@ -802,6 +802,7 @@ def register_cms_routes(app: FastAPI):
                      data.kind,row["slug"],row["revision"]))
                 if updated.rowcount!=1:user_auth.error(409,"批量版本冲突："+row["slug"])
                 log_change(db,{**row,"revision":row["revision"]+1},action,uid)
+                invalidate_schedule(db,data.kind,row["slug"])
                 results.append({"slug":row["slug"],"revision":row["revision"]+1,"status":status})
         invalidate()
         return {"ok":True,"results":results}
