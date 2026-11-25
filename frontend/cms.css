@@ -266,3 +266,54 @@
 .cms-v513-dropzone span{font-size:10px;line-height:1.6;color:var(--muted)}
 .cms-v513-dropzone.dragging,.cms-v513-dropzone:hover,.cms-v513-dropzone:focus-visible{background:var(--blue-soft);border-color:var(--blue);outline:0}
 @media(max-width:680px){.cms-review-brief{padding:16px}.cms-review-brief-head{flex-wrap:wrap}.cms-v513-dropzone{padding:18px 12px}}
+
+/* V51.14 · Team roles, release scheduling and focused editorial review */
+.cms-v514-review-actions{margin:18px 0;padding:21px 22px;border:1px solid var(--line-strong);border-radius:14px;background:var(--surface-2)}
+.cms-v514-review-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:17px}
+.cms-v514-review-heading h3{color:var(--ink-strong);font-size:16px;letter-spacing:-.03em;margin:5px 0}
+.cms-v514-review-heading p{font-size:11px;color:var(--muted);line-height:1.7;margin:0}
+.cms-v514-review-buttons{display:flex;flex-wrap:wrap;gap:9px}
+.cms-v514-review-buttons button,.cms-v514-release-box button{border:1px solid var(--line-strong);border-radius:9px;background:var(--surface);color:var(--ink-strong);font:inherit;font-size:11px;font-weight:790;padding:10px 13px;cursor:pointer}
+.cms-v514-review-buttons button.primary,.cms-v514-release-box button[data-schedule-save]{background:var(--blue);color:#fff;border-color:var(--blue)}
+.cms-v514-review-buttons button:disabled,.cms-v514-release-box button:disabled{opacity:.5;cursor:not-allowed}
+.cms-v514-review-actions>p,.cms-v514-review-actions>small{display:block;margin:11px 0 0;color:var(--muted);font-size:11px;line-height:1.65}
+.cms-v514-release-box{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;margin-top:15px;padding:15px 0 0;border-top:1px solid var(--line)}
+.cms-v514-release-box label,.cms-v514-reason{display:grid;gap:8px;color:var(--muted-strong);font-size:11px;font-weight:700}
+.cms-v514-release-box input,.cms-v514-reason textarea{background:var(--surface);color:var(--ink);border:1px solid var(--line-strong);border-radius:9px;padding:10px 11px;font:inherit;font-size:11px;min-width:180px;outline:none}
+.cms-v514-release-box input:focus,.cms-v514-reason textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-soft)}
+.cms-v514-reason{margin-top:15px}
+.cms-v514-reason textarea{width:100%;box-sizing:border-box;resize:vertical;font-size:12px;line-height:1.6}
+.cms-v514-schedule-state{color:var(--blue)!important;font-weight:760}
+.cms-v514-schedule-error{color:#d76956!important}
+.cms-v514-dialog{width:min(940px,calc(100vw - 24px));max-width:940px;max-height:min(90vh,920px);overflow-y:auto}
+.cms-v514-dialog-tools{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:15px 0}
+.cms-v514-dialog-tools span{font-size:12px;font-weight:800;color:var(--ink-strong)}
+.cms-v514-schedule-list{display:grid;gap:9px;max-height:470px;overflow:auto;scrollbar-width:thin}
+.cms-v514-schedule-item{padding:14px 16px;display:grid;gap:9px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px}
+.cms-v514-schedule-item-top{display:flex;align-items:center;justify-content:space-between;gap:15px}
+.cms-v514-schedule-item-top strong{font-size:12px;color:var(--ink-strong);overflow:hidden;text-overflow:ellipsis}
+.cms-v514-schedule-item-top span{font-size:10px;font-weight:820;padding:5px 9px;border-radius:20px;color:var(--muted-strong);background:var(--surface);white-space:nowrap}
+.cms-v514-schedule-item-top span[data-schedule-status="pending"]{color:var(--blue);background:var(--blue-soft)}
+.cms-v514-schedule-item-top span[data-schedule-status="published"]{color:var(--teal);background:var(--teal-soft)}
+.cms-v514-schedule-item-top span[data-schedule-status="failed"]{color:#c86f60;background:rgba(215,105,86,.12)}
+.cms-v514-schedule-item p{font-size:11px;color:var(--muted-strong);margin:0}
+.cms-v514-schedule-item small{font-size:10px;color:#d1725f}
+.cms-v514-schedule-item button{justify-self:start;background:transparent;border:0;padding:4px 0;color:var(--blue);cursor:pointer;font-size:11px;font-weight:800}
+.cms-v514-note{font-size:11px;color:var(--muted);line-height:1.8;margin:12px 0 0}
+.cms-v514-team-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.9fr);gap:15px;min-height:400px;margin-top:18px}
+.cms-v514-team-browser,.cms-v514-team-form{border:1px solid var(--line);border-radius:11px;background:var(--surface-2);padding:16px;min-width:0}
+.cms-v514-team-browser>label,.cms-v514-team-form>label{display:grid;gap:7px;color:var(--muted-strong);font-weight:780;font-size:11px}
+.cms-v514-team-browser input,.cms-v514-team-form select{width:100%;box-sizing:border-box;border:1px solid var(--line-strong);border-radius:9px;padding:11px 12px;background:var(--surface);color:var(--ink-strong);font:inherit;font-size:11px;outline:none}
+.cms-v514-team-list{display:grid;gap:8px;margin-top:13px;max-height:430px;overflow-y:auto;scrollbar-width:thin}
+.cms-v514-person{width:100%;display:flex;align-items:center;justify-content:space-between;text-align:left;gap:9px;cursor:pointer;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink-strong)}
+.cms-v514-person:hover,.cms-v514-person.active{border-color:var(--blue);background:var(--blue-soft)}
+.cms-v514-person span{display:grid;gap:5px;min-width:0}
+.cms-v514-person strong{font-size:11px}
+.cms-v514-person small{font-size:9px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;max-width:235px}
+.cms-v514-person b{white-space:nowrap;font-size:9px;font-weight:830;color:var(--muted-strong)}
+.cms-v514-team-form{display:flex;flex-direction:column;align-items:stretch;gap:14px}
+.cms-v514-team-form h3{font-size:17px;color:var(--ink-strong);letter-spacing:-.03em;margin:0}
+.cms-v514-person-id{font-size:10px;line-height:1.7;color:var(--muted);overflow-wrap:anywhere;margin:0}
+.cms-v514-team-form button{font-size:11px}
+.cms-v514-team-form button:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:760px){.cms-v514-team-layout{grid-template-columns:1fr}.cms-v514-team-list{max-height:220px}.cms-v514-review-actions{padding:17px 14px}.cms-v514-release-box label{width:100%}.cms-v514-release-box input{width:100%;box-sizing:border-box}}
