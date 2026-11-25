@@ -722,6 +722,67 @@ async function openMedia(){
  $('#cms-media-dialog').showModal();
  await refreshMedia();
 }
+let cropBitmap=null,cropFilename='';
+async function openCrop(mediaId){
+ if(!can('media'))return;
+ const media=(state.mediaRecords||[]).find(x=>x.id===mediaId);
+ if(!media)return;
+ try{
+   const response=await fetch(media.url,{credentials:'same-origin',cache:'no-store'});
+   if(!response.ok)throw Error('媒体无法读取，状态 '+response.status);
+   if(typeof createImageBitmap!=='function')throw Error('浏览器不支持图片裁剪。');
+   const bitmap=await createImageBitmap(await response.blob());
+   if(cropBitmap&&cropBitmap.close)cropBitmap.close();
+   cropBitmap=bitmap;cropFilename=media.file_name.replace(/\.[^.]+$/,'')||'atlas-image';
+   $('#cms-crop-ratio').value='16:9';$('#cms-crop-x').value='50';$('#cms-crop-y').value='50';
+   $('#cms-crop-dialog').showModal();paintCrop();
+ }catch(err){message(err.message,false)}
+}
+function drawCrop(canvas,width){
+ if(!cropBitmap)return;
+ const [x,y]=$('#cms-crop-ratio').value.split(':').map(Number),aspect=x/y;
+ const iw=cropBitmap.width,ih=cropBitmap.height;
+ let sw=iw,sh=ih;
+ if(iw/ih>aspect)sw=ih*aspect;else sh=iw/aspect;
+ const sx=(iw-sw)*Number($('#cms-crop-x').value)/100;
+ const sy=(ih-sh)*Number($('#cms-crop-y').value)/100;
+ canvas.width=Math.max(1,Math.round(width));
+ canvas.height=Math.max(1,Math.round(width/aspect));
+ const ctx=canvas.getContext('2d');if(!ctx)throw Error('无法初始化裁剪画布。');
+ ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+ ctx.clearRect(0,0,canvas.width,canvas.height);
+ ctx.drawImage(cropBitmap,sx,sy,sw,sh,0,0,canvas.width,canvas.height);
+}
+function paintCrop(){
+ if(!cropBitmap)return;
+ drawCrop($('#cms-crop-canvas'),640);
+ for(const axis of ['x','y'])$('#cms-crop-'+axis+'-label').textContent=$('#cms-crop-'+axis).value+'%';
+ $('#cms-crop-notice').textContent='正在预览裁剪比例；生成的新图片不会覆盖原文件。';
+}
+function closeCrop(){
+ if($('#cms-crop-dialog').open)$('#cms-crop-dialog').close();
+ if(cropBitmap&&cropBitmap.close)cropBitmap.close();
+ cropBitmap=null;
+}
+async function saveCrop(){
+ if(!cropBitmap||!can('media'))return;
+ const button=$('#cms-crop-save');button.disabled=true;button.textContent='正在处理图片…';
+ try{
+   const canvas=document.createElement('canvas');
+   let output=null;
+   for(const width of [1600,1200,960]){
+     drawCrop(canvas,Math.min(width,cropBitmap.width));
+     const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',0.82));
+     if(blob&&blob.type==='image/webp'&&blob.size<=1500000){output=blob;break}
+   }
+   if(!output)throw Error('裁剪图片仍超过 1.5MB，请选择其他比例或使用更小的图片。');
+   const file=new File([output],cropFilename+'-crop.webp',{type:'image/webp'});
+   const uploaded=await uploadMedia([file]);
+   if(!uploaded)throw Error('裁剪版本上传失败，请重试。');
+   closeCrop();message('裁剪副本已保存，原始资源不变。');
+ }catch(err){message(err.message,false)}
+ finally{button.disabled=false;button.textContent='生成并保存裁剪图片'}
+}
 async function refreshMedia(){
  try{
    const res=await api('/api/admin/media');
@@ -1238,7 +1299,10 @@ function boot(){
      state.mediaTarget=null;$('#cms-media-dialog').close();markDraftDirty();refreshArticlePreview();
      message('图片已加入章节，保存草稿后生效');return;
    }
-   const deleteMedia=e.target.closest('[data-v51-delete-media]');
+   const crop=e.target.closest('[data-media-crop]');
+    if(crop){await openCrop(crop.dataset.mediaCrop);return}
+    if(e.target.closest('[data-crop-close]')){closeCrop();return}
+    const deleteMedia=e.target.closest('[data-v51-delete-media]');
    if(deleteMedia){
      if(!confirm('确定删除这张媒体图片？仍被草稿或文章引用的图片会受到保护。'))return;
      try{await api('/api/admin/media/'+deleteMedia.dataset.v51DeleteMedia,{method:'DELETE'});await refreshMedia();message('图片已删除')}
@@ -1291,6 +1355,10 @@ function boot(){
  $('#cms-v515-add').addEventListener('click',()=>chooseCategory());
  $('#cms-v515-form').addEventListener('submit',saveCategory);
  $('#cms-v515-delete').addEventListener('click',deleteCategory);
+ $('#cms-crop-ratio').addEventListener('change',paintCrop);
+ $('#cms-crop-x').addEventListener('input',paintCrop);
+ $('#cms-crop-y').addEventListener('input',paintCrop);
+ $('#cms-crop-save').addEventListener('click',saveCrop);
  $('#cms-media-open').addEventListener('click',()=>{state.mediaTarget=null;openMedia()});
  $('#cms-media-file').addEventListener('change',e=>{uploadMedia(e.target.files);e.target.value=''});
  const drop=$('#cms-media-drop');
