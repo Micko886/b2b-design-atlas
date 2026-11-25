@@ -11,6 +11,8 @@ mutation requires a valid session, same-site origin, and CSRF token.
 from __future__ import annotations
 
 import json
+import base64
+import hashlib
 import re
 import threading
 import time
@@ -21,7 +23,7 @@ from typing import Any, Literal
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response as BinaryResponse
 from pydantic import BaseModel, Field
 
 from app import user_auth, admin_routes, seo_routes
@@ -58,7 +60,18 @@ SCHEMA = [
         snapshot_json TEXT NOT NULL,
         UNIQUE(kind,slug,revision)
     )""",
-    """CREATE INDEX IF NOT EXISTS atlas_cms_history_item ON atlas_cms_history(kind,slug,revision)"""
+    """CREATE INDEX IF NOT EXISTS atlas_cms_history_item ON atlas_cms_history(kind,slug,revision)""",
+    """CREATE TABLE IF NOT EXISTS atlas_cms_media (
+        id TEXT PRIMARY KEY,
+        file_name TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        content_b64 TEXT NOT NULL,
+        byte_size INTEGER NOT NULL,
+        sha256 TEXT NOT NULL,
+        uploaded_by TEXT NOT NULL REFERENCES atlas_users(id),
+        created_at TEXT NOT NULL
+    )""",
+    """CREATE INDEX IF NOT EXISTS atlas_cms_media_created ON atlas_cms_media(created_at)"""
 ]
 
 def utc_now():
@@ -232,6 +245,21 @@ class Restore(BaseModel):
     expected_revision: int = Field(ge=0)
     revision: int = Field(ge=1)
 
+class MediaUpload(BaseModel):
+    name: str = Field(min_length=1,max_length=160)
+    mime: Literal["image/jpeg","image/png","image/webp"]
+    content: str = Field(min_length=16,max_length=2800000)
+
+class BulkItem(BaseModel):
+    slug: str = Field(min_length=1,max_length=111)
+    expected_revision: int = Field(ge=1)
+
+class BulkChange(BaseModel):
+    kind: KIND
+    action: Literal["submit","publish","archive"]
+    items: list[BulkItem] = Field(min_length=1,max_length=20)
+
+
 def log_change(db,row,action,uid):
     db.execute("""INSERT INTO atlas_cms_history(id,kind,slug,revision,action,actor_id,created_at,snapshot_json)
                VALUES(?,?,?,?,?,?,?,?)""",
@@ -277,6 +305,98 @@ def register_cms_routes(app: FastAPI):
                 "X-Frame-Options":"DENY"
             })
         return await call_next(request)
+
+    @app.get("/api/admin/content/taxonomy",include_in_schema=False)
+    def taxonomy(request:Request):
+        require_admin(request)
+        current=seo_routes.catalog()
+        result={}
+        for kind,collection in KIND_CATALOG.items():
+            attr="family" if kind=="pattern" else "sector" if kind=="site" else "category"
+            values={str(v.get(attr,"")).strip() for v in current[collection].values() if isinstance(v,dict)}
+            result[kind]=sorted(x for x in values if x)[:120]
+        return {"categories":result}
+
+    @app.get("/api/admin/media",include_in_schema=False)
+    def media_list(request:Request):
+        require_admin(request);ensure_cms()
+        with user_auth.db() as db:
+            rows=db.all("SELECT id,file_name,mime_type,byte_size,sha256,created_at FROM atlas_cms_media ORDER BY created_at DESC LIMIT 150")
+        return {"items":[{**r,"url":"/api/media/"+r["id"]} for r in rows]}
+
+    @app.post("/api/admin/media",include_in_schema=False,status_code=201)
+    def media_upload(data:MediaUpload,request:Request):
+        session=require_admin(request,mutate=True);ensure_cms()
+        try:
+            contents=base64.b64decode(data.content,validate=True)
+        except Exception:
+            user_auth.error(422,"图片 Base64 数据不合法。")
+        if len(contents)>1500000 or not contents:
+            user_auth.error(413,"单张图片最大 1.5MB。")
+        detected = (
+            "image/png" if contents.startswith(b"\\x89PNG\\r\\n\\x1a\\n") else
+            "image/jpeg" if contents.startswith(b"\\xff\\xd8\\xff") and contents.endswith(b"\\xff\\xd9") else
+            "image/webp" if contents[:4]==b"RIFF" and contents[8:12]==b"WEBP" else None
+        )
+        if detected!=data.mime:
+            user_auth.error(422,"图片格式与文件内容不一致。")
+        file_name=re.sub(r"[^a-zA-Z0-9_.-]","_",data.name.split("/")[-1].split(chr(92))[-1])[:160]
+        mid=str(uuid.uuid4())
+        with user_auth.db() as db:
+            db.execute("INSERT INTO atlas_cms_media(id,file_name,mime_type,content_b64,byte_size,sha256,uploaded_by,created_at) VALUES(?,?,?,?,?,?,?,?)",
+                       (mid,file_name or "image",detected,data.content,len(contents),hashlib.sha256(contents).hexdigest(),session["user_id"],utc_now()))
+        return {"id":mid,"url":"/api/media/"+mid,"name":file_name,"mime":detected,"size":len(contents)}
+
+    @app.get("/api/media/{media_id}",include_in_schema=False)
+    def serve_media(media_id:str):
+        try:uuid.UUID(media_id)
+        except ValueError:user_auth.error(404,"图片不存在。")
+        ensure_cms()
+        with user_auth.db() as db:
+            row=db.one("SELECT mime_type,content_b64 FROM atlas_cms_media WHERE id=?",(media_id,))
+        if not row:user_auth.error(404,"图片不存在。")
+        return BinaryResponse(content=base64.b64decode(row["content_b64"]),media_type=row["mime_type"],
+            headers={"Cache-Control":"public,max-age=86400","X-Content-Type-Options":"nosniff","Content-Security-Policy":"default-src 'none'; sandbox"})
+
+    @app.post("/api/admin/content/bulk",include_in_schema=False)
+    def bulk_change(data:BulkChange,request:Request):
+        session=require_admin(request,mutate=True);ensure_cms()
+        slugs=[x.slug for x in data.items]
+        if len(set(slugs))!=len(slugs) or any(not SLUG.fullmatch(s) for s in slugs):
+            user_auth.error(422,"请检查批量选择中是否有重复或非法标识。")
+        now=utc_now();uid=session["user_id"]
+        with user_auth.db() as db:
+            # All-or-nothing transaction. Check ALL revisions and transitions
+            # before mutating any record.
+            checked=[]
+            for item in data.items:
+                row=db.one("SELECT * FROM atlas_cms_entries WHERE kind=? AND slug=?",(data.kind,item.slug))
+                if not row or row["revision"]!=item.expected_revision:
+                    user_auth.error(409,"版本已变化，请刷新选择后重试："+item.slug)
+                if data.action=="submit" and row["status"]!="draft":
+                    user_auth.error(409,"仅草稿可提交审核："+item.slug)
+                if data.action=="publish" and row["status"]!="review":
+                    user_auth.error(409,"仅待审核内容可发布："+item.slug)
+                if data.action=="archive" and row["status"]!="published":
+                    user_auth.error(409,"仅已发布内容可归档："+item.slug)
+                if data.action=="publish":
+                    verify_links(data.kind,parse_json(row["draft_json"]))
+                checked.append(row)
+            results=[]
+            for row in checked:
+                action=data.action;status={"submit":"review","publish":"published","archive":"archived"}[action]
+                published=row["draft_json"] if action=="publish" else None if action=="archive" else row["published_json"]
+                updated=db.execute("""UPDATE atlas_cms_entries
+                    SET status=?,published_json=?,published_at=?,published_by=?,revision=?,updated_by=?,updated_at=?
+                    WHERE kind=? AND slug=? AND revision=?""",
+                    (status,published,now if action=="publish" else row["published_at"],
+                     uid if action=="publish" else row["published_by"],row["revision"]+1,uid,now,
+                     data.kind,row["slug"],row["revision"]))
+                if updated.rowcount!=1:user_auth.error(409,"批量版本冲突："+row["slug"])
+                log_change(db,{**row,"revision":row["revision"]+1},action,uid)
+                results.append({"slug":row["slug"],"revision":row["revision"]+1,"status":status})
+        invalidate()
+        return {"ok":True,"results":results}
 
     @app.get("/api/admin/content", include_in_schema=False)
     def list_entries(request:Request,kind:KIND="site",q:str="",status:str=""):
