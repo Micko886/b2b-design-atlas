@@ -10,7 +10,7 @@ const kinds={site:{title:'网站内容',label:'Websites',icon:'globe',public:'/a
  module:{title:'页面模块',label:'Sections',icon:'layers',public:'/api/module-library',url:'/sections/'},
  pattern:{title:'设计模式',label:'Patterns',icon:'shapes',public:'/assets/patterns.json',url:'/patterns/'},
  article:{title:'研究文章',label:'Insights',icon:'article',public:'/assets/articles.json',url:'/insights/'}};
-const state={kind:new URLSearchParams(location.search).get('kind')||'site',items:[],records:{},selected:null,csrf:'',user:null,dirty:false,q:'',status:'',busy:false};
+const state={kind:new URLSearchParams(location.search).get('kind')||'site',items:[],records:{},selected:null,csrf:'',user:null,dirty:false,q:'',status:'',busy:false,selectedSlugs:new Set(),taxonomy:{}};
 if(!kinds[state.kind])state.kind='site';
 const fieldSpecs={
  site:[
@@ -80,13 +80,13 @@ function drawItems(){
  const items=listFiltered(),root=$('#cms-items');
  root.innerHTML=items.length?items.map(item=>{
    const img=rowImage(item);
-   return '<button type="button" class="cms-item '+(state.selected?.slug===item.slug?'active':'')+'" data-pick="'+h(item.slug)+'" aria-label="查看 '+h(item.label)+'">'
+   return '<div class="cms-v51-row">'+(mode==='admin'?'<label class="cms-v51-select" aria-label="选择 '+h(item.label)+'"><input type="checkbox" data-bulk-select="'+h(item.slug)+'" '+(state.selectedSlugs.has(item.slug)?'checked':'')+'></label>':'')+'<button type="button" class="cms-item '+(state.selected?.slug===item.slug?'active':'')+'" data-pick="'+h(item.slug)+'" aria-label="查看 '+h(item.label)+'">'
    +'<span class="cms-item-thumb">'+(img?'<img src="'+h(img)+'" loading="lazy" alt="">':icon(kinds[state.kind].icon))+'</span>'
    +'<span class="cms-item-copy"><strong>'+h(item.label)+'</strong><small>'+h(item.sector||item.slug)+'</small></span>'
-   +stateClasses(item.status)+'</button>';
+   +stateClasses(item.status)+'</button></div>';
  }).join(''):'<div class="cms-loading">没有符合条件的内容。可清除筛选或创建新内容。</div>';
  $('#cms-count').textContent=items.length+' ITEMS';
- $('#cms-browser-footer').textContent=items.length+' / '+state.items.length+' 条记录';
+ $('#cms-browser-footer').textContent=items.length+' / '+state.items.length+' 条记录';updateBulkToolbar();
 }
 async function loadKind(keep=false){
  showKind();
@@ -104,7 +104,7 @@ async function loadKind(keep=false){
    }
    items.sort((a,b)=>a.label.localeCompare(b.label,'zh'));
  }
- state.items=items;updateSummary();drawItems();
+ state.items=items;state.selectedSlugs.clear();updateSummary();drawItems();
  if(keep&&state.selected){const target=items.find(x=>x.slug===state.selected.slug);if(target)await selectItem(target.slug)}
 }
 function formField(spec,values,editable){
@@ -132,7 +132,8 @@ function renderForm(item){
  const meta='<div class="cms-editor-meta">'+stateClasses(s)+'<span>修订版本 <strong>v'+item.revision+'</strong></span><span>内容来源：'+h(item.source==='cms'?'PostgreSQL CMS':'项目内容文件')+'</span>'+(item.published_at?'<span>发布时间：'+h(item.published_at.slice(0,16))+'</span>':'')+'</div>';
  const form='<div class="cms-editor-content">'+(isPreview?'<div class="cms-readonly-banner">当前是公开设计预览。字段来自公开目录，无法在这里保存或发布。正式操作请使用管理员账户。</div>':'')+
  '<form id="cms-edit-form" class="cms-form"><div class="cms-form-group-label"><span>基础资料与内容字段</span><small>修改后先保存草稿</small></div>'
- +specs.map(spec=>formField(spec,values,editable)).join('')
+ +specs.filter(spec=>!(item.kind==='article'&&['tags','takeaways','sections'].includes(spec[0]))).map(spec=>formField(spec,values,editable)).join('')
+ +(item.kind==='article'?articleStudio(values,editable):'')
  +'<details class="cms-json-advanced"><summary>高级 · 查看完整 JSON 结构</summary><div class="cms-field" data-json="true"><label>只读数据结构</label><textarea disabled spellcheck="false">'+h(JSON.stringify(values,null,2))+'</textarea></div></details>'
  +(editable?'<div class="cms-form-actions">'
   +'<button class="primary" type="submit">'+icon('save')+' 保存草稿</button>'
@@ -170,6 +171,17 @@ function takeFields(){
    }else if(type==='bool')base[name]=value==='true';
    else if(type==='number')base[name]=value===''?0:Number(value);
    else base[name]=value.trim();
+ }
+ if(state.selected.kind==='article'){
+   base.tags=linesFrom('#v51-tags');
+   base.takeaways=linesFrom('#v51-takeaways');
+   base.sections=Array.from(document.querySelectorAll('[data-v51-section]')).map(block=>({
+     title:block.querySelector('[data-v51-title]').value.trim(),
+     paragraphs:block.querySelector('[data-v51-paragraphs]').value.split(/\\n\\s*\\n/).map(x=>x.trim()).filter(Boolean),
+     bullets:block.querySelector('[data-v51-bullets]').value.split('\\n').map(x=>x.trim()).filter(Boolean),
+     callout:block.querySelector('[data-v51-callout]').value.trim()
+   }));
+   if(!base.sections.length)throw Error('请至少保留一个文章章节。');
  }
  return base;
 }
@@ -257,7 +269,7 @@ function closeMobile(){document.body.classList.remove('sidebar-open');$('#cms-ba
 async function changeKind(kind){
  if(!kinds[kind])return;
  if(state.dirty&&!confirm('当前修改尚未保存，确定切换？'))return;
- state.kind=kind;state.selected=null;state.dirty=false;state.records={};state.q='';state.status='';
+ state.kind=kind;state.selected=null;state.dirty=false;state.records={};state.q='';state.status='';state.selectedSlugs.clear();
  $('#cms-search').value='';$('#cms-status').value='';
  $('#cms-empty').hidden=false;$('#cms-editor-body').hidden=true;
  $('#cms-empty').innerHTML='<div class="cms-empty-symbol">✳</div><span class="section-eyebrow">EDITORIAL WORKSPACE</span><h2>选择一个案例，开始研究。</h2><p>选择左侧内容后，可以在这里编辑、审阅和发布。</p>';
@@ -265,9 +277,100 @@ async function changeKind(kind){
  closeMobile();
  try{await loadKind()}catch(e){message(e.message,false);$('#cms-items').innerHTML='<div class="cms-error">'+h(e.message)+'</div>'}
 }
+// V51 · Structured editorial studio, taxonomy, media and bulk workflow.
+function linesFrom(selector){
+ const input=$(selector);return input?input.value.split('\\n').map(x=>x.trim()).filter(Boolean):[];
+}
+function articleSection(section={},index=0,editable=true){
+ const disabled=editable?'':' disabled';
+ return '<div class="cms-v51-section" data-v51-section><div class="cms-v51-section-top"><strong>章节 '+(index+1)+'</strong>'
+ +(editable?'<div><button type="button" data-v51-move="-1" aria-label="上移章节">↑</button><button type="button" data-v51-move="1" aria-label="下移章节">↓</button><button type="button" data-v51-remove aria-label="删除章节">删除</button></div>':'')+'</div>'
+ +'<label>章节标题<input data-v51-title maxlength="180" required'+disabled+' value="'+h(section.title||'')+'" placeholder="为这一节写一个明确的标题"></label>'
+ +'<label>正文段落 <small>空行分隔不同段落</small><textarea data-v51-paragraphs rows="7"'+disabled+' placeholder="每段正文直接输入，不再编写 JSON">'+h((section.paragraphs||[]).join('\\n\\n'))+'</textarea></label>'
+ +'<label>要点列表 <small>每行一个要点</small><textarea data-v51-bullets rows="3"'+disabled+' placeholder="要点 1\\n要点 2">'+h((section.bullets||[]).join('\\n'))+'</textarea></label>'
+ +'<label>重点提示<textarea data-v51-callout rows="2"'+disabled+' placeholder="可选的重点结论">'+h(section.callout||'')+'</textarea></label>'
+ +'</div>';
+}
+function articleStudio(v,editable){
+ const disabled=editable?'':' disabled';
+ const categorySuggestions=(state.taxonomy.article||[]).map(x=>'<option value="'+h(x)+'"></option>').join('');
+ return '<section class="cms-v51-studio"><div class="cms-v51-studio-head"><div><span class="section-eyebrow">VISUAL EDITOR · V51</span><h3>结构化文章编辑器</h3><p>可视化编辑正文、标签和观点，保存后仍进入原有审核流程。</p></div><span class="cms-v51-studio-badge">所见即结构</span></div>'
+ +'<div class="cms-v51-taxonomy"><label>文章标签 <small>每行一个关键词</small><textarea id="v51-tags" rows="3"'+disabled+'>'+h((v.tags||[]).join('\\n'))+'</textarea></label>'
+ +'<label>核心观点 <small>每行一条摘要</small><textarea id="v51-takeaways" rows="3"'+disabled+'>'+h((v.takeaways||[]).join('\\n'))+'</textarea></label></div>'
+ +'<datalist id="v51-categories">'+categorySuggestions+'</datalist>'
+ +'<div class="cms-v51-chapter-head"><strong>文章章节</strong>'+(editable?'<button type="button" data-v51-add>＋ 添加章节</button>':'')+'</div>'
+ +'<div id="cms-v51-sections">'+(v.sections||[]).map((s,i)=>articleSection(s,i,editable)).join('')+'</div>'
+ +'<p class="cms-v51-guidance">每章可以包含正文、要点与高亮提示。上传媒体后复制图片地址，可用于封面或素材引用。</p></section>';
+}
+function reindexSections(){
+ $('#cms-v51-sections [data-v51-section]').forEach((el,i)=>el.querySelector('.cms-v51-section-top strong').textContent='章节 '+(i+1));
+}
+function updateBulkToolbar(){
+ const bar=$('#cms-bulk-toolbar');if(!bar)return;
+ bar.hidden=mode!=='admin';
+ $('#cms-selected-count').textContent=state.selectedSlugs.size+' 项已选择';
+ const visible=listFiltered().filter(x=>x.status!=='source');
+ $('#cms-select-all').checked=visible.length>0&&visible.every(x=>state.selectedSlugs.has(x.slug));
+}
+async function runBulk(){
+ if(mode!=='admin'||state.busy)return;
+ const action=$('#cms-bulk-action').value;
+ const items=state.items.filter(x=>state.selectedSlugs.has(x.slug));
+ if(!items.length){message('请先勾选需要操作的 CMS 内容',false);return}
+ const allowed={submit:'draft',publish:'review',archive:'published'};
+ if(items.some(x=>x.status!==allowed[action]||x.revision<1)){
+   message('当前操作只能选择'+({submit:'草稿',publish:'待审核',archive:'已发布'}[action])+'内容；文件收录需先保存为草稿。',false);return;
+ }
+ if(items.length>20){message('每次最多批量操作 20 条内容',false);return}
+ if(!confirm('确定对 '+items.length+' 条内容执行「'+({submit:'提交审核',publish:'发布到公开网站',archive:'归档下线'}[action])+'」？该操作将写入版本历史。'))return;
+ btnDisable(true);
+ try{
+   const res=await api('/api/admin/content/bulk',{method:'POST',body:JSON.stringify({
+     kind:state.kind,action,items:items.map(x=>({slug:x.slug,expected_revision:x.revision}))
+   })});
+   state.dirty=false;await loadKind(false);
+   message('批量操作成功：'+res.results.length+' 条，所有记录已提交。');
+ }catch(e){message(e.message,false)}finally{btnDisable(false)}
+}
+async function openMedia(){
+ if(mode!=='admin')return;
+ $('#cms-media-dialog').showModal();
+ await refreshMedia();
+}
+async function refreshMedia(){
+ try{
+   const res=await api('/api/admin/media');
+   $('#cms-media-grid').innerHTML=res.items.length?res.items.map(item=>'<div class="cms-v51-media-item">'
+     +'<img src="'+h(item.url)+'" alt="'+h(item.file_name)+'" loading="lazy">'
+     +'<strong title="'+h(item.file_name)+'">'+h(item.file_name)+'</strong>'
+     +'<small>'+(item.byte_size/1024).toFixed(0)+' KB · '+h(item.created_at.slice(0,10))+'</small>'
+     +'<button type="button" data-v51-copy-media="'+h(item.url)+'">复制图片地址</button></div>').join('')
+     :'<p class="cms-loading">暂无上传图片。可以上传 JPG、PNG 或 WebP。</p>';
+ }catch(e){message(e.message,false)}
+}
+async function uploadMedia(files){
+ if(mode!=='admin')return;
+ for(const file of [...files].slice(0,10)){
+   if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>1500000){
+     message(file.name+'：仅允许 1.5MB 以下的 JPG、PNG 和 WebP 图片',false);continue;
+   }
+   $('#cms-media-status').textContent='正在上传 '+file.name;
+   try{
+     const base64=await new Promise((resolve,reject)=>{
+       const reader=new FileReader();reader.onerror=()=>reject(Error('文件读取失败'));
+       reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.readAsDataURL(file);
+     });
+     await api('/api/admin/media',{method:'POST',body:JSON.stringify({name:file.name,mime:file.type,content:base64})});
+     message('媒体已保存：'+file.name);
+   }catch(e){message(e.message,false)}
+ }
+ $('#cms-media-status').textContent='媒体资源存储于 PostgreSQL';
+ await refreshMedia();
+}
+
 function boot(){
  setTheme(theme());
- $('#cms-new').hidden=mode!=='admin';$('#cms-export').hidden=mode!=='admin';
+ $('#cms-new').hidden=mode!=='admin';$('#cms-export').hidden=mode!=='admin';$('#cms-media-open').hidden=mode!=='admin';
  $('#cms-login-link').hidden=mode!=='preview';
  $('#cms-role').textContent=mode==='admin'?'管理员 · 内容维护':'公开只读预览';
  setNotice(mode==='admin'?'管理员工作区：编辑先保存草稿，审核通过后才会进入公开目录。':'只读预览：这里展示公开网站资料，不会提供编辑或发布权限。');
@@ -278,6 +381,12 @@ function boot(){
    const choice=e.target.closest('[data-pick]');if(choice){await selectItem(choice.dataset.pick);return}
    const action=e.target.closest('[data-transition]');if(action){await transition(action.dataset.transition);return}
    const restore=e.target.closest('[data-restore]');if(restore){await restoreRevision(Number(restore.dataset.restore));return}
+   const bulkCheck=e.target.closest('[data-bulk-select]');if(bulkCheck){const slug=bulkCheck.dataset.bulkSelect;if(bulkCheck.checked)state.selectedSlugs.add(slug);else state.selectedSlugs.delete(slug);updateBulkToolbar();return}
+   if(e.target.closest('[data-v51-add]')){const root=$('#cms-v51-sections');root.insertAdjacentHTML('beforeend',articleSection({},root.children.length,true));reindexSections();state.dirty=true;return}
+   if(e.target.closest('[data-v51-remove]')){const blocks=$('#cms-v51-sections [data-v51-section]');if(blocks.length<=1){message('至少保留一个章节',false);return}e.target.closest('[data-v51-section]').remove();reindexSections();state.dirty=true;return}
+   const move=e.target.closest('[data-v51-move]');if(move){const block=move.closest('[data-v51-section]'),target=Number(move.dataset.v51Move)<0?block.previousElementSibling:block.nextElementSibling;if(target){if(Number(move.dataset.v51Move)<0)target.before(block);else target.after(block);reindexSections();state.dirty=true}return}
+   const copy=e.target.closest('[data-v51-copy-media]');if(copy){try{await navigator.clipboard.writeText(location.origin+copy.dataset.v51CopyMedia);message('图片地址已复制')}catch{message('请从媒体列表中手动复制地址',false)}return}
+   if(e.target.closest('[data-media-close]')){$('#cms-media-dialog').close();return}
    if(e.target.closest('[data-dialog-close]')){$('#cms-create-dialog').close();return}
  });
  document.addEventListener('input',e=>{if(e.target.closest('#cms-edit-form'))state.dirty=true});
@@ -287,6 +396,11 @@ function boot(){
  $('#cms-export').addEventListener('click',exportCms);
  $('#cms-new').addEventListener('click',()=>{updateCreateFields();$('#cms-create-dialog').showModal()});
  $('#cms-create-kind').addEventListener('change',updateCreateFields);
+ $('#cms-media-open').addEventListener('click',openMedia);
+ $('#cms-media-file').addEventListener('change',e=>{uploadMedia(e.target.files);e.target.value=''});
+ $('#cms-bulk-run').addEventListener('click',runBulk);
+ $('#cms-select-all').addEventListener('change',e=>{for(const item of listFiltered()){if(item.status==='source')continue;if(e.target.checked)state.selectedSlugs.add(item.slug);else state.selectedSlugs.delete(item.slug)}drawItems()});
+
  const dlg=$('#cms-create-dialog');const fields=document.createElement('div');fields.id='cms-create-fields';fields.className='cms-create-fields';
  dlg.querySelector('#cms-create-slug').closest('label').insertAdjacentElement('afterend',fields);
  $('#cms-create-form').addEventListener('submit',createNew);
@@ -300,7 +414,7 @@ function boot(){
      if(mode==='admin'){
        const me=await api('/api/auth/me');
        if(!me.authenticated)throw Error('会话已过期，请登录');
-       state.csrf=me.csrf_token;state.user=me.user;
+       state.csrf=me.csrf_token;state.user=me.user;try{const result=await api('/api/admin/content/taxonomy');state.taxonomy=result.categories||{}}catch{}
        $('#cms-role').textContent=(me.user?.display_name||'已授权管理员')+' · 管理员';
      }
      await loadKind();
