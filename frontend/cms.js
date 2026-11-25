@@ -10,7 +10,7 @@ const kinds={site:{title:'网站内容',label:'Websites',icon:'globe',public:'/a
  module:{title:'页面模块',label:'Sections',icon:'layers',public:'/api/module-library',url:'/sections/'},
  pattern:{title:'设计模式',label:'Patterns',icon:'shapes',public:'/assets/patterns.json',url:'/patterns/'},
  article:{title:'研究文章',label:'Insights',icon:'article',public:'/assets/articles.json',url:'/insights/'}};
-const state={kind:new URLSearchParams(location.search).get('kind')||'site',items:[],records:{},selected:null,csrf:'',user:null,dirty:false,q:'',status:'',busy:false,selectedSlugs:new Set(),taxonomy:{},tagSuggestions:[],mediaTarget:null};
+const state={kind:new URLSearchParams(location.search).get('kind')||'site',items:[],records:{},selected:null,csrf:'',user:null,dirty:false,q:'',status:'',busy:false,selectedSlugs:new Set(),taxonomy:{},tagSuggestions:[],mediaTarget:null,categoryRecords:[],categoryEditing:null};
 if(!kinds[state.kind])state.kind='site';
 const fieldSpecs={
  site:[
@@ -112,7 +112,14 @@ function formField(spec,values,editable){
  const inputName='field-'+name,disabled=editable?'':' disabled';
  const attr='id="'+inputName+'" data-field="'+h(name)+'" data-type="'+h(type)+'"';
  let input='';
- if(type==='bool')input='<select '+attr+disabled+'><option value="false"'+(!value?' selected':'')+'>否</option><option value="true"'+(value?' selected':'')+'>是</option></select>';
+ if(name==='category'&&state.kind==='article'){
+   const items=state.categoryRecords.length?state.categoryRecords.map(x=>({id:x.id,name:x.name})):
+     (state.taxonomy.article||[]).map(id=>({id,name:id}));
+   if(value&&!items.some(x=>x.id===value))items.unshift({id:value,name:value+'（待核对）'});
+   input='<select '+attr+disabled+' required><option value="">选择文章分类</option>'
+     +items.map(x=>'<option value="'+h(x.id)+'"'+(value===x.id?' selected':'')+'>'+h(x.name)+' · '+h(x.id)+'</option>').join('')+'</select>';
+ }
+ else if(type==='bool')input='<select '+attr+disabled+'><option value="false"'+(!value?' selected':'')+'>否</option><option value="true"'+(value?' selected':'')+'>是</option></select>';
  else if(type==='json'){
    const pretty=typeof value==='string'?value:JSON.stringify(value,null,2);
    input='<textarea '+attr+disabled+' rows="7" spellcheck="false">'+h(pretty)+'</textarea>';
@@ -440,9 +447,91 @@ async function uploadMedia(files){
  await refreshMedia();
 }
 
+// V51.5 · Manage article categories separately from individual articles.
+async function loadCmsTaxonomy(){
+ if(mode!=='admin')return;
+ const [taxonomy,categories]=await Promise.all([
+   api('/api/admin/content/taxonomy'),api('/api/admin/categories')
+ ]);
+ state.taxonomy=taxonomy.categories||{};
+ state.tagSuggestions=taxonomy.article_tags||[];
+ state.categoryRecords=categories.items||[];
+}
+function refreshEditorCategoryChoices(){
+ const select=$('#field-category');
+ if(state.kind!=='article'||!select||select.tagName!=='SELECT')return;
+ const selected=select.value;
+ select.innerHTML='<option value="">选择文章分类</option>'
+  +(selected&&!state.categoryRecords.some(x=>x.id===selected)?'<option value="'+h(selected)+'" selected>'+h(selected)+'（待核对）</option>':'')
+  +state.categoryRecords.map(x=>'<option value="'+h(x.id)+'"'+(selected===x.id?' selected':'')+'>'+h(x.name)+' · '+h(x.id)+'</option>').join('');
+}
+function drawCategories(){
+ const root=$('#cms-v515-category-items');
+ if(!root)return;
+ root.innerHTML=state.categoryRecords.length?state.categoryRecords.map(cat=>
+   '<button type="button" data-v515-pick="'+h(cat.id)+'" class="cms-v515-category">'
+   +'<span><strong>'+h(cat.name)+'</strong><small>'+h(cat.id)+' · '+h(cat.description||'暂无分类说明')+'</small></span>'
+   +'<span class="cms-v515-usage">'+cat.usage+' 篇</span></button>').join('')
+   :'<p class="cms-loading">暂无分类，请新建。</p>';
+}
+function chooseCategory(id=null){
+ const item=state.categoryRecords.find(x=>x.id===id);
+ state.categoryEditing=item?item.id:null;
+ $('#cms-v515-id').value=item?.id||'';
+ $('#cms-v515-name').value=item?.name||'';
+ $('#cms-v515-description').value=item?.description||'';
+ $('#cms-v515-id').readOnly=Boolean(item);
+ $('#cms-v515-form-title').textContent=item?'EDIT CATEGORY':'NEW CATEGORY';
+ $('#cms-v515-save').textContent=item?'保存修改':'创建分类';
+ $('#cms-v515-delete').hidden=!item;
+ $('#cms-v515-info').textContent=item
+   ?'被 '+item.usage+' 篇文章使用 · '+(item.source==='repository'?'原始分类':'CMS 分类')
+   :'分类 ID 创建后不可更改；新分类会同步到前台资讯筛选。';
+ $('#cms-v515-category-items [data-v515-pick]').forEach(button=>{
+   button.classList.toggle('active',button.dataset.v515Pick===id);
+   button.setAttribute('aria-pressed',String(button.dataset.v515Pick===id));
+ });
+}
+async function openCategoryManager(){
+ if(mode!=='admin')return;
+ $('#cms-categories-dialog').showModal();
+ try{await loadCmsTaxonomy();drawCategories();chooseCategory(state.categoryEditing)}
+ catch(err){message(err.message,false);$('#cms-v515-category-items').textContent='读取分类失败：'+err.message}
+}
+async function syncCategoryUpdates(){
+ await loadCmsTaxonomy();drawCategories();refreshEditorCategoryChoices();
+}
+async function saveCategory(event){
+ event.preventDefault();if(mode!=='admin'||state.busy)return;
+ const id=$('#cms-v515-id').value.trim(),name=$('#cms-v515-name').value.trim();
+ const description=$('#cms-v515-description').value.trim();
+ if(!/^[a-z0-9][a-z0-9-]{1,47}$/.test(id)||!name){message('请填写有效的分类 ID 和显示名称',false);return}
+ const editing=state.categoryEditing;
+ $('#cms-v515-save').disabled=true;
+ try{
+   await api(editing?'/api/admin/categories/'+encodeURIComponent(editing):'/api/admin/categories',{
+     method:editing?'PUT':'POST',body:JSON.stringify({id,name,description})
+   });
+   await syncCategoryUpdates();chooseCategory(id);
+   message(editing?'分类修改已同步到前台':'分类创建成功');
+ }catch(err){message(err.message,false)}
+ finally{$('#cms-v515-save').disabled=false}
+}
+async function deleteCategory(){
+ const id=state.categoryEditing;if(mode!=='admin'||!id)return;
+ const cat=state.categoryRecords.find(x=>x.id===id);
+ if(!confirm('确认删除分类「'+(cat?.name||id)+'」？仍被文章引用时无法删除。'))return;
+ $('#cms-v515-delete').disabled=true;
+ try{
+   await api('/api/admin/categories/'+encodeURIComponent(id),{method:'DELETE'});
+   state.categoryEditing=null;await syncCategoryUpdates();chooseCategory();
+   message('分类已删除');
+ }catch(err){message(err.message,false)}
+ finally{$('#cms-v515-delete').disabled=false}
+}
 function boot(){
  setTheme(theme());
- $('#cms-new').hidden=mode!=='admin';$('#cms-export').hidden=mode!=='admin';$('#cms-media-open').hidden=mode!=='admin';
+ $('#cms-new').hidden=mode!=='admin';$('#cms-export').hidden=mode!=='admin';$('#cms-media-open').hidden=mode!=='admin';$('#cms-categories-open').hidden=mode!=='admin';
  $('#cms-login-link').hidden=mode!=='preview';
  $('#cms-role').textContent=mode==='admin'?'管理员 · 内容维护':'公开只读预览';
  setNotice(mode==='admin'?'管理员工作区：编辑先保存草稿，审核通过后才会进入公开目录。':'只读预览：这里展示公开网站资料，不会提供编辑或发布权限。');
@@ -454,6 +543,8 @@ function boot(){
    const action=e.target.closest('[data-transition]');if(action){await transition(action.dataset.transition);return}
    const restore=e.target.closest('[data-restore]');if(restore){await restoreRevision(Number(restore.dataset.restore));return}
    const bulkCheck=e.target.closest('[data-bulk-select]');if(bulkCheck){const slug=bulkCheck.dataset.bulkSelect;if(bulkCheck.checked)state.selectedSlugs.add(slug);else state.selectedSlugs.delete(slug);updateBulkToolbar();return}
+   const picked=e.target.closest('[data-v515-pick]');if(picked){chooseCategory(picked.dataset.v515Pick);return}
+   if(e.target.closest('[data-v515-close]')){$('#cms-categories-dialog').close();return}
    const tag=e.target.closest('[data-v512-tag]');if(tag){const field=$('#v51-tags');if(!field)return;const existing=linesFrom('#v51-tags');if(!existing.includes(tag.dataset.v512Tag)){field.value=[...existing,tag.dataset.v512Tag].join(String.fromCharCode(10));state.dirty=true;refreshArticlePreview()}return}
    const formatter=e.target.closest('[data-v514-format]');if(formatter){applyArticleFormat(formatter);return}
    if(e.target.closest('[data-v512-preview]')){toggleArticlePreview();return}
@@ -489,6 +580,10 @@ function boot(){
  $('#cms-export').addEventListener('click',exportCms);
  $('#cms-new').addEventListener('click',()=>{updateCreateFields();$('#cms-create-dialog').showModal()});
  $('#cms-create-kind').addEventListener('change',updateCreateFields);
+ $('#cms-categories-open').addEventListener('click',openCategoryManager);
+ $('#cms-v515-add').addEventListener('click',()=>chooseCategory());
+ $('#cms-v515-form').addEventListener('submit',saveCategory);
+ $('#cms-v515-delete').addEventListener('click',deleteCategory);
  $('#cms-media-open').addEventListener('click',()=>{state.mediaTarget=null;openMedia()});
  $('#cms-media-file').addEventListener('change',e=>{uploadMedia(e.target.files);e.target.value=''});
  $('#cms-bulk-run').addEventListener('click',runBulk);
@@ -507,7 +602,7 @@ function boot(){
      if(mode==='admin'){
        const me=await api('/api/auth/me');
        if(!me.authenticated)throw Error('会话已过期，请登录');
-       state.csrf=me.csrf_token;state.user=me.user;try{const result=await api('/api/admin/content/taxonomy');state.taxonomy=result.categories||{};state.tagSuggestions=result.article_tags||[];}catch{}
+       state.csrf=me.csrf_token;state.user=me.user;try{await loadCmsTaxonomy()}catch(err){console.warn('分类列表读取失败',err.message)}
        $('#cms-role').textContent=(me.user?.display_name||'已授权管理员')+' · 管理员';
      }
      await loadKind();
