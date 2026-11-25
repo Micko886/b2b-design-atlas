@@ -158,3 +158,6 @@
 .cms-v51-media-item small{font-size:10px;color:var(--muted)}
 .cms-v51-media-item button{padding:8px;border:1px solid var(--line-strong);background:var(--surface);color:var(--blue);border-radius:7px;font-size:10px;cursor:pointer}
 @media(max-width:780px){.cms-v51-taxonomy{grid-template-columns:1fr}.cms-v51-studio{padding:14px}.cms-v51-studio-head{display:block}.cms-v51-studio-badge{display:inline-block;margin-top:10px}.cms-v51-bulk{margin:0 10px 10px}.cms-v51-bulk strong{margin-left:0}}
+
+.cms-v51-media-item .cms-v51-delete{color:var(--muted-strong);border-color:var(--line)}
+.cms-v51-media-item .cms-v51-delete:hover{color:#cc3d4c;border-color:#cc3d4c}
