@@ -275,6 +275,39 @@ async function openReviewDiff(revision=0){
    }).join(''):'<p class="cms-loading">暂无正文差异。</p>';
  }catch(e){$('#cms-diff-results').innerHTML='<div class="cms-error">'+h(e.message)+'</div>'}
 }
+// V51.19 · Content SEO preflight (editor unsaved preview, reviewer saved snapshot).
+function seoStudio(v){
+ return '<section id="cms-seo-panel" class="cms-seo-panel"><div class="cms-seo-head"><div>'
+   +'<span class="section-eyebrow">EDITORIAL SEO / PRE-PUBLISH</span><h3>SEO 与发布质量检查</h3>'
+   +'<p>检查标题、摘要、内容深度、图片替代文字和来源。检查分数不是搜索排名预测。</p></div>'
+   +'<button type="button" data-seo-check>运行质量检查 ↗</button></div>'
+   +'<div class="cms-seo-snippet"><span id="cms-seo-url">b2b-design-atlas-preview.onrender.com/insights/'+h(state.selected?.slug||'')+'</span>'
+   +'<strong id="cms-seo-title">'+h(v.seo_title||v.title||'文章标题')+'</strong>'
+   +'<p id="cms-seo-desc">'+h(v.seo_description||v.subtitle||'请填写文章摘要')+'</p></div>'
+   +'<div id="cms-seo-result" class="cms-seo-result"><p>检查当前草稿，了解可以改善的可访问性与搜索展示问题。</p></div></section>';
+}
+function refreshSeoSnippet(){
+ const title=$('#cms-seo-title');if(!title)return;
+ title.textContent=$('#field-seo_title')?.value.trim()||$('#field-title')?.value.trim()||'文章标题';
+ $('#cms-seo-desc').textContent=$('#field-seo_description')?.value.trim()||$('#field-subtitle')?.value.trim()||'请填写文章摘要';
+}
+async function runSeoAudit(){
+ if(mode!=='admin'||!state.selected||state.selected.kind!=='article')return;
+ const root=$('#cms-seo-result');root.innerHTML='<p>正在计算内容质量…</p>';
+ try{
+   let data;
+   if(can('edit')){
+     const payload=takeFields();
+     data=await api('/api/admin/content/seo/check',{method:'POST',
+       body:JSON.stringify({slug:state.selected.slug,payload})});
+   }else data=await api('/api/admin/content/'+state.selected.slug+'/seo');
+   root.innerHTML='<div class="cms-seo-score"><strong>'+data.score+'<small> / 100</small></strong><span>内容质量提示 · '+data.checks.length+' 项</span></div>'
+     +'<div class="cms-seo-checks">'+data.checks.map(item=>
+       '<div class="cms-seo-check" data-seo-status="'+h(item.status)+'"><span class="cms-seo-dot"></span>'
+       +'<div><strong>'+h(item.label)+'</strong>'+(item.advice?'<p>'+h(item.advice)+'</p>':'')+'</div></div>').join('')+'</div>'
+     +'<p class="cms-seo-note">'+h(data.note)+'</p>';
+ }catch(err){root.innerHTML='<div class="cms-error">'+h(err.message)+'</div>'}
+}
 function renderForm(item){
  const isPreview=mode==='preview',values=item.payload||{},editable=can('edit');
  const specs=fieldSpecs[item.kind];
@@ -289,7 +322,7 @@ function renderForm(item){
  '<form id="cms-edit-form" class="cms-form"><div class="cms-form-group-label"><span>基础资料与内容字段</span><small>自动保存开启 · 发布仍需审核</small></div>'
  +(editable?'<div class="cms-autosave-strip"><span class="cms-autosave-led"></span><span id="cms-autosave-status" role="status" aria-live="polite">已加载 · 修改后 3 秒自动保存草稿</span><button type="button" data-autosave-retry>立即保存</button></div>':'')
  +specs.filter(spec=>!(item.kind==='article'&&['tags','takeaways','sections'].includes(spec[0]))).map(spec=>formField(spec,values,editable)).join('')
- +(item.kind==='article'?articleStudio(values,editable):'')
+ +(item.kind==='article'?articleStudio(values,editable)+seoStudio(values):'')
  +'<details class="cms-json-advanced"><summary>高级 · 查看完整 JSON 结构</summary><div class="cms-field" data-json="true"><label>只读数据结构</label><textarea disabled spellcheck="false">'+h(JSON.stringify(values,null,2))+'</textarea></div></details>'
  +(editable?'<div class="cms-form-actions">'
   +'<button class="primary" type="submit">'+icon('save')+' 保存草稿</button>'
@@ -1287,7 +1320,8 @@ function boot(){
    if(blockFormat){applyBlockFormat(blockFormat);return}
    const blockPick=e.target.closest('[data-block-pick-image]');
    if(blockPick){state.mediaTarget=blockPick.closest('[data-cms-block]');await openMedia();return}
-   const formatter=e.target.closest('[data-v514-format]');if(formatter){applyArticleFormat(formatter);return}
+   if(e.target.closest('[data-seo-check]')){await runSeoAudit();return}
+    const formatter=e.target.closest('[data-v514-format]');if(formatter){applyArticleFormat(formatter);return}
    if(e.target.closest('[data-v512-preview]')){toggleArticlePreview();return}
    if(e.target.closest('[data-v51-add]')){const root=$('#cms-v51-sections');root.insertAdjacentHTML('beforeend',articleSection({blocks:[{type:'paragraph',text:''}]},root.children.length,true));reindexSections();markDraftDirty();refreshArticlePreview();return}
    if(e.target.closest('[data-v51-remove]')){const blocks=document.querySelectorAll('#cms-v51-sections [data-v51-section]');if(blocks.length<=1){message('至少保留一个章节',false);return}e.target.closest('[data-v51-section]').remove();reindexSections();markDraftDirty();return}
@@ -1318,7 +1352,7 @@ function boot(){
    if(e.target.closest('[data-media-close]')){state.mediaTarget=null;$('#cms-media-dialog').close();return}
    if(e.target.closest('[data-dialog-close]')){$('#cms-create-dialog').close();return}
  });
- document.addEventListener('input',e=>{if(e.target.closest('#cms-edit-form')){markDraftDirty();refreshArticlePreview()}});
+ document.addEventListener('input',e=>{if(e.target.closest('#cms-edit-form')){markDraftDirty();refreshArticlePreview();refreshSeoSnippet()}});
  $('#cms-search').addEventListener('input',e=>{state.q=e.target.value;drawItems()});
  $('#cms-status').addEventListener('change',e=>{state.status=e.target.value;drawItems()});
  $('#cms-refresh').addEventListener('click',async()=>{
