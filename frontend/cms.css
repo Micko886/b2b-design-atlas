@@ -205,3 +205,30 @@
 .cms-v514-toolbar button:hover,.cms-v514-toolbar button:focus-visible{color:var(--blue);border-color:var(--blue);outline:0;box-shadow:0 0 0 2px var(--blue-soft)}
 .cms-v512-article code{padding:2px 5px;border-radius:4px;background:var(--surface-2);font-size:.88em}
 .cms-v512-article strong{font-weight:850}
+
+/* V51.5 / Taxonomy workspace – responsive in light and dark modes. */
+.cms-v515-dialog{width:min(910px,calc(100vw - 32px));max-width:910px;max-height:min(90vh,850px);overflow-y:auto}
+.cms-v515-dialog .cms-dialog-head p{color:var(--muted);font-size:12px;margin:7px 0 0;line-height:1.7}
+.cms-v515-layout{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:20px;margin-top:15px}
+.cms-v515-category-browser,.cms-v515-form{border:1px solid var(--line);border-radius:13px;min-width:0;background:var(--surface-2)}
+.cms-v515-category-browser{padding:13px}
+.cms-v515-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 4px 15px}
+.cms-v515-section-head strong{font-size:13px;color:var(--ink-strong)}
+.cms-v515-section-head button{font-size:11px}
+.cms-v515-category-items{display:grid;align-content:start;gap:7px;max-height:435px;overflow:auto;scrollbar-width:thin}
+.cms-v515-category{display:flex;gap:12px;align-items:center;justify-content:space-between;width:100%;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:13px 12px;cursor:pointer;color:var(--ink)}
+.cms-v515-category:hover,.cms-v515-category.active{border-color:var(--blue);box-shadow:0 0 0 2px var(--blue-soft)}
+.cms-v515-category>span:first-child{display:grid;gap:4px;min-width:0}
+.cms-v515-category strong{font-size:12px;color:var(--ink-strong);font-weight:800}
+.cms-v515-category small{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px}
+.cms-v515-usage{font-size:10px;white-space:nowrap;color:var(--blue);font-weight:850;background:var(--blue-soft);padding:6px 8px;border-radius:99px}
+.cms-v515-form{display:flex;flex-direction:column;gap:17px;padding:20px}
+.cms-v515-form label{display:grid;gap:7px;font-size:11px;font-weight:750;color:var(--ink-strong)}
+.cms-v515-form label small{font-weight:400;color:var(--muted)}
+.cms-v515-form input,.cms-v515-form textarea{box-sizing:border-box;width:100%;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);padding:12px;border-radius:9px;font-family:inherit;font-size:12px;outline:none}
+.cms-v515-form input:focus,.cms-v515-form textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-soft)}
+.cms-v515-form input[readonly]{background:var(--surface-2);color:var(--muted-strong)}
+.cms-v515-form-actions{display:flex;gap:9px;flex-wrap:wrap}
+.cms-v515-form-actions button{font-size:11px}
+.cms-v515-info{font-size:11px;line-height:1.7;color:var(--muted);margin:0}
+@media(max-width:740px){.cms-v515-layout{grid-template-columns:minmax(0,1fr)}.cms-v515-category-items{max-height:250px}.cms-v515-form{padding:14px}}
