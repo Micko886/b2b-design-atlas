@@ -144,7 +144,7 @@ async function offerDraftRecovery(item){
 }
 function can(permission){return mode==='admin'&&state.capabilities.includes(permission)}
 function markWorkspace(name){
- for(const element of $('[data-workspace-link]')){
+ for(const element of $$('[data-workspace-link]')){
    const active=element.dataset.workspaceLink===name;
    element.classList.toggle('active',active);
    if(active)element.setAttribute('aria-current','page');
