@@ -53,11 +53,11 @@ function titleCase(x){return String(x||'').replace(/(^|-)\w/g,s=>s.toUpperCase()
 // Anonymous aggregated operations analytics. No cookies, IP or identity in payload.
 let lastAnalyticsPath='',lastAnalyticsAt=0,searchAnalyticsTimer=0;
 const sentSearchTerms=new Set();
-function analyticsEvent(type,query=''){
+function analyticsEvent(type,query='',pathOverride=''){
  if(navigator.doNotTrack==='1'||navigator.globalPrivacyControl===true)return;
  fetch('/api/analytics/event',{method:'POST',credentials:'omit',cache:'no-store',
     keepalive:true,headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({type,path:location.pathname,query})}).catch(()=>{});
+    body:JSON.stringify({type,path:pathOverride||location.pathname,query})}).catch(()=>{});
 }
 function analyticsPage(){
  const path=location.pathname,now=Date.now();
@@ -69,12 +69,13 @@ function analyticsPage(){
 function analyticsSearch(value){
  clearTimeout(searchAnalyticsTimer);
  const query=String(value||'').trim();
+ const searchPath=location.pathname.startsWith('/insights')?'/insights':location.pathname.startsWith('/sections')?'/sections':'/websites';
  if(query.length<2||query.length>60)return;
  searchAnalyticsTimer=setTimeout(()=>{
    const cleaned=query.toLowerCase().replace(/\s+/g,' ');
-   if(sentSearchTerms.has(cleaned))return;
-   sentSearchTerms.add(cleaned);
-   analyticsEvent('search',cleaned);
+   if(sentSearchTerms.has(searchPath+'|'+cleaned))return;
+   sentSearchTerms.add(searchPath+'|'+cleaned);
+   analyticsEvent('search',cleaned,searchPath);
  },1200);
 }
 function go(to){let next=new URL(to,location.origin);if(next.origin!==location.origin){location.href=to;return}history.pushState({},'',next.pathname+next.search+next.hash);render();analyticsPage();window.scrollTo(0,0)}
