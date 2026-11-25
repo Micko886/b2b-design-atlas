@@ -13,9 +13,29 @@
   const typeIcons = ['globe','layers','shapes','article'];
   const typeStyles = ['website','section','pattern','insight'];
   const typeLabels = ['网站案例','页面模块','设计模式','研究文章'];
-  const state = {data:null,range:14,query:'',expanded:false,fetching:false,trafficDays:30,traffic:null,trafficFetching:false,growth:null,growthChannel:'all',growthFetching:false};
+  const state = {data:null,range:14,query:'',expanded:false,fetching:false,trafficDays:30,traffic:null,trafficFetching:false,growth:null,growthChannel:'all',growthFetching:false,csrf:null};
   let toastTimer = 0;
 
+  async function hydrateAdminIdentity(){
+    if(mode!=='admin')return;
+    try{
+      const response=await fetch('/api/auth/me',{credentials:'same-origin',cache:'no-store'});
+      const data=await response.json();
+      if(!response.ok||!data.authenticated||!data.csrf_token)return;
+      state.csrf=data.csrf_token;
+      const button=$('#admin-logout');if(button)button.hidden=false;
+    }catch(_){}
+  }
+  async function logoutAdmin(){
+    if(mode!=='admin'||!state.csrf){toast('身份尚未验证，请刷新后重试。');return}
+    const button=$('#admin-logout');button.disabled=true;
+    try{
+      const res=await fetch('/api/auth/logout',{method:'POST',credentials:'same-origin',
+        headers:{'X-CSRF-Token':state.csrf,Accept:'application/json'},cache:'no-store'});
+      if(!res.ok)throw Error('退出请求失败：HTTP '+res.status);
+      location.assign('/login?next=%2Fadmin');
+    }catch(err){button.disabled=false;toast(err.message)}
+  }
   function savedTheme(){
     try{
       const saved = localStorage.getItem('atlas-admin-theme');
@@ -485,8 +505,7 @@
   function boot(){
     const studio=$('#open-content-studio');
     if(studio){
-      studio.href=mode==='preview'?'/admin/content/preview':'/admin/content';
-      studio.querySelector('span').textContent=mode==='preview'?'内容管理预览':'内容管理';
+      studio.href='/admin/content';studio.querySelector('span').textContent='内容管理';
     }
 
     applyTheme(savedTheme(),false);
@@ -500,6 +519,7 @@
       const nav=event.target.closest('[data-nav-section]');
       if(nav){setNavActive(nav.dataset.navSection);closeSidebar()}
     });
+    $('#admin-logout').addEventListener('click',logoutAdmin);
     $('#refresh-button').addEventListener('click',()=>{load().then(success=>{if(success)toast('运营资料已刷新')})});
     $('#export-button').addEventListener('click',exportSummary);
     $('#atlas-traffic-export').addEventListener('click',exportTrafficCsv);
@@ -523,6 +543,7 @@
         e.preventDefault();$('#queue-search').focus();$('#review-queue').scrollIntoView({block:'start'});
       }
     });
+    hydrateAdminIdentity();
     load();
   }
   boot();
