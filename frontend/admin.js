@@ -322,7 +322,7 @@
     setText('#atlas-growth-note','统计区间：'+d.since+' — '+d.through+'（UTC） · '+d.tracking_since);
     const kpis=[
       ['sessions','匿名会话数','按匿名标签页估算','globe'],
-      ['engaged_sessions','有互动会话','搜索／多次浏览／深度滚动','mouse-pointer-click'],
+      ['engaged_sessions','有互动会话','搜索／多次浏览／深度滚动','magnifier'],
       ['registrations','注册转化','服务端确认的真实注册','users'],
       ['first_saves','收藏转化','当前会话首次新增收藏','quality'],
       ['external_clicks','官网跳转','向外部网站的真实点击','arrow-up-right']
