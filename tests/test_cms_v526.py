@@ -74,8 +74,8 @@ class CMSReleaseFlowTests(unittest.TestCase):
 
     @staticmethod
     def new_site(slug,summary="New private draft",**extras):
-        return dict(id=slug,name="New Atlas Example",url="https://example.org",
-                    sector="Industrial",summary=summary,screenshot_url="",**extras)
+        return {**dict(id=slug,name="New Atlas Example",url="https://example.org",
+                       sector="Industrial",summary=summary,screenshot_url=""),**extras}
 
     def test_existing_source_baseline_remains_visible_and_reviewable(self):
         slug="atlas-source"
