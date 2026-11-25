@@ -425,8 +425,10 @@ def cleaned(kind,slug,payload):
     for field in ("screenshot_url","source_capture"):
         if field in result:
             value=result[field]
-            if not isinstance(value,str) or (value and not re.fullmatch(r"/screenshots/[a-zA-Z0-9_./-]{1,200}",value)):
-                user_auth.error(422,"截图只能引用本网站的 /screenshots 路径。")
+            allowed = (re.fullmatch(r"/screenshots/[a-zA-Z0-9_./-]{1,200}",value) or
+                       (field=="screenshot_url" and re.fullmatch(r"/api/media/[0-9a-f-]{36}",value))) if isinstance(value,str) else None
+            if not isinstance(value,str) or (value and not allowed):
+                user_auth.error(422,"截图只能引用站内截图或已上传的媒体图片。")
             if ".." in value:user_auth.error(422,"截图路径不合法。")
     if kind=="pattern" and "modules" in result:
         if not isinstance(result["modules"],list) or len(result["modules"])>30 or any(not isinstance(x,str) or not SLUG.fullmatch(x) for x in result["modules"]):
@@ -441,6 +443,12 @@ def verify_links(kind,payload):
         user_auth.error(422,"文章分类未创建或已停用，请先在分类管理中维护。")
     if kind=="article" and payload.get("cover_site") and payload["cover_site"] not in current["sites"]:
         user_auth.error(422,"封面关联网站尚未发布。")
+    if kind in ("site","module") and payload.get("screenshot_url","").startswith("/api/media/"):
+        media_id=payload["screenshot_url"].rsplit("/",1)[-1]
+        ensure_cms()
+        with user_auth.db() as db:
+            if not db.one("SELECT id FROM atlas_cms_media WHERE id=?",(media_id,)):
+                user_auth.error(422,"该截图图片已不存在，请重新从媒体库选择。")
     if kind=="article":
         referenced=[payload.get("cover_image","")]
         referenced += [s.get("image","") for s in payload.get("sections",[]) if isinstance(s,dict)]
@@ -774,7 +782,7 @@ def register_cms_routes(app: FastAPI):
                 try:document=parse_json(entry[field]) if entry[field] else {}
                 except (TypeError,ValueError):continue
                 if not isinstance(document,dict):continue
-                media_urls=[document.get("cover_image","")]
+                media_urls=[document.get("cover_image",""),document.get("screenshot_url","")]
                 if isinstance(document.get("sections"),list):
                     for chapter in document["sections"]:
                         if not isinstance(chapter,dict):continue
