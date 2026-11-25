@@ -50,7 +50,7 @@
     if(d.mode==='preview'){
       box.innerHTML='<div>'+icon('lock')+'<span><strong>只读设计预览：</strong>内容规模和研究覆盖来自真实公开目录；用户数、访问数据不在此页面展示。</span></div><span>PUBLIC DATA ONLY</span>';
     }else{
-      box.innerHTML='<div>'+icon('shield')+'<span><strong>管理员视图：</strong>目录统计及账户汇总来自当前服务；本阶段尚未开放内容写入和发布操作。</span></div><span>ADMIN / READ ONLY</span>';
+      box.innerHTML='<div>'+icon('shield')+'<span><strong>管理员视图：</strong>目录统计及账户汇总来自当前服务；运营总览为只读统计；内容新增、审核及发布请进入「内容管理」工作台。</span></div><span>ADMIN / READ ONLY</span>';
     }
     setText('#sidebar-user',d.administrator?.name || 'Atlas Workspace');
     setText('#sidebar-user-role',d.mode==='admin'?'已授权管理员':'只读运营预览');
@@ -224,7 +224,7 @@
       content_mix:d.content_mix,recent_articles:d.recent_articles,
       // Export is a report summary; never serialize session/token/user records.
       aggregated_operations:d.mode==='admin'&&d.private?d.private:null,
-      notes:'只读运营统计。预览不包含用户指标；不代表 CMS 已提供发布审核功能。'
+      notes:'运营统计导出。公开预览不包含私有账户指标；内容管理工作台提供独立的草稿、审核与发布工作流。'
     };
     const blob=new Blob([JSON.stringify(out,null,2)],{type:'application/json;charset=utf-8'});
     const href=URL.createObjectURL(blob),a=document.createElement('a');
