@@ -574,6 +574,23 @@ def log_change(db,row,action,uid):
 def base_item(kind,slug):
     return base_maps()[KIND_CATALOG[kind]].get(slug)
 
+def published_baseline_for_editor(kind,slug,row,base):
+    """The real public baseline for review and diff, including archive tombstones.
+
+    A source-derived draft has no published_json until its first release, but
+    the original file-backed record remains visible. Once archived, the history
+    tombstone prevents the original record from being presented as public.
+    """
+    if not row:return base
+    if row["status"]=="archived":return None
+    if row["published_json"]:return parse_json(row["published_json"])
+    if not base:return None
+    with user_auth.db() as db:
+        archived=db.one("""SELECT 1 AS archived FROM atlas_cms_history
+                           WHERE kind=? AND slug=? AND action='archive' LIMIT 1""",
+                        (kind,slug))
+    return None if archived else base
+
 def cms_item(kind,slug,session):
     ensure_cms()
     with user_auth.db() as db:
@@ -589,21 +606,7 @@ def cms_item(kind,slug,session):
                            WHERE kind=? AND slug=?""",(kind,slug))
     base=base_item(kind,slug)
     if not row and not base:user_auth.error(404,"内容不存在。")
-    # Editing a file-backed resource creates a CMS draft, but does not remove
-    # the still-public original. Review comparison must use the actual public
-    # baseline, including archived tombstones and previously released snapshots.
-    # This deliberately mirrors published_overrides() instead of returning
-    # null for every source-derived draft.
-    if row and row["published_json"]:
-        published=parse_json(row["published_json"])
-    elif base and row:
-        with user_auth.db() as db:
-            archived=db.one("""SELECT 1 AS archived FROM atlas_cms_history
-                              WHERE kind=? AND slug=? AND action='archive' LIMIT 1""",
-                            (kind,slug))
-        published=None if archived or row["status"]=="archived" else base
-    else:
-        published=base if not row else None
+    published=published_baseline_for_editor(kind,slug,row,base)
     return {
         "kind":kind,"slug":slug,"source":"cms" if row else "repository",
         "status":row["status"] if row else "source",
