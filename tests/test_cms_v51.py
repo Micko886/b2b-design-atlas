@@ -89,6 +89,25 @@ class V51ContractTests(unittest.TestCase):
         with self.assertRaises(HTTPException):
             cms_routes.cleaned("article","editorial-sample",payload)
 
+    def test_non_text_paragraph_rejected_on_save(self):
+        payload=self.article()
+        payload["sections"][0]["paragraphs"]=[{"unexpected":"HTML"}]
+        with self.assertRaises(HTTPException) as error:
+            cms_routes.cleaned("article","editorial-sample",payload)
+        self.assertEqual(error.exception.status_code,422)
+
+    def test_excessive_bullets_rejected_on_save(self):
+        payload=self.article()
+        payload["sections"][0]["bullets"]=["one"]*61
+        with self.assertRaises(HTTPException):
+            cms_routes.cleaned("article","editorial-sample",payload)
+
+    def test_inline_formatting_kept_as_text(self):
+        payload=self.article()
+        payload["sections"][0]["paragraphs"]=["**Bold** and *italic* and `code`"]
+        result=cms_routes.cleaned("article","editorial-sample",payload)
+        self.assertEqual(result["sections"][0]["paragraphs"][0],payload["sections"][0]["paragraphs"][0])
+
     def test_absent_sections_rejected(self):
         payload=self.article()
         payload["sections"]=[]
