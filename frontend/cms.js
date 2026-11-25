@@ -2,7 +2,7 @@
    Public preview loads only public source data; all editing requires server auth. */
 (()=>{
 'use strict';
-const $=(q,root=document)=>root.querySelector(q), $=(q,root=document)=>Array.from(root.querySelectorAll(q));
+const $=(q,root=document)=>root.querySelector(q), $$=(q,root=document)=>Array.from(root.querySelectorAll(q));
 const icon=n=>'<svg class="icon" aria-hidden="true"><use href="#i-'+n+'"></use></svg>';
 const h=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const mode=document.body.dataset.cmsMode==='admin'?'admin':'preview';
