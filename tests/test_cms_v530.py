@@ -94,7 +94,7 @@ class V530WorkspaceTests(unittest.TestCase):
                 self.assertIn(term,self.browser)
 
     def test_versions_are_explicit_for_all_shell_assets(self):
-        for value in ("cms.js?v=5300","cms.css?v=5300","admin.css?v=5300"):
+        for value in ("cms.js?v=5310","cms.css?v=5310","admin.css?v=5300"):
             self.assertIn(value,self.cms)
         for value in ("admin.js?v=5300","admin.css?v=5300"):
             self.assertIn(value,self.admin)
