@@ -658,3 +658,25 @@ body.cms-editor-active .cms-easy-mode .cms-editor-content {padding:16px 32px 28p
 .cms-easy-mode .cms-easy-advanced .cms-easy-extra .cms-field textarea{min-height:95px}
 body.cms-editor-active #cms-editor-body.cms-easy-mode .cms-editor-content{padding-top:22px}
 @media(max-width:880px){.cms-easy-mode .cms-pattern-preview-card{min-height:0}}
+
+
+/* V52.5 · Focus the content index on actual records, not dashboard duplicates. */
+body[data-cms-mode="admin"] .cms-metrics,
+body[data-cms-mode="admin"] .cms-workflow-guide{display:none!important}
+body[data-cms-mode="admin"] .cms-notice-error[hidden]{display:none!important}
+body[data-cms-mode="admin"] .cms-notice-error:not([hidden]){display:flex!important;border-color:#e4b9b9;background:rgba(193,64,64,.075);color:var(--ink)}
+body[data-cms-mode="admin"]:not(.cms-editor-active) .atlas-v521-layout .cms-split{margin-top:12px}
+body[data-cms-mode="admin"]:not(.cms-editor-active) .atlas-v521-layout .cms-browser-head{padding-bottom:15px}
+body[data-cms-mode="admin"]:not(.cms-editor-active) .cms-browser-head p{font-size:12px;line-height:1.65}
+body[data-cms-mode="admin"] #cms-media-status{font-size:12px;line-height:1.65}
+@media(max-width:420px){
+ body[data-cms-mode="admin"] .masthead-left .masthead-breadcrumb,
+ body[data-cms-mode="admin"] .masthead-left .breadcrumb-arrow{display:none!important}
+ body[data-cms-mode="admin"] .masthead-left{min-width:0;gap:6px}
+ body[data-cms-mode="admin"] .masthead-right{min-width:0;gap:5px;margin-left:auto}
+ body[data-cms-mode="admin"] .masthead-right #cms-logout{padding:7px 8px;font-size:10px;white-space:nowrap}
+ .cms-easy-mode .cms-easy-visual{min-width:0;max-width:100%;width:100%;grid-template-columns:minmax(0,1fr)}
+ .cms-easy-mode .cms-easy-shot{width:100%;min-width:0;max-width:100%;min-height:0;aspect-ratio:16/9;grid-template-columns:minmax(0,1fr)}
+ .cms-easy-mode .cms-easy-shot img{width:100%;min-width:0;max-width:100%;height:100%;object-fit:cover}
+ .cms-easy-mode .cms-easy-shot #cms-site-image-empty{min-width:0;max-width:100%}
+}
