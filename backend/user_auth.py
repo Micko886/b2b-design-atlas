@@ -331,6 +331,10 @@ class ComparisonPayload(BaseModel):
 
 
 def register_auth_routes(app:FastAPI):
+    # Provision before serving traffic when a one-time runtime secret is set.
+    # Normal deployments without bootstrap secrets keep lazy DB initialization.
+    if os.getenv("ATLAS_BOOTSTRAP_ADMIN_PASSWORD"):
+        app.add_event_handler("startup",ensure_ready)
     router=APIRouter(prefix="/api")
     @router.get("/auth/status")
     def status():
