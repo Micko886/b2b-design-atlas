@@ -28,7 +28,7 @@ class CmsShellV534Tests(unittest.TestCase):
             self.assertIn(item, self.html)
 
     def test_versioned_assets(self):
-        self.assertIn('/assets/cms.js?v=5350', self.html)
+        self.assertIn('/assets/cms.js?v=5360', self.html)
         self.assertIn('/assets/cms.css?v=5350', self.html)
 
 
