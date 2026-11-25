@@ -34,7 +34,7 @@ class CmsNavigationV535Tests(unittest.TestCase):
         self.assertIn('.cms-workflow-guide[hidden]{display:none!important}', self.css)
 
     def test_asset_versions(self):
-        self.assertIn("/assets/cms.js?v=5350", self.html)
+        self.assertIn("/assets/cms.js?v=5360", self.html)
         self.assertIn("/assets/cms.css?v=5350", self.html)
 
 
