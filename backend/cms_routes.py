@@ -218,6 +218,14 @@ def cleaned(kind,slug,payload):
         for s in result["sections"]:
             if not isinstance(s,dict) or not isinstance(s.get("title"),str):
                 user_auth.error(422,"文章章节缺少标题。")
+            for text_field,maximum in (("paragraphs",80),("bullets",60)):
+                entries=s.get(text_field,[])
+                if not isinstance(entries,list) or len(entries)>maximum or any(
+                    not isinstance(entry,str) or len(entry)>12000 for entry in entries
+                ):
+                    user_auth.error(422,"章节 "+text_field+" 数据格式无效或过长。")
+            if s.get("callout") is not None and (not isinstance(s["callout"],str) or len(s["callout"])>2000):
+                user_auth.error(422,"章节提示内容格式无效或过长。")
             if s.get("image") and (not isinstance(s["image"],str) or
                                   not re.fullmatch(r"/api/media/[0-9a-f-]{36}",s["image"])):
                 user_auth.error(422,"章节图片只能从媒体资源库选择。")
