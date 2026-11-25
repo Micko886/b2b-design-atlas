@@ -218,6 +218,19 @@ function formField(spec,values,editable){
  else input='<input '+attr+(name==='category'&&state.kind==='article'?' list="v51-categories"':'')+disabled+' type="'+(type==='url'?'url':type==='number'?'number':'text')+'" value="'+h(value)+'"'+(required?' required':'')+'>';
  return '<div class="cms-field" data-json="'+(type==='json')+'" data-multiline="'+(type==='long')+'"><label for="'+inputName+'">'+h(label)+(required?' *':'')+'</label>'+input+'</div>';
 }
+function reviewBrief(item){
+ if(mode!=='admin'||item.status!=='review')return '';
+ const original=item.published||null,current=item.payload||{};
+ const changed=original?Array.from(new Set([...Object.keys(original),...Object.keys(current)])).filter(k=>
+   JSON.stringify(original[k]??null)!==JSON.stringify(current[k]??null)):[];
+ const labels=Object.fromEntries((fieldSpecs[item.kind]||[]).map(x=>[x[0],x[1]]));
+ return '<div class="cms-review-brief"><div class="cms-review-brief-head"><div><span class="section-eyebrow">REVIEW GATE · v'+item.revision+'</span><h3>审核此内容版本</h3>'
+ +'<p>对照公开快照检查字段更改，确认后再正式发布。</p></div><span class="cms-review-state">等待审核</span></div>'
+ +(original?'<div class="cms-review-changes"><strong>对比已发布内容 · '+changed.length+' 项字段变化</strong>'
+ +(changed.length?'<div class="cms-review-chips">'+changed.slice(0,20).map(k=>'<span>'+h(labels[k]||k)+'</span>').join('')+'</div>':'<p>草稿与当前公开内容一致。</p>')+'</div>'
+ :'<div class="cms-review-changes"><strong>首次发布审查</strong><p>没有可对比的公开快照，请重点核对媒体、链接和正文。</p></div>')
+ +'<p class="cms-review-helper">退回操作会记录审核原因，已发布内容仍保持公开版本。</p></div>';
+}
 function renderForm(item){
  const isPreview=mode==='preview',values=item.payload||{},editable=!isPreview;
  const specs=fieldSpecs[item.kind];
@@ -238,20 +251,21 @@ function renderForm(item){
   +'<button class="primary" type="submit">'+icon('save')+' 保存草稿</button>'
   +'<button type="button" data-transition="submit" '+(s!=='draft'?'disabled':'')+'>'+icon('check')+' 提交审核</button>'
   +'<button class="primary" type="button" data-transition="publish" '+(s!=='review'?'disabled':'')+'>'+icon('arrow-up-right')+' 审核并发布</button>'
+  +(s==='review'?'<button type="button" data-transition="reject" class="cms-review-reject">退回修改</button>':'')
   +'<button class="warn" type="button" data-transition="archive" '+(s!=='published'?'disabled':'')+'>归档下线</button>'
   +'<span class="cms-inline-hint">草稿不会覆盖已发布版本</span></div>':'')
  +'</form></div>';
  const history=item.history||[];
  const timeline=isPreview?'':('<div class="cms-timeline"><h3>版本与操作记录</h3>'+
- (history.length?history.slice(0,15).map(v=>'<div class="cms-timeline-row"><span class="cms-timeline-dot"></span><div class="cms-timeline-content"><b>v'+v.revision+' · '+h({create:'创建草稿',save:'保存草稿',submit:'提交审核',publish:'正式发布',archive:'归档下线',restore:'恢复旧稿'}[v.action]||v.action)+'</b><span>'+h(v.created_at?.replace('T',' ').slice(0,19)||'')+'</span></div><button type="button" data-restore="'+v.revision+'">恢复草稿</button></div>').join(''):'<p style="color:var(--muted);font-size:11px">原始内容尚无 CMS 修改记录。首次保存后开始记录版本。</p>')
+ (history.length?history.slice(0,15).map(v=>'<div class="cms-timeline-row"><span class="cms-timeline-dot"></span><div class="cms-timeline-content"><b>v'+v.revision+' · '+h({create:'创建草稿',save:'保存草稿',submit:'提交审核',publish:'正式发布',archive:'归档下线',restore:'恢复旧稿',reject:'审核退回'}[v.action]||v.action)+'</b><span>'+h(v.created_at?.replace('T',' ').slice(0,19)||'')+'</span>'
+ +(v.reason?'<em class="cms-review-reason">退回意见：'+h(v.reason)+'</em>':'')+'</div><button type="button" data-restore="'+v.revision+'">恢复草稿</button></div>').join(''):'<p style="color:var(--muted);font-size:11px">原始内容尚无 CMS 修改记录。首次保存后开始记录版本。</p>')
  +'</div>');
  const root=$('#cms-editor-body');
- root.innerHTML=content+steps+meta+form+timeline;root.hidden=false;
+ root.innerHTML=content+steps+meta+reviewBrief(item)+form+timeline;root.hidden=false;
  $('#cms-empty').hidden=true;
  state.dirty=false;autosavePaused=false;
 }
 async function selectItem(slug){
- if(state.busy)return;
  if(state.dirty&&!confirm('当前修改还未保存。确定放弃这些更改吗？'))return;
  clearTimeout(autosaveTimer);editGeneration++;
  const item=state.items.find(x=>x.slug===slug);if(!item)return;
@@ -297,12 +311,17 @@ async function transition(action){
  if(mode!=='admin'||state.busy||!state.selected)return;
  if(state.dirty||autosavePaused){message('请先等待自动保存成功或解决版本冲突，再继续审核。',false);return}
  const item=state.selected;
+ let reason='';
+ if(action==='reject'){
+   reason=prompt('请填写退回原因（至少 4 个字符），审核记录会保留。')||'';
+   if(reason.trim().length<4){message('退回原因至少 4 个字符。',false);return}
+ }
  if(action==='archive'&&!confirm('确定归档「'+(item.payload.name||item.payload.title||item.slug)+'」？该页面将从前台列表移除。'))return;
  btnDisable(true);
  try{
    const result=await api('/api/admin/content/'+item.kind+'/'+item.slug+'/'+action,{
-    method:'POST',body:JSON.stringify({expected_revision:item.revision})});
-   message({submit:'已提交审核',publish:'内容已发布到前台',archive:'已归档下线'}[action]||'操作完成');
+    method:'POST',body:JSON.stringify({expected_revision:item.revision,...(action==='reject'?{reason}:{})})});
+   message({submit:'已提交审核',publish:'内容已发布到前台',archive:'已归档下线',reject:'已退回草稿并记录审核意见'}[action]||'操作完成');
    state.dirty=false;await loadKind(false);await selectItem(item.slug);
  }catch(e){message(e.message,false)}
  finally{btnDisable(false)}
@@ -483,6 +502,7 @@ function updateBulkToolbar(){
 }
 async function runBulk(){
  if(mode!=='admin'||state.busy)return;
+ if(state.dirty||autosavePaused){message('请先完成草稿保存，再执行批量审核。',false);return}
  const action=$('#cms-bulk-action').value;
  const items=state.items.filter(x=>state.selectedSlugs.has(x.slug));
  if(!items.length){message('请先勾选需要操作的 CMS 内容',false);return}
@@ -732,7 +752,7 @@ function boot(){
  document.addEventListener('click',async e=>{
    const themeButton=e.target.closest('[data-set-theme]');if(themeButton){setTheme(themeButton.dataset.setTheme);return}
    const type=e.target.closest('[data-kind-link]');if(type){e.preventDefault();await changeKind(type.dataset.kindLink);return}
-   const choice=e.target.closest('[data-pick]');if(choice){await selectItem(choice.dataset.pick);return}
+   const choice=e.target.closest('[data-pick]');if(choice){if(state.busy)return;await selectItem(choice.dataset.pick);return}
    const action=e.target.closest('[data-transition]');if(action){await transition(action.dataset.transition);return}
    const restore=e.target.closest('[data-restore]');if(restore){await restoreRevision(Number(restore.dataset.restore));return}
    const bulkCheck=e.target.closest('[data-bulk-select]');if(bulkCheck){const slug=bulkCheck.dataset.bulkSelect;if(bulkCheck.checked)state.selectedSlugs.add(slug);else state.selectedSlugs.delete(slug);updateBulkToolbar();return}
