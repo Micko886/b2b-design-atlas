@@ -81,7 +81,7 @@ function drawItems(){
  root.innerHTML=items.length?items.map(item=>{
    const img=rowImage(item);
    return '<button type="button" class="cms-item '+(state.selected?.slug===item.slug?'active':'')+'" data-pick="'+h(item.slug)+'" aria-label="查看 '+h(item.label)+'">'
-   +'<span class="cms-item-thumb">'+(img?'<img src="'+h(img)+'" loading="lazy" alt="" onerror="this.hidden=true">':icon(kinds[state.kind].icon))+'</span>'
+   +'<span class="cms-item-thumb">'+(img?'<img src="'+h(img)+'" loading="lazy" alt="">':icon(kinds[state.kind].icon))+'</span>'
    +'<span class="cms-item-copy"><strong>'+h(item.label)+'</strong><small>'+h(item.sector||item.slug)+'</small></span>'
    +stateClasses(item.status)+'</button>';
  }).join(''):'<div class="cms-loading">没有符合条件的内容。可清除筛选或创建新内容。</div>';
@@ -268,6 +268,7 @@ async function changeKind(kind){
 function boot(){
  setTheme(theme());
  $('#cms-new').hidden=mode!=='admin';$('#cms-export').hidden=mode!=='admin';
+ $('#cms-login-link').hidden=mode!=='preview';
  $('#cms-role').textContent=mode==='admin'?'管理员 · 内容维护':'公开只读预览';
  setNotice(mode==='admin'?'管理员工作区：编辑先保存草稿，审核通过后才会进入公开目录。':'只读预览：这里展示公开网站资料，不会提供编辑或发布权限。');
  if(mode==='preview')$('#cms-state').innerHTML='<span class="status-led"></span> PUBLIC PREVIEW';
