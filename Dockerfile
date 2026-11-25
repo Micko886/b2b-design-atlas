@@ -11,11 +11,15 @@ RUN find /srv/atlas/static/assets -maxdepth 1 -type f -name "atlas-*.js" -delete
 # One HTML entry, one stylesheet, one app script and two immutable research datasets.
 COPY backend/user_auth.py /srv/atlas/app/user_auth.py
 COPY backend/seo_routes.py /srv/atlas/app/seo_routes.py
+COPY backend/admin_routes.py /srv/atlas/app/admin_routes.py
 COPY backend/install_auth.py /srv/atlas/install_auth.py
 RUN python /srv/atlas/install_auth.py
 COPY frontend/index.html /srv/atlas/static/index.html
 COPY frontend/app.css /srv/atlas/static/assets/app.css
 COPY frontend/app.js /srv/atlas/static/assets/app.js
+COPY frontend/admin.html /srv/atlas/static/admin.html
+COPY frontend/admin.css /srv/atlas/static/assets/admin.css
+COPY frontend/admin.js /srv/atlas/static/assets/admin.js
 COPY frontend/research.json /srv/atlas/static/assets/research.json
 COPY frontend/patterns.json /srv/atlas/static/assets/patterns.json
 COPY frontend/articles.json /srv/atlas/static/assets/articles.json
