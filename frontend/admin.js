@@ -505,10 +505,11 @@
   function boot(){
     const studio=$('#open-content-studio');
     if(studio){
-      studio.href='/admin/content';studio.querySelector('span').textContent='内容管理';
+      studio.href='/admin/content?kind=site';studio.querySelector('span').textContent='内容管理';
     }
 
     applyTheme(savedTheme(),false);
+    if(location.hash==='#traffic')setNavActive('traffic');
     document.addEventListener('click',event=>{
       const theme=event.target.closest('[data-set-theme]');
       if(theme){applyTheme(theme.dataset.setTheme);return}
