@@ -361,13 +361,16 @@ function screenshots(s,mod,p){
  const safe=url=>typeof url==='string'&&((/^\/screenshots\/[a-zA-Z0-9_./-]{1,200}$/.test(url)&&!url.includes('..'))||/^\/api\/media\/[0-9a-f-]{36}$/.test(url));
  const added=(Array.isArray(s.gallery)?s.gallery:[]).filter(x=>x&&safe(x.url)).slice(0,16)
     .map(x=>({label:x.label||'页面截图',url:x.url,source:s.url}));
+ const legacy=(p&&p.captures&&p.captures.length)
+   ?p.captures.map(([slug,label,url])=>({label,url:'/screenshots/research/'+s.id+'-'+slug+'.jpg',source:s.id==='vast'?'https://www.vastspace.com'+url:new URL(url,s.url).href,mobile:slug==='mobile'}))
+   :state.notes.filter(x=>x.site_id===s.id).slice(0,8).map(x=>({label:x.title,url:x.screenshot_url,source:x.url}));
  if(added.length){
    const cover=safe(s.screenshot_url)?[{label:'案例封面',url:s.screenshot_url,source:s.url}]:[];
-   return [...cover,...added.filter(x=>!cover.some(y=>y.url===x.url))];
+   const ordered=[...cover,...added];
+   return [...ordered,...legacy.filter(x=>!ordered.some(y=>y.url===x.url))];
  }
- if(p&&p.captures&&p.captures.length)
-   return p.captures.map(([slug,label,url])=>({label,url:'/screenshots/research/'+s.id+'-'+slug+'.jpg',source:s.id==='vast'?'https://www.vastspace.com'+url:new URL(url,s.url).href,mobile:slug==='mobile'}));
- return [{label:'Homepage',url:s.screenshot_url,source:s.url},...state.notes.filter(x=>x.site_id===s.id).slice(0,8).map(x=>({label:x.title,url:x.screenshot_url,source:x.url}))];
+ if(p&&p.captures&&p.captures.length)return legacy;
+ return [{label:'Homepage',url:s.screenshot_url,source:s.url},...legacy];
 }
 function attrRow(k,v){return v?'<div><dt>'+h(k)+'</dt><dd>'+h(v)+'</dd></div>':''}
 function fullPalette(s,mod,p){let colors=(p&&!mod&&p.colors&&p.colors.length)?p.colors:pal(mod||s).map(x=>[x,'Screenshot color']);return '<div class="palette-grid">'+colors.map(([c,n])=>'<button class="palette-sample" data-action="copy" data-value="'+safeHex(c)+'" title="Copy '+safeHex(c)+'"><span style="background:'+safeHex(c)+'"></span><strong>'+safeHex(c)+'</strong><small>'+h(n)+'</small></button>').join('')+'</div><p class="source-note">'+(p&&!mod?'Observed source-page CSS colors; not an official brand guide.':'Extracted from screenshot imagery; not verified brand tokens.')+'</p>'}
