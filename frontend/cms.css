@@ -529,3 +529,6 @@
  .cms-split.cms-editing .cms-editor-content{padding:14px}
  .cms-split.cms-editing .cms-editor-title h2{font-size:22px}
 }
+
+/* Respect explicit hidden state even for grid/flex layout elements. */
+.cms-metrics[hidden],.cms-workflow-guide[hidden]{display:none!important}
