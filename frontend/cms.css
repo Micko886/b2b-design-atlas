@@ -892,3 +892,9 @@ body[data-cms-mode="admin"] #cms-media-status{font-size:12px;line-height:1.65}
  .cms-v532-media-item .cms-v532-photo{min-height:170px}
  .cms-v532-photo>img{height:185px}
 }
+
+/* V53.3 · Keep the single-cover workflow visually primary. */
+.cms-easy-mode .cms-easy-gallery{margin-top:0}
+.cms-easy-mode .cms-easy-gallery .cms-gallery-editor{margin:0 16px 17px;padding-top:16px}
+.cms-easy-mode .cms-easy-gallery summary span{max-width:70%;text-align:right}
+@media(max-width:600px){.cms-easy-mode .cms-easy-gallery .cms-gallery-editor{margin:0 12px 14px}.cms-easy-mode .cms-easy-gallery summary span{max-width:55%}}
