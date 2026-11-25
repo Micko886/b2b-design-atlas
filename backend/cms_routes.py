@@ -340,7 +340,14 @@ def register_cms_routes(app: FastAPI):
                 configured=seo_routes.read_json(seo_routes.STATIC/"assets"/"articles.json",{})
                 values.update(x["id"] for x in configured.get("categories",[]) if isinstance(x,dict) and x.get("id"))
             result[kind]=sorted(x for x in values if x)[:120]
-        return {"categories":result}
+        tag_counts={}
+        for article in current["articles"].values():
+            if not isinstance(article,dict):continue
+            for tag in article.get("tags",[]):
+                if not isinstance(tag,str) or not tag.strip() or len(tag)>32:continue
+                tag_counts[tag.strip()]=tag_counts.get(tag.strip(),0)+1
+        common_tags=sorted(tag_counts,key=lambda x:(-tag_counts[x],x))[:30]
+        return {"categories":result,"article_tags":common_tags}
 
     @app.get("/api/admin/media",include_in_schema=False)
     def media_list(request:Request):
