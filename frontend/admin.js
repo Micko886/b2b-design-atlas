@@ -242,6 +242,12 @@
     $('#mobile-nav').setAttribute('aria-expanded','false');
   }
   function boot(){
+    const studio=$('#open-content-studio');
+    if(studio){
+      studio.href=mode==='preview'?'/admin/content/preview':'/admin/content';
+      studio.querySelector('span').textContent=mode==='preview'?'内容管理预览':'内容管理';
+    }
+
     applyTheme(savedTheme(),false);
     document.addEventListener('click',event=>{
       const theme=event.target.closest('[data-set-theme]');
