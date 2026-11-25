@@ -8,8 +8,8 @@
   <title>运营总览 · B2B Atlas Control Room</title>
   <meta name="description" content="B2B Atlas 内容运营工作台——公开内容总览与管理员运营数据。">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%232a55e8'/%3E%3Cpath d='M10 22l10-13 10 13-10 9z' fill='none' stroke='white' stroke-width='3'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="/assets/admin.css?v=46">
-  <script src="/assets/admin.js?v=48" defer></script>
+  <link rel="stylesheet" href="/assets/admin.css?v=51.7">
+  <script src="/assets/admin.js?v=51.7" defer></script>
 </head>
 <body data-admin-mode="__ADMIN_MODE__">
 <a href="#main" class="sr-only skip-link">跳转到内容</a>
@@ -47,7 +47,7 @@
   <div class="sidebar-brand">
    <div class="brand-symbol" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
    <div class="brand-wordmark"><strong>B2B Atlas</strong><small>CONTROL ROOM</small></div>
-   <span class="brand-version">V46</span>
+   <span class="brand-version">V51.7</span>
   </div>
   <div class="workspace-chip"><span class="workspace-chip-icon">A</span><span><strong>Atlas Workspace</strong><small>Content operations</small></span><svg class="icon"><use href="#i-chevron-right"></use></svg></div>
   <nav class="side-nav" aria-label="工作台导航">
@@ -55,6 +55,7 @@
    <a class="side-link active" href="#overview" data-nav-section="overview"><svg class="icon"><use href="#i-grid"></use></svg><span>运营总览</span><span class="nav-indicator"></span></a>
    <a class="side-link" id="open-content-studio" href="/admin/content/preview"><svg class="icon"><use href="#i-layers"></use></svg><span>内容管理</span></a>
    <a class="side-link" href="#distribution" data-nav-section="distribution"><svg class="icon"><use href="#i-chart"></use></svg><span>内容分析</span></a>
+   <a class="side-link" href="#traffic" data-nav-section="traffic"><svg class="icon"><use href="#i-chart"></use></svg><span>真实运营分析</span><span class="nav-dot"></span></a>
    <a class="side-link" href="#quality" data-nav-section="quality"><svg class="icon"><use href="#i-quality"></use></svg><span>研究质检</span><span class="nav-dot"></span></a>
    <a class="side-link" href="#review-queue" data-nav-section="review-queue"><svg class="icon"><use href="#i-filter"></use></svg><span>内容检查</span></a>
    <span class="nav-group-label nav-group-later">PUBLIC LIBRARY <span>02</span></span>
@@ -119,6 +120,39 @@
       <div class="panel-head"><div><div class="section-eyebrow">04 / WORKSPACE PULSE</div><h2>运营动态</h2><p>真实账户与收藏行为的最近记录</p></div><span class="activity-tag" id="activity-tag">管理员专属</span></div>
       <div class="activity-body" id="activity-body"><div class="visual-loading">正在校验访问权限…</div></div>
     </article>
+   </section>
+   <section class="atlas-traffic" id="traffic" aria-label="真实运营数据分析中心">
+     <div class="atlas-traffic-header">
+       <div><span class="section-eyebrow">05 / AUDIENCE INTELLIGENCE · LIVE DATA</span><h2>真实运营数据分析中心</h2>
+        <p>来自实际浏览和搜索事件、数据库用户及收藏记录。仅统计匿名汇总，不展示虚构访客数。</p></div>
+       <div class="atlas-traffic-actions"><div class="atlas-traffic-ranges" role="group" aria-label="统计时间范围">
+         <button type="button" data-traffic-days="7">7 天</button>
+         <button type="button" data-traffic-days="30" class="active">30 天</button>
+         <button type="button" data-traffic-days="90">90 天</button></div>
+         <button type="button" id="atlas-traffic-export" class="toolbar-button" disabled>导出 CSV</button></div>
+     </div>
+     <div id="atlas-traffic-summary" class="atlas-traffic-summary" role="status">正在检查访问权限和真实数据来源…</div>
+     <div id="atlas-traffic-kpis" class="atlas-traffic-kpis"></div>
+     <div class="atlas-traffic-grid">
+       <article class="panel atlas-traffic-panel atlas-traffic-chart-panel">
+         <div class="panel-head"><div><span class="section-eyebrow">AUDIENCE ACTIVITY</span><h3>访问与搜索趋势</h3><p>每天真实记录的页面访问次数与搜索次数</p></div></div>
+         <div id="atlas-traffic-chart" class="atlas-traffic-chart"><div class="visual-loading">等待统计结果…</div></div>
+       </article>
+       <article class="panel atlas-traffic-panel">
+         <div class="panel-head"><div><span class="section-eyebrow">POPULAR PAGES</span><h3>热门页面</h3><p>按实际页面浏览次数排序</p></div></div>
+         <div id="atlas-traffic-pages" class="atlas-traffic-list"></div>
+       </article>
+       <article class="panel atlas-traffic-panel">
+         <div class="panel-head"><div><span class="section-eyebrow">SEARCH DEMAND</span><h3>常见搜索</h3><p>有搜索记录后显示真实关键词</p></div></div>
+         <div id="atlas-traffic-searches" class="atlas-traffic-list"></div>
+       </article>
+       <article class="panel atlas-traffic-panel">
+         <div class="panel-head"><div><span class="section-eyebrow">SAVED RESEARCH</span><h3>收藏热度</h3><p>实时统计当前用户收藏（全量快照）</p></div></div>
+         <div id="atlas-traffic-saved" class="atlas-traffic-list"></div>
+       </article>
+     </div>
+     <div class="atlas-traffic-footnote"><span class="status-led"></span><span>统计从功能部署后开始。浏览量不等于独立访客数；收藏量来自账户真实数据且为全量快照。</span>
+       <a href="/admin/content?kind=article">进入文章 CMS →</a></div>
    </section>
    <section class="review-panel panel" id="review-queue">
      <div class="panel-head review-head"><div><div class="section-eyebrow">05 / CONTENT REVIEW QUEUE</div><h2>待完善的研究案例</h2><p>从已收录网站中识别尚未建立人工检查档案的内容</p></div><div class="review-head-actions"><label class="queue-search"><svg class="icon"><use href="#i-magnifier"></use></svg><input id="queue-search" type="search" placeholder="搜索网站或行业…" aria-label="搜索待完善案例"></label><span class="queue-total" id="queue-total"></span></div></div>
