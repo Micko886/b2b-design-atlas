@@ -5,9 +5,9 @@
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#f5f7fb">
 <title>内容管理 · B2B Atlas Control Room</title>
-<link rel="stylesheet" href="/assets/admin.css?v=5200">
-<link rel="stylesheet" href="/assets/cms.css?v=5200">
-<script defer src="/assets/cms.js?v=5200"></script>
+<link rel="stylesheet" href="/assets/admin.css?v=5210">
+<link rel="stylesheet" href="/assets/cms.css?v=5210">
+<script defer src="/assets/cms.js?v=5210"></script>
 </head>
 <body data-cms-mode="__CMS_MODE__">
 <svg xmlns="http://www.w3.org/2000/svg" class="icon-sprite" aria-hidden="true">
@@ -31,32 +31,52 @@
  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
  <symbol id="i-x" viewBox="0 0 24 24"><path d="m5 5 14 14M19 5 5 19"/></symbol>
 </svg>
-<div class="dashboard-layout cms-layout">
+<div class="dashboard-layout cms-layout atlas-v521-layout">
  <aside class="sidebar" id="cms-sidebar">
-  <div class="sidebar-brand"><div class="brand-symbol" aria-hidden="true"><span></span><span></span><span></span><span></span></div><div class="brand-wordmark"><strong>B2B Atlas</strong><small>CONTROL ROOM</small></div><span class="brand-version">V51.20</span></div>
+  <div class="sidebar-brand"><div class="brand-symbol" aria-hidden="true"><span></span><span></span><span></span><span></span></div><div class="brand-wordmark"><strong>B2B Atlas</strong><small>CONTROL ROOM</small></div><span class="brand-version">V51.21</span></div>
   <div class="workspace-chip"><span class="workspace-chip-icon">A</span><span><strong>Atlas Workspace</strong><small>Content Studio</small></span></div>
-  <nav class="side-nav" aria-label="内容管理导航">
-   <span class="nav-group-label">MANAGEMENT <span>01</span></span>
-   <a href="/admin#traffic" class="side-link"><svg class="icon"><use href="#i-chart"></use></svg><span>真实运营分析</span></a>
-   <a href="/admin" class="side-link"><svg class="icon"><use href="#i-grid"></use></svg><span>运营总览</span></a>
-   <a href="?kind=site" data-kind-link="site" class="side-link active"><svg class="icon"><use href="#i-globe"></use></svg><span>Websites</span></a>
-   <a href="?kind=module" data-kind-link="module" class="side-link"><svg class="icon"><use href="#i-layers"></use></svg><span>Sections</span></a>
-   <a href="?kind=pattern" data-kind-link="pattern" class="side-link"><svg class="icon"><use href="#i-shapes"></use></svg><span>Patterns</span></a>
-   <a href="?kind=article" data-kind-link="article" class="side-link"><svg class="icon"><use href="#i-article"></use></svg><span>Insights</span></a>
-   <span class="nav-group-label nav-group-later">WORKSPACE <span>02</span></span>
-   <a href="/admin/preview" class="side-link"><svg class="icon"><use href="#i-grid"></use></svg><span>运营预览</span></a>
-   <a href="/" target="_blank" rel="noopener" class="side-link"><svg class="icon"><use href="#i-arrow-up-right"></use></svg><span>查看前台</span></a>
+  <nav class="side-nav atlas-v521-nav" aria-label="统一管理导航">
+   <span class="nav-group-label">主要工作区 <span>WORKSPACE</span></span>
+   <a href="/admin" class="side-link" data-workspace-link="overview"><svg class="icon"><use href="#i-grid"></use></svg><span>运营概览</span></a>
+   <a href="/admin/content?kind=site" class="side-link active" data-workspace-link="content"><svg class="icon"><use href="#i-layers"></use></svg><span>内容管理</span></a>
+   <button type="button" id="cms-review-shortcut" class="side-link atlas-side-button" data-workspace-link="review" hidden><svg class="icon"><use href="#i-check"></use></svg><span>审核队列</span></button>
+   <button type="button" id="cms-schedules-open" class="side-link atlas-side-button" data-workspace-link="schedule" hidden><svg class="icon"><use href="#i-clock"></use></svg><span>发布日历</span></button>
+   <a href="/admin#traffic" class="side-link" data-owner-only><svg class="icon"><use href="#i-grid"></use></svg><span>数据分析</span></a>
+   <span class="nav-group-label nav-group-later">管理工具 <span>SETTINGS</span></span>
+   <details class="atlas-v521-settings" id="cms-tools-menu"><summary class="side-link"><svg class="icon"><use href="#i-lock"></use></svg><span>资源与权限设置</span><span class="atlas-settings-chevron">⌄</span></summary>
+    <div class="atlas-v521-tools">
+     <button id="cms-media-open" type="button" class="side-link atlas-side-button" hidden>媒体资源库</button>
+     <button id="cms-categories-open" type="button" class="side-link atlas-side-button" hidden>文章分类</button>
+     <button id="cms-tags-open" type="button" class="side-link atlas-side-button" hidden>标签管理</button>
+     <button id="cms-team-open" type="button" class="side-link atlas-side-button" hidden>团队权限</button>
+     <button id="cms-export" type="button" class="side-link atlas-side-button" hidden>导出内容</button>
+    </div>
+   </details>
+   <a href="/" class="side-link atlas-v521-front" target="_blank" rel="noopener"><svg class="icon"><use href="#i-arrow-up-right"></use></svg><span>查看前台</span></a>
   </nav>
-  <div class="sidebar-bottom"><div class="sidebar-help"><div class="sidebar-help-icon"><svg class="icon"><use href="#i-lock"></use></svg></div><strong>审查后才会对外发布</strong><p>修改草稿不影响前台。提交审核、发布、归档都有版本记录。</p><a href="/admin/preview">查看运营总览 ↗</a></div><div class="sidebar-account"><div class="account-avatar">A</div><div><strong>Atlas Content Studio</strong><small id="cms-role">加载身份中</small></div></div></div>
+  <div class="sidebar-bottom atlas-v521-sidebar-bottom"><div class="sidebar-account"><div class="account-avatar">A</div><div><strong>Atlas Studio</strong><small id="cms-role">正在验证访问权限</small></div></div><p class="atlas-v521-footnote">编辑与发布均受账号权限保护</p></div>
  </aside>
  <div class="sidebar-backdrop" id="cms-backdrop" hidden></div>
  <div class="main-frame">
   <header class="masthead">
-   <div class="masthead-left"><button id="cms-menu" class="icon-button mobile-trigger" aria-label="打开导航" aria-expanded="false"><svg class="icon"><use href="#i-menu"></use></svg></button><span class="masthead-breadcrumb">Control Room</span><svg class="icon breadcrumb-arrow"><use href="#i-chevron-right"></use></svg><strong>Content Studio</strong></div>
-   <div class="masthead-right"><span class="save-state" id="cms-state"><span class="status-led"></span> CONTENT WORKFLOW</span><div class="theme-switch" role="group" aria-label="界面主题"><button data-set-theme="light" type="button" title="白天模式" aria-pressed="true"><svg class="icon"><use href="#i-sun"></use></svg><span>白天</span></button><button data-set-theme="dark" type="button" title="黑夜模式" aria-pressed="false"><svg class="icon"><use href="#i-moon"></use></svg><span>黑夜</span></button></div><a class="main-top-avatar" href="/account" title="个人中心">A</a></div>
+   <div class="masthead-left"><button id="cms-menu" class="icon-button mobile-trigger" aria-label="打开导航" aria-expanded="false"><svg class="icon"><use href="#i-menu"></use></svg></button><span class="masthead-breadcrumb">Control Room</span><svg class="icon breadcrumb-arrow"><use href="#i-chevron-right"></use></svg><strong>内容管理</strong></div>
+   <div class="masthead-right"><span class="save-state" id="cms-state"><span class="status-led"></span> CONTENT WORKFLOW</span><div class="theme-switch" role="group" aria-label="界面主题"><button data-set-theme="light" type="button" title="白天模式" aria-pressed="true"><svg class="icon"><use href="#i-sun"></use></svg><span>白天</span></button><button data-set-theme="dark" type="button" title="黑夜模式" aria-pressed="false"><svg class="icon"><use href="#i-moon"></use></svg><span>黑夜</span></button></div><a class="atlas-header-account" href="/account">个人账户</a><button type="button" id="cms-logout" class="atlas-v521-logout" hidden>退出登录</button></div>
   </header>
   <main class="dashboard-content cms-content">
-   <div class="page-head"><div><div class="eyebrow"><span class="eyebrow-mark"></span> CONTENT GOVERNANCE / EDITORIAL WORKFLOW</div><h1>内容管理<span class="title-spark">✳</span></h1><p>把内容维护、研究审核和发布版本，整合到一个工作区。</p></div><div class="page-head-actions"><a id="cms-login-link" class="toolbar-button" href="/login?next=%2Fadmin%2Fcontent" hidden>管理员登录 ↗</a><button id="cms-refresh" class="toolbar-button"><svg class="icon"><use href="#i-refresh"></use></svg>刷新</button><button id="cms-export" hidden class="toolbar-button"><svg class="icon"><use href="#i-download"></use></svg>导出内容</button><a class="toolbar-button" href="/admin#traffic">运营数据 ↗</a><button id="cms-categories-open" hidden class="toolbar-button">文章分类</button><button id="cms-tags-open" hidden class="toolbar-button">标签管理</button><button id="cms-review-shortcut" hidden class="toolbar-button">待审核内容</button><button id="cms-schedules-open" hidden class="toolbar-button">发布排期</button><button id="cms-team-open" hidden class="toolbar-button">团队权限</button><button id="cms-media-open" hidden class="toolbar-button">媒体资源</button><button id="cms-new" hidden class="toolbar-button toolbar-button-primary"><svg class="icon"><use href="#i-plus"></use></svg>新建内容</button></div></div>
+   <div class="page-head atlas-v521-page-head">
+    <div><div class="eyebrow"><span class="eyebrow-mark"></span> CONTENT / EDITORIAL LIBRARY</div><h1>内容管理</h1><p>在一处维护案例与文章。编辑保存草稿，审核通过后再发布。</p></div>
+    <div class="page-head-actions">
+     <a id="cms-login-link" class="toolbar-button" href="/login?next=%2Fadmin%2Fcontent" hidden>后台登录</a>
+     <button id="cms-refresh" class="toolbar-button"><svg class="icon"><use href="#i-refresh"></use></svg> 刷新</button>
+     <button id="cms-new" hidden class="toolbar-button toolbar-button-primary"><svg class="icon"><use href="#i-plus"></use></svg> 新建内容</button>
+    </div>
+   </div>
+   <div class="atlas-v521-quicknav" aria-label="内容类型">
+    <a href="?kind=site" class="atlas-v521-kind active" data-kind-link="site"><svg class="icon"><use href="#i-globe"></use></svg> 网站案例</a>
+    <a href="?kind=module" class="atlas-v521-kind" data-kind-link="module"><svg class="icon"><use href="#i-layers"></use></svg> 页面模块</a>
+    <a href="?kind=pattern" class="atlas-v521-kind" data-kind-link="pattern"><svg class="icon"><use href="#i-shapes"></use></svg> 设计模式</a>
+    <a href="?kind=article" class="atlas-v521-kind" data-kind-link="article"><svg class="icon"><use href="#i-article"></use></svg> 研究文章</a>
+   </div>
    <div id="cms-notice" class="notice-strip"><div><svg class="icon"><use href="#i-lock"></use></svg><span>正在连接内容管理服务…</span></div><span>SECURE STUDIO</span></div>
    <div class="cms-metrics" id="cms-metrics">
     <div class="cms-metric"><span>全部内容</span><strong>—</strong></div><div class="cms-metric"><span>文件收录</span><strong>—</strong></div><div class="cms-metric"><span>草稿</span><strong>—</strong></div><div class="cms-metric"><span>待审核</span><strong>—</strong></div><div class="cms-metric"><span>后台已发布</span><strong>—</strong></div>
