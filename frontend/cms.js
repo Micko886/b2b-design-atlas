@@ -229,7 +229,8 @@ function renderForm(item){
  const steps='<div class="cms-steps">'+['内容准备','保存草稿','提交审核','正式发布'].map((title,i)=>'<span class="cms-step '+(i===index+1?'current':i<index+1?'passed':'')+'"><span>'+String(i+1).padStart(2,'0')+'</span>'+title+'</span>'+(i<3?'<span class="cms-step-line"></span>':'')).join('')+'</div>';
  const meta='<div class="cms-editor-meta">'+stateClasses(s)+'<span>修订版本 <strong>v'+item.revision+'</strong></span><span>内容来源：'+h(item.source==='cms'?'PostgreSQL CMS':'项目内容文件')+'</span>'+(item.published_at?'<span>发布时间：'+h(item.published_at.slice(0,16))+'</span>':'')+'</div>';
  const form='<div class="cms-editor-content">'+(isPreview?'<div class="cms-readonly-banner">当前是公开设计预览。字段来自公开目录，无法在这里保存或发布。正式操作请使用管理员账户。</div>':'')+
- '<form id="cms-edit-form" class="cms-form"><div class="cms-form-group-label"><span>基础资料与内容字段</span><small>修改后先保存草稿</small></div>'
+ '<form id="cms-edit-form" class="cms-form"><div class="cms-form-group-label"><span>基础资料与内容字段</span><small>自动保存开启 · 发布仍需审核</small></div>'
+ +(editable?'<div class="cms-autosave-strip"><span class="cms-autosave-led"></span><span id="cms-autosave-status" role="status" aria-live="polite">已加载 · 修改后 3 秒自动保存草稿</span><button type="button" data-autosave-retry>立即保存</button></div>':'')
  +specs.filter(spec=>!(item.kind==='article'&&['tags','takeaways','sections'].includes(spec[0]))).map(spec=>formField(spec,values,editable)).join('')
  +(item.kind==='article'?articleStudio(values,editable):'')
  +'<details class="cms-json-advanced"><summary>高级 · 查看完整 JSON 结构</summary><div class="cms-field" data-json="true"><label>只读数据结构</label><textarea disabled spellcheck="false">'+h(JSON.stringify(values,null,2))+'</textarea></div></details>'
@@ -247,17 +248,19 @@ function renderForm(item){
  const root=$('#cms-editor-body');
  root.innerHTML=content+steps+meta+form+timeline;root.hidden=false;
  $('#cms-empty').hidden=true;
- state.dirty=false;
+ state.dirty=false;autosavePaused=false;
 }
 async function selectItem(slug){
+ if(state.busy)return;
  if(state.dirty&&!confirm('当前修改还未保存。确定放弃这些更改吗？'))return;
+ clearTimeout(autosaveTimer);editGeneration++;
  const item=state.items.find(x=>x.slug===slug);if(!item)return;
  $('#cms-editor-body').hidden=true;$('#cms-empty').hidden=false;$('#cms-empty').innerHTML='<div class="cms-loading">正在读取 '+h(item.label)+'…</div>';
  try{
    const result=mode==='admin'?await api('/api/admin/content/'+state.kind+'/'+slug):
     {kind:state.kind,slug,source:'repository',status:'public',revision:0,payload:state.records[slug],history:[]};
    state.selected=result;
-   renderForm(result);drawItems();
+   renderForm(result);drawItems();await offerDraftRecovery(result);
  }catch(e){$('#cms-empty').innerHTML='<div class="cms-error">'+h(e.message)+'</div>';message(e.message,false)}
 }
 function takeFields(){
@@ -286,21 +289,13 @@ function takeFields(){
  return base;
 }
 async function saveDraft(event){
- event.preventDefault();if(mode!=='admin'||state.busy)return;
- const target=state.selected;if(!target)return;
- let payload;try{payload=takeFields()}catch(e){message(e.message,false);return}
- btnDisable(true);
- try{
-   const res=await api('/api/admin/content/'+target.kind+'/'+target.slug,{method:'PUT',
-      body:JSON.stringify({payload,expected_revision:target.revision})});
-   message('草稿已保存 · v'+res.revision);
-   state.dirty=false;await loadKind(false);await selectItem(target.slug);
- }catch(e){message(e.message,false)}
- finally{btnDisable(false)}
+ event.preventDefault();
+ if(autosavePaused){message('版本冲突时不可覆盖远端草稿，请先复制内容并刷新。',false);return}
+ await persistDraft(false);
 }
 async function transition(action){
  if(mode!=='admin'||state.busy||!state.selected)return;
- if(state.dirty){message('请先保存当前修改的草稿，再继续审核。',false);return}
+ if(state.dirty||autosavePaused){message('请先等待自动保存成功或解决版本冲突，再继续审核。',false);return}
  const item=state.selected;
  if(action==='archive'&&!confirm('确定归档「'+(item.payload.name||item.payload.title||item.slug)+'」？该页面将从前台列表移除。'))return;
  btnDisable(true);
@@ -668,6 +663,7 @@ function boot(){
    const bulkCheck=e.target.closest('[data-bulk-select]');if(bulkCheck){const slug=bulkCheck.dataset.bulkSelect;if(bulkCheck.checked)state.selectedSlugs.add(slug);else state.selectedSlugs.delete(slug);updateBulkToolbar();return}
    const picked=e.target.closest('[data-v515-pick]');if(picked){chooseCategory(picked.dataset.v515Pick);return}
    if(e.target.closest('[data-v515-close]')){$('#cms-categories-dialog').close();return}
+   if(e.target.closest('[data-autosave-retry]')){if(autosavePaused){message('已暂停覆盖：请备份当前内容并刷新记录。',false);return}await persistDraft(false);return}
    const tag=e.target.closest('[data-v512-tag]');if(tag){const field=$('#v51-tags');if(!field)return;const existing=linesFrom('#v51-tags');if(!existing.includes(tag.dataset.v512Tag)){field.value=[...existing,tag.dataset.v512Tag].join(String.fromCharCode(10));markDraftDirty();refreshArticlePreview()}return}
    const formatter=e.target.closest('[data-v514-format]');if(formatter){applyArticleFormat(formatter);return}
    if(e.target.closest('[data-v512-preview]')){toggleArticlePreview();return}
@@ -721,6 +717,7 @@ function boot(){
  $('#cms-menu').addEventListener('click',()=>{const open=!document.body.classList.contains('sidebar-open');document.body.classList.toggle('sidebar-open',open);$('#cms-backdrop').hidden=!open;$('#cms-menu').setAttribute('aria-expanded',String(open))});
  $('#cms-backdrop').addEventListener('click',closeMobile);
  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMobile()});
+ window.addEventListener('beforeunload',e=>{if(state.dirty&&mode==='admin'){e.preventDefault();e.returnValue=''}});
  window.addEventListener('popstate',()=>{const kind=new URLSearchParams(location.search).get('kind')||'site';changeKind(kind)});
  document.addEventListener('submit',e=>{if(e.target.id==='cms-edit-form')saveDraft(e)});
  (async()=>{
