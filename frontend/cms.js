@@ -194,11 +194,12 @@ function setCmsRole(){
  $('#cms-bulk-action').innerHTML=options.map(([key,label])=>'<option value="'+key+'">'+label+'</option>').join('');
 }
 function btnDisable(value){state.busy=value;$$('#cms-editor-body button,#cms-new,#cms-refresh,#cms-export').forEach(x=>{if(!x.dataset.alwaysEnabled)x.disabled=value})}
-function setNotice(text){const el=$('#cms-notice');el.innerHTML='<div>'+icon(mode==='preview'?'lock':'check')+'<span>'+h(text)+'</span></div><span>'+(mode==='preview'?'PUBLIC PREVIEW':'ADMIN ONLY')+'</span>'}
+function setNotice(text,error=false){const el=$('#cms-notice');el.innerHTML='<div>'+icon(error?'lock':mode==='preview'?'lock':'check')+'<span>'+h(text)+'</span></div><span>'+(error?'REQUIRES ACTION':mode==='preview'?'PUBLIC PREVIEW':'ADMIN ONLY')+'</span>';el.hidden=mode==='admin'&&!error;el.classList.toggle('cms-notice-error',error)}
 function listUrl(){const u=new URL(location.href);u.searchParams.set('kind',state.kind);return u.pathname+u.search}
 function showKind(){
  $('#cms-current-kind').textContent=kinds[state.kind].label.toUpperCase();
  $('#cms-browser-title').textContent=kinds[state.kind].title;
+ const subtitle=$('#cms-browser-subtitle');if(subtitle)subtitle.textContent='选择记录进入独立编辑页，可直接修改文字、图片并保存草稿。';
  $$('[data-kind-link]').forEach(a=>{a.classList.toggle('active',a.dataset.kindLink===state.kind);a.href='?kind='+a.dataset.kindLink});
  $('#cms-create-kind').value=state.kind;
 }
@@ -756,7 +757,7 @@ async function changeKind(kind,push=true){
  markWorkspace('content');
  $('#cms-search').value='';$('#cms-status').value='';
  $('#cms-empty').hidden=false;$('#cms-editor-body').hidden=true;
- $('#cms-empty').innerHTML='<div class="cms-empty-symbol">✳</div><span class="section-eyebrow">EDITORIAL WORKSPACE</span><h2>选择一个案例，开始研究。</h2><p>选择左侧内容后，可以在这里编辑、审阅和发布。</p>';
+ $('#cms-empty').innerHTML='<div class="cms-empty-symbol">✳</div><span class="section-eyebrow">CONTENT EDITOR</span><h2>选择一条内容，开始编辑。</h2><p>打开一条记录后，可以直接修改并保存草稿。</p>';
  if(push)history.pushState({},'',listUrl());
  closeMobile();
  try{await loadKind()}catch(e){message(e.message,false);$('#cms-items').innerHTML='<div class="cms-error">'+h(e.message)+'</div>'}
@@ -1074,8 +1075,10 @@ async function saveCrop(){
 async function refreshMedia(){
  try{
    const res=await api('/api/admin/media');
-   state.mediaRecords=res.items||[];
-   $('#cms-media-grid').innerHTML=res.items.length?res.items.map(item=>'<div class="cms-v51-media-item">'
+   const items=Array.isArray(res.items)?res.items:[];
+   state.mediaRecords=items;
+   $('#cms-media-status').textContent=items.length?'已加载 '+items.length+' 张图片 · 选择图片或上传新图片。':'媒体库暂无图片 · 可上传 JPG、PNG 或 WebP。';
+   $('#cms-media-grid').innerHTML=items.length?items.map(item=>'<div class="cms-v51-media-item">'
      +'<img src="'+h(item.url)+'" alt="'+h(item.file_name)+'" loading="lazy">'
      +'<strong title="'+h(item.file_name)+'">'+h(item.file_name)+'</strong>'
      +'<small>'+(item.byte_size/1024).toFixed(0)+' KB · '+h(item.created_at.slice(0,10))+'</small>'
@@ -1085,7 +1088,8 @@ async function refreshMedia(){
      +(state.mediaTarget?'<button type="button" data-v513-use-inline="'+h(item.url)+'">插入当前章节</button>':state.mediaField?'<button type="button" data-v51-use-media="'+h(item.url)+'">使用此图片</button>':'')
      +'<button type="button" data-v51-delete-media="'+h(item.id)+'" class="cms-v51-delete">删除图片</button></div>').join('')
      :'<p class="cms-loading">暂无上传图片。可以上传 JPG、PNG 或 WebP。</p>';
- }catch(e){$('#cms-media-status').textContent='媒体列表加载失败：'+e.message;message(e.message,false)}
+   return true;
+ }catch(e){$('#cms-media-status').textContent='媒体列表加载失败：'+e.message;message(e.message,false);return false}
 }
 // V51.6 · Optimize oversized images locally; never upload unsupported content.
 async function optimizeMediaFile(original){
@@ -1137,9 +1141,9 @@ async function uploadMedia(files){
      message((file!==original?'已优化并上传：':'媒体已保存：')+file.name);
    }catch(err){failed++;console.error('[CMS] media upload failed',err);message(original.name+' 上传失败：'+err.message,false)}
  }
- $('#cms-media-status').textContent='上传完成：成功 '+uploaded+' 张'+(failed?'，失败 '+failed+' 张，请检查文件格式及权限。':'。图片已保存到媒体库。');
  picker.disabled=false;dropzone.disabled=false;
- await refreshMedia();
+ const refreshed=await refreshMedia();
+ $('#cms-media-status').textContent='上传完成：成功 '+uploaded+' 张'+(failed?'，失败 '+failed+' 张，请检查文件格式及权限。':'。图片已保存到媒体库。')+(refreshed?'':'（列表刷新失败，请稍后重试）');
  if(uploadedUrls.length&&state.mediaField==='field-gallery'){
    state.mediaField=null;$('#cms-media-dialog').close();addGalleryImages(uploadedUrls);return uploaded;
  }
@@ -1750,7 +1754,7 @@ function boot(){
      await loadKind();
      if(routeParams.get('edit')&&state.items.some(x=>x.slug===routeParams.get('edit')))await selectItem(routeParams.get('edit'));
      if(routeParams.get('workspace')==='schedule'&&can('view'))await openScheduleQueue();
-   }catch(e){console.error('[CMS] initial content load failed',e);setNotice('无法读取后台内容：'+e.message);$('#cms-items').innerHTML='<div class="cms-error">'+h(e.message)+'</div>'}
+   }catch(e){console.error('[CMS] initial content load failed',e);setNotice('无法读取后台内容：'+e.message,true);$('#cms-items').innerHTML='<div class="cms-error">'+h(e.message)+'</div>'}
  })();
 }
 boot();
