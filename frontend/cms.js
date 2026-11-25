@@ -1303,7 +1303,11 @@ async function revokeTeamRole(){
 }
 function boot(){
  setTheme(theme());
- $('#cms-new').hidden=mode!=='admin';$('#cms-export').hidden=mode!=='admin';$('#cms-media-open').hidden=mode!=='admin';$('#cms-categories-open').hidden=mode!=='admin';$('#cms-tags-open').hidden=mode!=='admin';$('#cms-review-shortcut').hidden=mode!=='admin';$('#cms-schedules-open').hidden=mode!=='admin';$('#cms-team-open').hidden=mode!=='admin';
+ // Start every privileged action hidden until /api/admin/team/me succeeds.
+ for(const id of ['cms-new','cms-export','cms-media-open','cms-categories-open',
+                  'cms-tags-open','cms-review-shortcut','cms-schedules-open',
+                  'cms-team-open','cms-logout'])$('#'+id).hidden=true;
+ $('#cms-tools-menu').hidden=true;
  $('#cms-login-link').hidden=mode!=='preview';
  $('#cms-role').textContent=mode==='admin'?'管理员 · 内容维护':'公开只读预览';
  setNotice(mode==='admin'?'管理员工作区：编辑先保存草稿，审核通过后才会进入公开目录。':'只读预览：这里展示公开网站资料，不会提供编辑或发布权限。');
@@ -1412,7 +1416,15 @@ function boot(){
  $('#cms-tag-form').addEventListener('submit',saveTag);
  $('#cms-tag-delete').addEventListener('click',deleteTag);
  $('#cms-tag-search').addEventListener('input',e=>{state.tagSearch=e.target.value;drawTags()});
- $('#cms-review-shortcut').addEventListener('click',()=>{$('#cms-status').value='review';state.status='review';drawItems();$('#cms-items').scrollIntoView({block:'nearest',behavior:'smooth'});message('已筛选当前内容类型的待审核记录')});
+ $('#cms-review-shortcut').addEventListener('click',async()=>{
+   if(!can('view'))return;
+   if(state.dirty&&!confirm('当前草稿尚未保存，确定切换到审核队列吗？'))return;
+   $('#cms-status').value='review';state.status='review';drawItems();
+   closeMobile();$('#cms-items').scrollIntoView({block:'nearest',behavior:'smooth'});
+   const first=listFiltered()[0];
+   if(first){await selectItem(first.slug);setEditorTab('review')}
+   else message('当前类型没有待审核内容');
+ });
  $('#cms-schedules-open').addEventListener('click',openScheduleQueue);
  $('#cms-schedule-refresh').addEventListener('click',refreshSchedules);
  $('#cms-calendar-status').addEventListener('change',()=>{paintCalendar();paintScheduleQueue()});
@@ -1475,7 +1487,12 @@ function boot(){
        setCmsRole();
        try{await loadCmsTaxonomy()}catch(err){console.warn('分类列表读取失败',err.message)}
      }
+     const routeParams=new URLSearchParams(location.search);
+     if(routeParams.get('status')==='review'){
+       state.status='review';$('#cms-status').value='review';
+     }
      await loadKind();
+     if(routeParams.get('workspace')==='schedule'&&can('view'))await openScheduleQueue();
    }catch(e){setNotice('无法读取后台内容：'+e.message);$('#cms-items').innerHTML='<div class="cms-error">'+h(e.message)+'</div>'}
  })();
 }
