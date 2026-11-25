@@ -67,12 +67,12 @@ def quality_report(slug,payload):
             "note":"编辑质量检查并非搜索引擎排名预测；公开前仍需人工核验图片与引用授权。"}
 
 def register_quality_routes(app:FastAPI):
-    @app.post("/api/admin/content/seo/check",include_in_schema=False)
+    @app.post("/api/admin/seo/check",include_in_schema=False)
     def check_draft(data:SeoPreview,request:Request):
         cms_routes.require_admin(request,permission="edit")
         payload=cms_routes.cleaned("article",data.slug,data.payload)
         return quality_report(data.slug,payload)
-    @app.get("/api/admin/content/{slug}/seo",include_in_schema=False)
+    @app.get("/api/admin/seo/article/{slug}",include_in_schema=False)
     def read_check(slug:str,request:Request):
         cms_routes.require_admin(request,permission="view")
         if not cms_routes.SLUG.fullmatch(slug):user_auth.error(422,"文章 ID 无效。")
