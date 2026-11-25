@@ -294,11 +294,39 @@ function insightReference(r){
  if(r[0]==='pattern'){let p=pattern(r[1]);if(!p)return '';return `<a class="insight-reference insight-reference-pattern" href="/patterns/${encodeURIComponent(p.id)}" data-link="/patterns/${encodeURIComponent(p.id)}"><span class="insight-pattern-glyph">▤</span><span><small>DESIGN PATTERN</small><strong>${h(p.title)}</strong><em>${h(p.family)} · 设计方法 ↗</em></span></a>`}
  return '';
 }
+function renderInsightBlock(block){
+ if(!block||typeof block!=='object')return '';
+ const type=block.type,text=formatArticleInline(block.text||'');
+ if(type==='paragraph')return '<p>'+text+'</p>';
+ if(type==='heading')return '<h3 class="insight-block-heading">'+text+'</h3>';
+ if(type==='quote')return '<blockquote class="insight-block-quote">'+text+'</blockquote>';
+ if(type==='callout')return '<aside class="insight-prose-callout">'+text+'</aside>';
+ if(type==='list')return '<ul>'+((block.items||[]).map(item=>'<li>'+formatArticleInline(item)+'</li>').join(''))+'</ul>';
+ if(type==='image'&&/^\/api\/media\/[0-9a-f-]{36}$/.test(block.src||'')){
+   return '<figure class="insight-inline-figure"><img loading="lazy" src="'+h(block.src)+'" alt="'+h(block.alt||'文章图片')+'">'
+    +(block.caption?'<figcaption>'+h(block.caption)+'</figcaption>':'')+'</figure>';
+ }
+ if(type==='table')return '<div class="insight-block-table-scroll"><table><tbody>'
+   +((block.rows||[]).map(row=>'<tr>'+row.map(cell=>'<td>'+h(cell)+'</td>').join('')+'</tr>').join(''))
+   +'</tbody></table></div>';
+ if(type==='link'&&/^https?:\/\/[^<>\s]+$/i.test(block.url||''))
+   return '<p class="insight-block-link"><a target="_blank" rel="nofollow noopener noreferrer" href="'+h(block.url)+'">'+(text||h(block.url))+' ↗</a></p>';
+ return '';
+}
 function insightArticle(a){
  const cat=articleCat(a.category),url=articleLink(a);
  const related=[...state.articles.filter(x=>x.id!==a.id&&x.category===a.category),...state.articles.filter(x=>x.id!==a.id&&x.category!==a.category)].slice(0,3);
  const index=state.articles.findIndex(x=>x.id===a.id),prev=state.articles[index-1],next=state.articles[index+1];
- const sections=a.sections.map((s,i)=>`<section class="insight-prose-section" id="insight-section-${i+1}"><span class="insight-prose-number">${String(i+1).padStart(2,'0')} / ${String(a.sections.length).padStart(2,'0')}</span><h2>${h(s.title)}</h2>${s.paragraphs.map(p=>`<p>${formatArticleInline(p)}</p>`).join('')}${/^\/api\/media\/[0-9a-f-]{36}$/.test(s.image||'')?`<figure class="insight-inline-figure"><img loading="lazy" src="${h(s.image)}" alt="${h(s.image_caption||s.title||'文章配图')}">${s.image_caption?`<figcaption>${h(s.image_caption)}</figcaption>`:''}</figure>`:''}${s.bullets?.length?`<ul>${s.bullets.map(item=>`<li>${h(item)}</li>`).join('')}</ul>`:''}${s.callout?`<div class="insight-prose-callout">${h(s.callout)}</div>`:''}</section>`).join('');
+ const sections=a.sections.map((s,i)=>{
+   const body=Array.isArray(s.blocks)?s.blocks.map(renderInsightBlock).join(''):
+      (s.paragraphs||[]).map(p=>'<p>'+formatArticleInline(p)+'</p>').join('')
+      +(/^\/api\/media\/[0-9a-f-]{36}$/.test(s.image||'')?'<figure class="insight-inline-figure"><img loading="lazy" src="'+h(s.image)+'" alt="'+h(s.image_caption||s.title||'文章配图')+'">'
+          +(s.image_caption?'<figcaption>'+h(s.image_caption)+'</figcaption>':'')+'</figure>':'')
+      +(s.bullets?.length?'<ul>'+s.bullets.map(item=>'<li>'+h(item)+'</li>').join('')+'</ul>':'')
+      +(s.callout?'<div class="insight-prose-callout">'+h(s.callout)+'</div>':'');
+   return '<section class="insight-prose-section" id="insight-section-'+(i+1)+'"><span class="insight-prose-number">'
+      +String(i+1).padStart(2,'0')+' / '+String(a.sections.length).padStart(2,'0')+'</span><h2>'+h(s.title)+'</h2>'+body+'</section>';
+ }).join('');
  return `<div class="shell insight-article">
  <nav class="insight-breadcrumb" aria-label="当前位置"><a href="/" data-link="/">首页</a><span>/</span><a href="/insights" data-link="/insights">资讯与研究</a><span>/</span><a href="/insights?category=${h(a.category)}" data-link="/insights?category=${h(a.category)}">${h(cat?.name||a.category)}</a></nav>
  <header class="insight-article-header"><a href="/insights?category=${h(a.category)}" data-link="/insights?category=${h(a.category)}" class="insight-article-category">${h(cat?.name||a.category)}</a><h1>${h(a.title)}</h1><p>${h(a.subtitle)}</p><div class="insight-article-meta"><span class="insight-author-avatar">BA</span><span> B2B Atlas 编辑部</span><i></i><time datetime="${h(a.published_at)}">${h(articleDate(a))}</time><i></i><span>阅读约 ${a.reading_minutes} 分钟</span><button type="button" class="detail-bookmark-button" data-action="save" data-key="${h(key(a))}" aria-pressed="${saved(key(a))}">${bookmarkIcon(saved(key(a)))} ${saved(key(a))?'已收藏':'收藏文章'}</button><button data-action="share-article" type="button"><span aria-hidden="true">↗</span> 复制文章链接</button></div></header>
