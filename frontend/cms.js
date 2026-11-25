@@ -169,7 +169,7 @@ function setCmsRole(){
  $('#cms-role').textContent=(state.user?.display_name||'Atlas')+' · '+title;
  $('#cms-logout').hidden=mode!=='admin';
  $('#cms-tools-menu').hidden=!(can('media')||can('taxonomy')||can('team')||can('export'));
- $('[data-owner-only]').forEach(el=>el.hidden=!can('team'));
+ $$('[data-owner-only]').forEach(el=>el.hidden=!can('team'));
  $('#cms-new').hidden=!can('edit');
  $('#cms-export').hidden=!can('export');
  $('#cms-media-open').hidden=!can('media');
