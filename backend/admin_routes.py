@@ -92,7 +92,7 @@ def public_metrics():
             "shots_missing": sum(1 for x in sites if not shots.get(x.get("id")))
         },
         "sectors": sectors,
-        "queue": queue[:10],
+        "queue": queue[:100],
         "recent_articles": recent,
         "content_mix": [
             {"name":"Websites","value":totals["websites"],"key":"websites"},
