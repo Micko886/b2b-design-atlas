@@ -340,8 +340,9 @@ def register_growth_routes(app:FastAPI):
         return Response(status_code=204)
 
     @app.get("/api/admin/growth",include_in_schema=False)
-    def dashboard(request:Request,response:Response,days:Literal[7,30,90]=30,
+    def dashboard(request:Request,response:Response,days:int=30,
                   channel:Literal["all","direct","organic","social","referral","paid","email"]="all"):
+        if days not in (7,30,90):user_auth.error(422,"只能查询 7、30 或 90 天数据。")
         session=user_auth.required(request)
         if not admin_routes.admin_allowed(session):
             user_auth.error(403,"需要管理员权限。")
