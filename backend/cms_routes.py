@@ -199,6 +199,9 @@ def cleaned(kind,slug,payload):
         u=urlparse(result["url"])
         if u.scheme not in ("http","https") or not u.netloc:
             user_auth.error(422,"网站 URL 必须是完整的 http(s) 地址。")
+    if kind=="article" and result.get("cover_image"):
+        if not isinstance(result["cover_image"],str) or not re.fullmatch(r"/api/media/[0-9a-f-]{36}",result["cover_image"]):
+            user_auth.error(422,"文章封面只能选择已上传的媒体图片。")
     if kind=="article":
         if len(result["sections"])>40:user_auth.error(422,"文章章节最多 40 个。")
         for s in result["sections"]:
