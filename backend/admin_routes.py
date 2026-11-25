@@ -143,8 +143,8 @@ def private_activity():
 def admin_allowed(session):
     return bool(session and session.get("user_id", "").lower() in ADMIN_IDS)
 
-def html_page(mode):
-    doc = (STATIC / "admin.html").read_text(encoding="utf-8")
+def html_page(mode, template="admin.html"):
+    doc = (STATIC / template).read_text(encoding="utf-8")
     doc = doc.replace("__ADMIN_MODE__", mode)
     headers = {
         "Cache-Control": "no-store",
@@ -182,6 +182,18 @@ def register_admin_routes(app: FastAPI):
                 headers={"Cache-Control":"no-store","X-Robots-Tag":"noindex"}
             )
         return html_page("admin")
+
+    @app.get("/admin/content", include_in_schema=False)
+    def content_admin_page(request: Request):
+        session=user_auth.session(request)
+        if not session:
+            return RedirectResponse("/login?next=%2Fadmin%2Fcontent",status_code=302,
+                                    headers={"Cache-Control":"no-store","X-Robots-Tag":"noindex"})
+        if not admin_allowed(session):
+            return HTMLResponse("<h1>403 · 需要管理员权限</h1><p>此账户尚未获得后台管理授权。</p>"
+                                '<p><a href="/account">返回个人中心</a></p>',
+                                status_code=403,headers={"Cache-Control":"no-store","X-Robots-Tag":"noindex"})
+        return html_page("admin",template="cms.html")
 
     @app.get("/api/admin/preview", include_in_schema=False)
     def preview_metrics(response: Response):
