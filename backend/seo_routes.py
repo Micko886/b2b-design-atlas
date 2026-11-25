@@ -36,7 +36,7 @@ def read_json(path, default):
     except (OSError,ValueError):return default
 
 @lru_cache(maxsize=1)
-def catalog():
+def base_catalog():
     src=read_json(BASE/"app"/"source_index.json",{})
     modules=read_json(BASE/"app"/"module_catalog.json",[])
     patterns=read_json(STATIC/"assets"/"patterns.json",[])
@@ -47,6 +47,17 @@ def catalog():
         "patterns":{x["id"]:x for x in patterns if x.get("id")} if isinstance(patterns,list) else {},
         "articles":{x["id"]:x for x in articles.get("articles",[]) if x.get("id")}
     }
+
+def catalog():
+    # Keep original source files cached, apply only *published* CMS snapshots.
+    # Drafts, submitted reviews and audit records never reach public views.
+    base=base_catalog()
+    try:
+        from app.cms_routes import merge_catalog
+    except ImportError:
+        return base
+    return merge_catalog(base)
+catalog.cache_clear=base_catalog.cache_clear
 
 def seo_record(path):
     parts=[x for x in path.strip("/").split("/") if x]
