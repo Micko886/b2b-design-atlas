@@ -88,8 +88,8 @@ class UnifiedEditorUI(unittest.TestCase):
     def test_responsive_and_cache_freshness(self):
         self.assertIn("@media(max-width:880px)",self.css)
         self.assertIn(".cms-easy-mode .cms-easy-fields .cms-field select",self.css)
-        self.assertIn("cms.js?v=5280",self.html)
-        self.assertIn("cms.css?v=5280",self.html)
+        self.assertIn("cms.js?v=5300",self.html)
+        self.assertIn("cms.css?v=5300",self.html)
 
 
 class UnchangedContentSchema(unittest.TestCase):
