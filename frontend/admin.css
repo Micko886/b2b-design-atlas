@@ -514,3 +514,18 @@ html[data-theme=dark] .sector-bar>i{background:linear-gradient(90deg,#5976e7,#9a
 .atlas-v521-nav .nav-group-later{margin-top:21px}
 @media(max-width:1050px){.atlas-v521-nav .side-link{padding:10px}.atlas-v521-sidebar-bottom .sidebar-account{padding:6px}}
 @media(max-width:620px){.masthead-right{gap:7px}.atlas-header-account{display:none}.atlas-v521-logout{padding:8px 9px}.atlas-v521-nav .side-link{font-size:13px}}
+
+
+/* V53.0 — same six-destination navigation in the overview and CMS */
+.atlas-v530-nav{display:grid;align-content:start;gap:4px}
+.atlas-v530-nav .nav-group-label{display:flex;align-items:center;justify-content:space-between}
+.atlas-v530-nav .side-link{min-height:43px;display:flex;align-items:center;gap:12px;text-decoration:none}
+.atlas-v530-nav .side-link .icon{flex:0 0 auto}
+.atlas-v530-nav .side-link.active{font-weight:800}
+.atlas-v530-nav .atlas-side-button{width:100%;text-align:left;font:inherit;cursor:pointer}
+.atlas-v530-nav .atlas-side-button span{font-weight:inherit}
+.atlas-v530-nav .side-link[hidden],.atlas-v530-nav button[hidden]{display:none!important}
+.atlas-v530-nav .nav-group-later{margin-top:17px}
+.atlas-v530-nav .cms-v530-count{margin-left:auto;background:var(--surface-2);border-radius:100px;min-width:20px;text-align:center;padding:3px 7px;font-size:10px}
+.atlas-v530-nav .cms-v530-count[hidden]{display:none}
+.atlas-v530-nav .side-link:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
