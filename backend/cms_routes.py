@@ -26,7 +26,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse, Response as BinaryResponse
 from pydantic import BaseModel, Field
 
-from app import user_auth, admin_routes, seo_routes
+from app import user_auth, admin_routes, seo_routes, cms_access
 
 KIND = Literal["site", "module", "pattern", "article"]
 SLUG = re.compile(r"^[a-z0-9][a-z0-9-]{0,110}$")
@@ -107,10 +107,9 @@ SCHEMA = [
 def utc_now():
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
-def require_admin(request: Request, mutate=False):
+def require_admin(request: Request, mutate=False, permission=None):
     session = user_auth.required(request)
-    if not admin_routes.admin_allowed(session):
-        user_auth.error(403,"此账号没有内容管理权限。")
+    cms_access.require(session,permission or ("edit" if mutate else "view"))
     if mutate:
         user_auth.origin(request)
         user_auth.check_csrf(request, session)
@@ -739,7 +738,9 @@ def register_cms_routes(app: FastAPI):
 
     @app.post("/api/admin/content/bulk",include_in_schema=False)
     def bulk_change(data:BulkChange,request:Request):
-        session=require_admin(request,mutate=True);ensure_cms()
+        session=require_admin(request,mutate=True,
+            permission="review" if data.action in ("publish","archive") else "edit")
+        ensure_cms()
         slugs=[x.slug for x in data.items]
         if len(set(slugs))!=len(slugs) or any(not SLUG.fullmatch(s) for s in slugs):
             user_auth.error(422,"请检查批量选择中是否有重复或非法标识。")
@@ -806,7 +807,7 @@ def register_cms_routes(app: FastAPI):
 
     @app.get("/api/admin/content/export",include_in_schema=False)
     def export_content(request:Request):
-        require_admin(request)
+        require_admin(request,permission="export")
         ensure_cms()
         with user_auth.db() as db:
             entries=db.all("SELECT * FROM atlas_cms_entries ORDER BY kind,slug")
@@ -922,18 +923,18 @@ def register_cms_routes(app: FastAPI):
 
     @app.post("/api/admin/content/{kind}/{slug}/reject",include_in_schema=False)
     def reject_content(kind:KIND,slug:str,data:RejectDecision,request:Request):
-        session=require_admin(request,mutate=True)
+        session=require_admin(request,mutate=True,permission="review")
         validate_review_reason(data.reason)
         return transition(kind,slug,data.expected_revision,"reject",session,data.reason)
 
     @app.post("/api/admin/content/{kind}/{slug}/publish",include_in_schema=False)
     def publish_content(kind:KIND,slug:str,data:Change,request:Request):
-        session=require_admin(request,mutate=True)
+        session=require_admin(request,mutate=True,permission="review")
         return transition(kind,slug,data.expected_revision,"publish",session)
 
     @app.post("/api/admin/content/{kind}/{slug}/archive",include_in_schema=False)
     def archive_content(kind:KIND,slug:str,data:Change,request:Request):
-        session=require_admin(request,mutate=True)
+        session=require_admin(request,mutate=True,permission="review")
         return transition(kind,slug,data.expected_revision,"archive",session)
 
     @app.post("/api/admin/content/{kind}/{slug}/restore",include_in_schema=False)
