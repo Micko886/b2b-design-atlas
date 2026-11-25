@@ -99,7 +99,7 @@ class UnifiedNavigationContracts(unittest.TestCase):
                        "cms-export","cms-logout","cms-settings-open"):
             with self.subTest(action=action):
                 self.assertEqual(self.cms.count('id="'+action+'"'),1)
-        self.assertIn('id="cms-tools-menu" hidden',self.cms)
+        self.assertIn('id="cms-tools-menu" class="cms-v530-settings-tools" hidden',self.cms)
         self.assertIn("atlas-v521-quicknav",self.cms)
 
     def test_four_editor_tabs_and_html_panes_are_wired(self):
