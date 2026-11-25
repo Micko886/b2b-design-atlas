@@ -327,7 +327,8 @@ async function transition(action){
  finally{btnDisable(false)}
 }
 async function restoreRevision(revision){
- if(mode!=='admin'||!state.selected)return;
+ if(mode!=='admin'||!state.selected||state.busy)return;
+ if(state.dirty||autosavePaused){message('请先保存当前编辑，或解决版本冲突后再恢复历史。',false);return}
  if(!confirm('将 v'+revision+' 的内容恢复为一份新草稿？当前已发布的前台内容不会改变。'))return;
  const target=state.selected;btnDisable(true);
  try{
@@ -388,6 +389,7 @@ async function exportCms(){
 function closeMobile(){document.body.classList.remove('sidebar-open');$('#cms-backdrop').hidden=true;$('#cms-menu').setAttribute('aria-expanded','false')}
 async function changeKind(kind){
  if(!kinds[kind])return;
+ if(state.busy){message('草稿正在保存，请完成后切换内容类型。',false);return}
  if(state.dirty&&!confirm('当前修改尚未保存，确定切换？'))return;
  state.kind=kind;state.selected=null;state.dirty=false;state.records={};state.q='';state.status='';state.selectedSlugs.clear();
  $('#cms-search').value='';$('#cms-status').value='';
@@ -792,7 +794,10 @@ function boot(){
  document.addEventListener('input',e=>{if(e.target.closest('#cms-edit-form')){markDraftDirty();refreshArticlePreview()}});
  $('#cms-search').addEventListener('input',e=>{state.q=e.target.value;drawItems()});
  $('#cms-status').addEventListener('change',e=>{state.status=e.target.value;drawItems()});
- $('#cms-refresh').addEventListener('click',async()=>{try{await loadKind(true);message('内容列表已刷新')}catch(e){message(e.message,false)}});
+ $('#cms-refresh').addEventListener('click',async()=>{
+  if(state.dirty&&!confirm('当前草稿还有未保存的修改。确认重新读取服务器内容吗？'))return;
+  try{await loadKind(true);message('内容列表已刷新')}catch(e){message(e.message,false)}
+ });
  $('#cms-export').addEventListener('click',exportCms);
  $('#cms-new').addEventListener('click',async()=>{
    if(mode==='admin'&&state.kind==='article')try{await loadCmsTaxonomy()}catch(err){message(err.message,false)}
