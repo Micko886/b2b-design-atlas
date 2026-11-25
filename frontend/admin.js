@@ -312,9 +312,26 @@
   function renderGrowthLocked(){
     setText('#atlas-growth-note','真实渠道、会话及转化分析仅向管理员开放。');
     $('#atlas-growth-metrics').innerHTML=growthEmpty('管理员登录后查看。');
-    for(const key of ['channels','sources','campaigns','funnel','devices','scroll','landings','content'])
+    for(const key of ['channels','daily','sources','campaigns','funnel','devices','scroll','landings','content'])
       $('#atlas-growth-'+key).innerHTML=growthEmpty('PRIVATE ANALYTICS');
     $('#atlas-growth-export').disabled=true;
+  }
+  function growthTrend(rows){
+    if(!rows.length)return growthEmpty();
+    const width=820,height=190,left=35,right=14,top=15,bottom=30;
+    const max=Math.max(1,...rows.map(x=>Math.max(Number(x.sessions)||0,Number(x.registrations)||0,Number(x.first_saves)||0)));
+    const x=i=>left+(rows.length===1?0:i/(rows.length-1))*(width-left-right);
+    const y=n=>height-bottom-(Number(n)||0)/max*(height-top-bottom);
+    const series=(key,cls)=>'<path class="'+cls+'" d="'+rows.map((r,i)=>
+       (i?'L':'M')+x(i).toFixed(1)+' '+y(r[key]).toFixed(1)).join(' ')+'"/>';
+    const ticks=[0,Math.floor((rows.length-1)/2),rows.length-1].map(i=>
+       '<text x="'+x(i).toFixed(1)+'" y="182" text-anchor="middle">'+esc(rows[i].date.slice(5))+'</text>').join('');
+    return '<div class="atlas-growth-chart-key"><span><i class="sessions"></i>活跃会话</span><span><i class="registrations"></i>注册</span><span><i class="saves"></i>会话首次收藏</span></div>'
+       +'<svg viewBox="0 0 820 190" role="img" aria-label="匿名会话及真实转化次数趋势">'
+       +'<path class="atlas-traffic-gridline" d="M35 15H806 M35 87H806 M35 160H806"/>'
+       +series('sessions','atlas-growth-line-sessions')+series('registrations','atlas-growth-line-signups')
+       +series('first_saves','atlas-growth-line-saves')
+       +'<g class="atlas-traffic-axis">'+ticks+'</g></svg>';
   }
   function renderGrowth(d){
     state.growth=d;
@@ -330,6 +347,7 @@
     $('#atlas-growth-metrics').innerHTML=kpis.map(([key,title,help,ic])=>
       '<article class="atlas-traffic-kpi"><div class="atlas-traffic-kpi-top">'+icon(ic)+'<span>'+esc(help)+'</span></div>'
       +'<strong>'+growthNumber(t[key])+'</strong><span>'+esc(title)+'</span></article>').join('');
+    $('#atlas-growth-daily').innerHTML=growthTrend(d.daily||[]);
     const channels=d.channels||[];
     $('#atlas-growth-channels').innerHTML=channels.length?
        '<table class="atlas-growth-table"><thead><tr><th>渠道</th><th>会话</th><th>浏览</th><th>注册</th><th>收藏</th><th>注册率</th></tr></thead><tbody>'
