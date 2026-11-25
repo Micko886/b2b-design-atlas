@@ -70,6 +70,25 @@ class V51ContractTests(unittest.TestCase):
                 cms_routes.verify_links("article",payload)
         self.assertEqual(error.exception.status_code,422)
 
+    def test_inline_image_from_media_library_allowed(self):
+        payload=self.article()
+        payload["sections"][0]["image"]="/api/media/4255210d-d19f-46db-a0ef-ad75ddb3ff3f"
+        payload["sections"][0]["image_caption"]="A safe caption"
+        self.assertEqual(cms_routes.cleaned("article","editorial-sample",payload)["sections"][0]["image"],payload["sections"][0]["image"])
+
+    def test_external_inline_image_blocked(self):
+        payload=self.article()
+        payload["sections"][0]["image"]="https://example.com/tracking.gif"
+        with self.assertRaises(HTTPException) as error:
+            cms_routes.cleaned("article","editorial-sample",payload)
+        self.assertEqual(error.exception.status_code,422)
+
+    def test_oversized_image_caption_blocked(self):
+        payload=self.article()
+        payload["sections"][0]["image_caption"]="a"*241
+        with self.assertRaises(HTTPException):
+            cms_routes.cleaned("article","editorial-sample",payload)
+
     def test_absent_sections_rejected(self):
         payload=self.article()
         payload["sections"]=[]
