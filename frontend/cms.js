@@ -31,7 +31,7 @@ const fieldSpecs={
  ],
  article:[
   ['title','文章标题','text',true],['subtitle','文章摘要','long',true],['category','文章分类','text',true],
-  ['author','作者','text',true],['cover_site','封面关联网站 ID','text'],['cover_image','媒体封面 URL','text'],['published_at','发布日期（YYYY-MM-DD）','text'],
+  ['author','作者','text',true],['seo_title','SEO 标题','text'],['seo_description','SEO 描述','long'],['cover_site','封面关联网站 ID','text'],['cover_image','媒体封面 URL','text'],['published_at','发布日期（YYYY-MM-DD）','text'],
   ['reading_minutes','阅读时长（分钟）','number'],['featured','精选文章','bool'],
   ['tags','关键词（JSON 数组）','json'],['takeaways','核心观点（JSON 数组）','json'],
   ['sections','文章章节（JSON 数组）','json'],['references','关联引用（JSON 数组）','json']
@@ -604,6 +604,26 @@ function sectionImageMarkup(s){
  return '<figure class="cms-v513-figure"><img src="'+h(s.image)+'" alt="'+h(s.image_caption||s.title||'配图')+'">'
    +(s.image_caption?'<figcaption>'+h(s.image_caption)+'</figcaption>':'')+'</figure>';
 }
+function previewArticleBlock(block){
+ if(!block||typeof block!=='object')return '';
+ const type=block.type,text=inlineArticleText(block.text||'');
+ if(type==='paragraph')return '<p>'+text+'</p>';
+ if(type==='heading')return '<h3 class="cms-block-subheading">'+text+'</h3>';
+ if(type==='quote')return '<blockquote class="cms-block-quote">'+text+'</blockquote>';
+ if(type==='callout')return '<aside class="cms-block-callout">'+text+'</aside>';
+ if(type==='list')return '<ul>'+((block.items||[]).map(item=>'<li>'+inlineArticleText(item)+'</li>').join(''))+'</ul>';
+ if(type==='image'){
+   if(!/^\/api\/media\/[0-9a-f-]{36}$/.test(block.src||''))return '';
+   return '<figure class="cms-v513-figure"><img src="'+h(block.src)+'" alt="'+h(block.alt||'文章配图')+'">'
+       +(block.caption?'<figcaption>'+h(block.caption)+'</figcaption>':'')+'</figure>';
+ }
+ if(type==='table')return '<div class="cms-block-table-scroll"><table><tbody>'
+    +((block.rows||[]).map(row=>'<tr>'+row.map(cell=>'<td>'+h(cell)+'</td>').join('')+'</tr>').join(''))
+    +'</tbody></table></div>';
+ if(type==='link')return /^https?:\/\/[^<>\s]+$/i.test(block.url||'')
+    ?'<p><a target="_blank" rel="nofollow noopener noreferrer" href="'+h(block.url)+'">'+(text||h(block.url))+' ↗</a></p>':'';
+ return '';
+}
 function previewMarkup(article){
  const sections=Array.isArray(article.sections)?article.sections:[];
  const tags=Array.isArray(article.tags)?article.tags:[];
@@ -614,10 +634,11 @@ function previewMarkup(article){
    +(cover?'<img class="cms-v512-cover" src="'+h(cover)+'" alt="文章封面">':'')
    +'<div class="cms-v512-tags">'+tags.map(x=>'<span>'+h(x)+'</span>').join('')+'</div>'
    +sections.map((s,i)=>'<section><h2>'+h(s.title||'章节 '+(i+1))+'</h2>'
-     +(Array.isArray(s.paragraphs)?s.paragraphs:[]).map(p=>'<p>'+inlineArticleText(p)+'</p>').join('')
-     +(Array.isArray(s.bullets)&&s.bullets.length?'<ul>'+s.bullets.map(x=>'<li>'+h(x)+'</li>').join('')+'</ul>':'')
-     +sectionImageMarkup(s)
-     +(s.callout?'<blockquote>'+h(s.callout)+'</blockquote>':'')+'</section>').join('')
+     +(Array.isArray(s.blocks)?s.blocks.map(previewArticleBlock).join(''):
+       (Array.isArray(s.paragraphs)?s.paragraphs:[]).map(p=>'<p>'+inlineArticleText(p)+'</p>').join('')
+       +(Array.isArray(s.bullets)&&s.bullets.length?'<ul>'+s.bullets.map(x=>'<li>'+h(x)+'</li>').join('')+'</ul>':'')
+       +sectionImageMarkup(s)
+       +(s.callout?'<blockquote>'+h(s.callout)+'</blockquote>':''))+'</section>').join('')
    +'</article>';
 }
 function refreshArticlePreview(){
