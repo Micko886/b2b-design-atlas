@@ -501,6 +501,69 @@ function articleSection(section={},index=0,editable=true){
       +'<button type="button" data-block-add>＋ 添加内容块</button><small>拖动卡片排序，支持上移和下移</small></div>':'')+'</div>';
  return '<div class="cms-v51-section cms-v517-section" data-v51-section>'+head+legacy+editor+'</div>';
 }
+function reindexBlocks(list){
+ if(!list)return;
+ Array.from(list.children).filter(x=>x.matches('[data-cms-block]')).forEach((el,i)=>{
+   const t=el.querySelector('.cms-editor-block-head strong');
+   if(t)t.textContent=String(i+1).padStart(2,'0')+' · '+articleBlockTypes[el.dataset.blockType]
+ });
+}
+function convertLegacyChapter(node){
+ const legacy=node.querySelector('[data-legacy-article]'),mode=node.querySelector('[data-blocks-mode]');
+ if(!legacy||!mode||!mode.hidden)return;
+ const paragraphs=node.querySelector('[data-v51-paragraphs]').value.split(/\n\s*\n/).map(x=>x.trim()).filter(Boolean);
+ const bullets=node.querySelector('[data-v51-bullets]').value.split('\n').map(x=>x.trim()).filter(Boolean);
+ const note=node.querySelector('[data-v51-callout]').value.trim();
+ const image=node.querySelector('[data-v513-image]').value.trim();
+ const caption=node.querySelector('[data-v513-caption]').value.trim();
+ const blocks=paragraphs.map(text=>({type:'paragraph',text}));
+ if(bullets.length)blocks.push({type:'list',items:bullets});
+ if(note)blocks.push({type:'callout',text:note});
+ if(image)blocks.push({type:'image',src:image,alt:caption,caption});
+ if(!blocks.length)blocks.push({type:'paragraph',text:''});
+ mode.querySelector('[data-block-list]').innerHTML=blocks.map((b,i)=>articleBlock(b,i,true)).join('');
+ legacy.hidden=true;mode.hidden=false;markDraftDirty();refreshArticlePreview();
+ message('章节已转换为内容块，保存草稿后生效');
+}
+function applyBlockFormat(button){
+ const field=button.closest('[data-cms-block]')?.querySelector('[data-block-text]');if(!field)return;
+ const start=field.selectionStart,end=field.selectionEnd;
+ const marker={bold:'**',italic:'*',code:'\x60'}[button.dataset.blockFormat];
+ if(!marker)return;
+ const text=field.value.slice(start,end)||'文字';
+ field.setRangeText(marker+text+marker,start,end,'select');
+ field.setSelectionRange(start+marker.length,start+marker.length+text.length);
+ field.focus();markDraftDirty();refreshArticlePreview();
+}
+let draggedCmsBlock=null;
+function installBlockDrag(){
+ const root=$('#cms-editor-body');
+ root.addEventListener('dragstart',e=>{
+   const el=e.target.closest('[data-cms-block]');
+   if(!el||!can('edit')||e.target.closest('textarea,input'))return;
+   draggedCmsBlock=el;el.classList.add('is-dragging');
+   if(e.dataTransfer){e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain','atlas-block')}
+ });
+ root.addEventListener('dragover',e=>{
+   const el=e.target.closest('[data-cms-block]');
+   if(el&&draggedCmsBlock&&el!==draggedCmsBlock&&el.parentElement===draggedCmsBlock.parentElement){
+     e.preventDefault();if(e.dataTransfer)e.dataTransfer.dropEffect='move'
+   }
+ });
+ root.addEventListener('drop',e=>{
+   const el=e.target.closest('[data-cms-block]');
+   if(!draggedCmsBlock||!el||el===draggedCmsBlock||el.parentElement!==draggedCmsBlock.parentElement)return;
+   e.preventDefault();
+   const rect=el.getBoundingClientRect();
+   if(e.clientY<rect.top+rect.height/2)el.before(draggedCmsBlock);
+   else el.after(draggedCmsBlock);
+   reindexBlocks(el.parentElement);markDraftDirty();refreshArticlePreview();
+ });
+ root.addEventListener('dragend',()=>{
+   if(draggedCmsBlock)draggedCmsBlock.classList.remove('is-dragging');
+   draggedCmsBlock=null
+ });
+}
 function articleStudio(v,editable){
  const disabled=editable?'':' disabled';
  const categorySuggestions=(state.taxonomy.article||[]).map(x=>'<option value="'+h(x)+'"></option>').join('');
