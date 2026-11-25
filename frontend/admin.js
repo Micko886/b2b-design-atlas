@@ -183,7 +183,7 @@
       systemRow('内容来源','公开案例库 / 研究档案已接入','已连接','good','database')
       +systemRow('账户运营统计',real?'仅汇总统计，不公开个人数据':'预览不读取用户资料',real?'已授权':'受保护',real?'good':'','users')
       +systemRow('密码找回邮件',real?(d.email_reset_enabled?'SMTP 已配置':'尚未配置 SMTP 发信服务'):'登录管理员后检查 SMTP 状态',real?(d.email_reset_enabled?'已连接':'待配置'):'仅管理员',real?(d.email_reset_enabled?'good':'warn'):'','lock')
-      +systemRow('内容发布与审核','CMS 写入工作流还未建设','规划中','warn','quality')
+      +systemRow('内容发布与审核','支持草稿、审核、正式发布、归档与版本历史；仅授权管理员可操作','已接入','good','quality')
       +systemRow('数据长期备份','请检查数据库有效期及异地备份策略','需核实','warn','shield');
   }
   function render(d){
