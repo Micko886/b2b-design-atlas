@@ -101,7 +101,10 @@ class GrowthTests(unittest.TestCase):
 
     def test_invalid_session_cannot_be_attributed(self):
         self.assertFalse(growth.record_conversion("not-a-uuid","registration"))
-        self.assertFalse(growth.ingest(self.db,self.event(session="bad"),"atlas.example",self.now))
+        from pydantic import ValidationError
+        with self.assertRaises(ValidationError):
+            self.event(session="bad")
+        self.assertIsNone(growth.hash_sid("bad"))
 
     def test_expired_session_cannot_receive_new_actions(self):
         growth.ingest(self.db,self.event(),"atlas.example",self.now)
