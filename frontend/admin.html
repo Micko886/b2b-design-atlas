@@ -8,8 +8,8 @@
   <title>运营总览 · B2B Atlas Control Room</title>
   <meta name="description" content="B2B Atlas 内容运营工作台——公开内容总览与管理员运营数据。">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%232a55e8'/%3E%3Cpath d='M10 22l10-13 10 13-10 9z' fill='none' stroke='white' stroke-width='3'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="/assets/admin.css?v=51.7">
-  <script src="/assets/admin.js?v=51.7" defer></script>
+  <link rel="stylesheet" href="/assets/admin.css?v=51.12">
+  <script src="/assets/admin.js?v=51.12" defer></script>
 </head>
 <body data-admin-mode="__ADMIN_MODE__">
 <a href="#main" class="sr-only skip-link">跳转到内容</a>
@@ -47,7 +47,7 @@
   <div class="sidebar-brand">
    <div class="brand-symbol" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
    <div class="brand-wordmark"><strong>B2B Atlas</strong><small>CONTROL ROOM</small></div>
-   <span class="brand-version">V51.7</span>
+   <span class="brand-version">V51.12</span>
   </div>
   <div class="workspace-chip"><span class="workspace-chip-icon">A</span><span><strong>Atlas Workspace</strong><small>Content operations</small></span><svg class="icon"><use href="#i-chevron-right"></use></svg></div>
   <nav class="side-nav" aria-label="工作台导航">
@@ -151,6 +151,65 @@
          <div id="atlas-traffic-saved" class="atlas-traffic-list"></div>
        </article>
      </div>
+
+     <div class="atlas-growth-head">
+       <div><span class="section-eyebrow">ACQUISITION / ENGAGEMENT / CONVERSION · V51.12</span>
+         <h2>渠道归因与用户行为</h2><p>按匿名会话追踪引荐来源、UTM 营销活动、浏览深度和已验证的注册收藏转化。</p></div>
+       <div class="atlas-growth-actions">
+         <label>流量渠道
+          <select id="atlas-growth-filter" aria-label="筛选流量渠道">
+           <option value="all">全部渠道</option><option value="direct">直接 / 未识别</option>
+           <option value="organic">自然搜索</option><option value="social">社交媒体</option>
+           <option value="referral">引荐链接</option><option value="paid">付费推广</option>
+           <option value="email">邮件营销</option>
+          </select>
+         </label>
+         <button type="button" class="toolbar-button" id="atlas-growth-export" disabled>导出完整 CSV</button>
+       </div>
+     </div>
+     <div id="atlas-growth-note" class="atlas-traffic-summary">正在加载流量来源、会话和转化汇总…</div>
+     <div id="atlas-growth-metrics" class="atlas-traffic-kpis">
+        <div class="atlas-traffic-empty">数据来源验证中…</div>
+     </div>
+     <div class="atlas-growth-grid">
+       <article class="panel atlas-growth-panel atlas-growth-wide">
+         <div class="panel-head"><div><span class="section-eyebrow">CHANNEL CONTRIBUTION</span>
+           <h3>流量渠道对比</h3><p>按实际匿名会话排序，比较浏览、注册与收藏行为</p></div></div>
+         <div id="atlas-growth-channels" class="atlas-growth-table-wrap"></div>
+       </article>
+       <article class="panel atlas-growth-panel">
+         <div class="panel-head"><div><span class="section-eyebrow">ACQUISITION SOURCES</span>
+           <h3>具体来源与引荐域名</h3><p>仅保留域名及经过过滤的 UTM 来源</p></div></div>
+         <div id="atlas-growth-sources"></div>
+       </article>
+       <article class="panel atlas-growth-panel">
+         <div class="panel-head"><div><span class="section-eyebrow">CAMPAIGN INTELLIGENCE</span>
+           <h3>营销活动表现</h3><p>按 utm_campaign 归集的真实会话与转化</p></div></div>
+         <div id="atlas-growth-campaigns"></div>
+       </article>
+       <article class="panel atlas-growth-panel">
+         <div class="panel-head"><div><span class="section-eyebrow">SESSION ENGAGEMENT</span>
+           <h3>注册与收藏转化</h3><p>注册和首次收藏由服务端确认；会话活跃为匿名统计</p></div></div>
+         <div id="atlas-growth-funnel" class="atlas-growth-funnel"></div>
+       </article>
+       <article class="panel atlas-growth-panel">
+         <div class="panel-head"><div><span class="section-eyebrow">AUDIENCE DEVICES</span>
+           <h3>设备与浏览深度</h3><p>桌面／平板／手机及 25%–90% 滚动覆盖</p></div></div>
+         <div id="atlas-growth-devices"></div>
+         <div id="atlas-growth-scroll" class="atlas-growth-depth"></div>
+       </article>
+       <article class="panel atlas-growth-panel">
+         <div class="panel-head"><div><span class="section-eyebrow">LANDING PAGES</span>
+           <h3>首访着陆页</h3><p>新会话首次进入的内容路径</p></div></div>
+         <div id="atlas-growth-landings"></div>
+       </article>
+       <article class="panel atlas-growth-panel">
+         <div class="panel-head"><div><span class="section-eyebrow">CONTENT INTERACTION</span>
+           <h3>内容互动表现</h3><p>全站内容页的浏览、预览、站内点击和外部跳转</p></div></div>
+         <div id="atlas-growth-content" class="atlas-growth-table-wrap"></div>
+       </article>
+     </div>
+     <p class="atlas-growth-disclaimer">采集范围从新版部署后开始。会话为匿名标签页会话估算，不是跨设备独立访客。渠道转化仅计算能匹配到活跃会话的服务端成功操作；内容表现为全站统计，不随渠道筛选变化。未采集的地区与浏览器数据不进行猜测。</p>
      <div class="atlas-traffic-footnote"><span class="status-led"></span><span>统计从功能部署后开始。浏览量不等于独立访客数；收藏量来自账户真实数据且为全量快照。</span>
        <a href="/admin/content?kind=article">进入文章 CMS →</a></div>
    </section>
