@@ -89,8 +89,8 @@ def seo_record(path):
                 "path":path,"indexed":True}
     if category=="insights" and slug in c["articles"]:
         x=c["articles"][slug]
-        return {"title":x.get("title",slug),
-                "description":x.get("subtitle") or "B2B Atlas 原创设计研究文章",
+        return {"title":x.get("seo_title") or x.get("title",slug),
+                "description":x.get("seo_description") or x.get("subtitle") or "B2B Atlas 原创设计研究文章",
                 "path":path,"indexed":True,"kind":"article",
                 "published":x.get("published_at",""),"author":x.get("author","B2B Atlas 编辑部"),
                 "image":("/screenshots/sites/"+x["cover_site"]+".webp") if x.get("cover_site") in c["sites"] else None}
