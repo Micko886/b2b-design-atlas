@@ -123,6 +123,8 @@ class UnifiedNavigationContracts(unittest.TestCase):
             with self.subTest(file=file):
                 invalid=re.findall(r"(?<!\$)\$\([^)]*\)\.forEach",script)
                 self.assertEqual(invalid,[])
+                non_iterable=re.findall(r"for\s*\([^)]*\bof\s+\$\(",script)
+                self.assertEqual(non_iterable,[])
 
     def test_review_queue_and_calendar_deep_links(self):
         self.assertIn("status=review",self.admin)
