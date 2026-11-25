@@ -169,10 +169,10 @@ class EditorialFrontendContracts(unittest.TestCase):
                        "function runSeoAudit(","function seoStudio("):
             self.assertIn(needle,self.cms)
     def test_asset_cache_versions_include_new_public_bundle(self):
-        self.assertIn("app.js?v=51.20",self.index)
+        self.assertIn("app.js?v=52.3",self.index)
         self.assertIn("app.css?v=51.20",self.index)
-        self.assertIn("cms.js?v=5222",self.html)
-        self.assertIn("cms.css?v=5222",self.html)
+        self.assertIn("cms.js?v=5230",self.html)
+        self.assertIn("cms.css?v=5230",self.html)
 
 if __name__=="__main__":
     unittest.main()
