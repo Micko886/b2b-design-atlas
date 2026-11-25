@@ -110,7 +110,7 @@ async function loadKind(keep=false){
 function formField(spec,values,editable){
  const [name,label,type,required]=spec,value=values[name]??(type==='json'?[]:type==='bool'?false:'');
  const inputName='field-'+name,disabled=editable?'':' disabled';
- const attr='data-field="'+h(name)+'" data-type="'+h(type)+'"';
+ const attr='id="'+inputName+'" data-field="'+h(name)+'" data-type="'+h(type)+'"';
  let input='';
  if(type==='bool')input='<select '+attr+disabled+'><option value="false"'+(!value?' selected':'')+'>否</option><option value="true"'+(value?' selected':'')+'>是</option></select>';
  else if(type==='json'){
