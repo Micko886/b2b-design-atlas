@@ -362,6 +362,11 @@ def register_auth_routes(app:FastAPI):
                              (uid,data.email,data.display_name,hash_password(data.password),now(),now()))
             except Exception:error(409,"此邮箱已注册。")
             csrf=grant(conn,response,uid)
+        try:
+            from app.analytics_growth import record_conversion
+            record_conversion(request.headers.get("x-atlas-session",""),"registration")
+        except Exception:
+            pass
         return {"authenticated":True,"user":{"id":uid,"email":data.email,"display_name":data.display_name,"created_at":now()},"csrf_token":csrf}
     @router.post("/auth/login")
     def login(data:Login,request:Request,response:Response):
@@ -432,9 +437,15 @@ def register_auth_routes(app:FastAPI):
         kind,slug=KEY.fullmatch(data.key).groups()
         table="atlas_user_items" if kind in ("site","module") else "atlas_user_entities"
         with db() as conn:
-            conn.execute("""INSERT INTO """+table+"""(user_id,collection,kind,slug,note,created_at)
+            inserted=conn.execute("""INSERT INTO """+table+"""(user_id,collection,kind,slug,note,created_at)
             VALUES(?,?,?,?,?,?) ON CONFLICT(user_id,collection,kind,slug) DO NOTHING""",
-            (s["user_id"],data.collection,kind,slug,"",now()))
+            (s["user_id"],data.collection,kind,slug,"",now())).rowcount
+        if inserted==1 and data.collection=="saved":
+            try:
+                from app.analytics_growth import record_conversion
+                record_conversion(request.headers.get("x-atlas-session",""),"save")
+            except Exception:
+                pass
         return {"ok":True}
     @router.delete("/me/library/{collection}/{kind}/{slug}")
     def remove(collection:Literal["saved","board"],kind:Literal["site","module","pattern","article"],slug:str,request:Request):
