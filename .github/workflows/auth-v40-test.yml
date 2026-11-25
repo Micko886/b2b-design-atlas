@@ -23,3 +23,5 @@ jobs:
         run: node --check frontend/app.js && node --check frontend/admin.js
       - name: Test admin dashboard authorization and catalog metrics
         run: PYTHONPATH=backend python backend/test_admin.py
+      - name: Assert bundled backend cannot bypass protected admin route
+        run: PYTHONPATH=backend python backend/test_install_admin.py
