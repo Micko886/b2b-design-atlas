@@ -309,7 +309,7 @@ function articleStudio(v,editable){
 function previewMarkup(article){
  const sections=Array.isArray(article.sections)?article.sections:[];
  const tags=Array.isArray(article.tags)?article.tags:[];
- const cover=/^\\/api\\/media\\/[0-9a-f-]{36}$/.test(article.cover_image||'')?article.cover_image:'';
+ const cover=new RegExp('^/api/media/[0-9a-f-]{36}$').test(article.cover_image||'')?article.cover_image:'';
  return '<article class="cms-v512-article">'
    +'<div class="cms-v512-kicker">'+h(article.category||'未分类')+' · '+h(article.author||'编辑部')+'</div>'
    +'<h1>'+h(article.title||'未命名文章')+'</h1><p class="cms-v512-deck">'+h(article.subtitle||'请填写文章摘要')+'</p>'
