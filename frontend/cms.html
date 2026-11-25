@@ -172,5 +172,17 @@
   </div>
   <div class="cms-dialog-actions"><button type="button" class="cms-btn-secondary" data-v514-close="team">完成</button></div>
 </dialog>
+<dialog id="cms-diff-dialog" class="cms-dialog cms-v518-diff-dialog" aria-label="审核内容版本对比">
+  <div class="cms-dialog-head"><div><span class="section-eyebrow">EDITORIAL DIFF · VERSION REVIEW</span>
+    <h2>版本正文逐段对比</h2><p>左侧是当前公开版或历史快照，右侧是待审核稿。标记具体新增、删除和修改。</p></div>
+    <button type="button" data-v518-close-diff aria-label="关闭版本对比">×</button></div>
+  <div class="cms-diff-toolbar">
+    <label>对比基线 <select id="cms-diff-baseline"><option value="0">当前公开版本</option></select></label>
+    <span id="cms-diff-summary">正在计算差异…</span>
+  </div>
+  <div class="cms-diff-columns-head"><strong id="cms-diff-left-title">公开版本</strong><strong>当前待审核稿</strong></div>
+  <div id="cms-diff-results" class="cms-diff-results" aria-live="polite"><p class="cms-loading">正在读取版本对比…</p></div>
+  <div class="cms-dialog-actions"><button type="button" class="cms-btn-secondary" data-v518-close-diff>完成</button></div>
+</dialog>
 <div id="cms-toast" class="toast" role="status" aria-live="polite"></div>
 </body></html>
