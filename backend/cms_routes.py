@@ -71,7 +71,20 @@ SCHEMA = [
         uploaded_by TEXT NOT NULL REFERENCES atlas_users(id),
         created_at TEXT NOT NULL
     )""",
-    """CREATE INDEX IF NOT EXISTS atlas_cms_media_created ON atlas_cms_media(created_at)"""
+    """CREATE INDEX IF NOT EXISTS atlas_cms_media_created ON atlas_cms_media(created_at)""",
+    """CREATE TABLE IF NOT EXISTS atlas_cms_categories (
+       id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL,
+       status TEXT NOT NULL CHECK(status IN ('active','deleted')),
+       created_by TEXT NOT NULL REFERENCES atlas_users(id),
+       updated_by TEXT NOT NULL REFERENCES atlas_users(id),
+       created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    )""",
+    """CREATE TABLE IF NOT EXISTS atlas_cms_category_history (
+       id TEXT PRIMARY KEY, category_id TEXT NOT NULL,
+       action TEXT NOT NULL, actor_id TEXT NOT NULL,
+       snapshot_json TEXT NOT NULL, created_at TEXT NOT NULL
+    )""",
+    """CREATE INDEX IF NOT EXISTS atlas_cms_category_history_cat ON atlas_cms_category_history(category_id,created_at)"""
 ]
 
 def utc_now():
@@ -174,7 +187,46 @@ def public_payload(kind: KIND):
     else:
         out=seo_routes.read_json(seo_routes.STATIC/"assets"/"articles.json",{})
         out["articles"]=list(merged["articles"].values())
+        out["categories"]=article_categories()
     return out
+
+def base_article_categories():
+    data=seo_routes.read_json(seo_routes.STATIC/"assets"/"articles.json",{})
+    return [x for x in data.get("categories",[]) if isinstance(x,dict) and x.get("id")]
+
+def merge_article_categories(base, overrides):
+    """Apply admin taxonomy changes while keeping original category ordering."""
+    ordered={x["id"]:dict(x) for x in base}
+    for row in overrides:
+        key=row["id"]
+        if row["status"]=="deleted":
+            ordered.pop(key,None)
+        else:
+            ordered[key]={"id":key,"name":row["name"],"description":row["description"]}
+    return list(ordered.values())
+
+def article_categories():
+    source=base_article_categories()
+    try:
+        ensure_cms()
+        with user_auth.db() as db:
+            changes=db.all("SELECT id,name,description,status FROM atlas_cms_categories ORDER BY created_at,id")
+        return merge_article_categories(source,changes)
+    except Exception:
+        return source
+
+def category_usage(category_id,base_articles,stored_rows):
+    """Count unique content records using the category, including unpublished changes."""
+    used={slug for slug,p in base_articles.items() if p.get("category")==category_id}
+    for row in stored_rows:
+        for column in ("draft_json","published_json"):
+            try:
+                payload=parse_json(row[column]) if row[column] else None
+            except (TypeError,ValueError):
+                continue
+            if isinstance(payload,dict) and payload.get("category")==category_id:
+                used.add(row["slug"])
+    return len(used)
 
 def cleaned(kind,slug,payload):
     if not SLUG.fullmatch(slug):user_auth.error(400,"URL 标识只能使用小写英文、数字与短横线。")
@@ -246,6 +298,8 @@ def verify_links(kind,payload):
     current=seo_routes.catalog()
     if kind=="module" and payload["site_id"] not in current["sites"]:
         user_auth.error(422,"关联的网站不存在或尚未发布。")
+    if kind=="article" and payload.get("category") not in {x["id"] for x in article_categories()}:
+        user_auth.error(422,"文章分类未创建或已停用，请先在分类管理中维护。")
     if kind=="article" and payload.get("cover_site") and payload["cover_site"] not in current["sites"]:
         user_auth.error(422,"封面关联网站尚未发布。")
     if kind=="article":
@@ -281,6 +335,11 @@ class Change(BaseModel):
 class Restore(BaseModel):
     expected_revision: int = Field(ge=0)
     revision: int = Field(ge=1)
+
+class CategoryData(BaseModel):
+    id: str = Field(min_length=2,max_length=48,pattern=r"^[a-z0-9][a-z0-9-]*$")
+    name: str = Field(min_length=1,max_length=80)
+    description: str = Field(default="",max_length=400)
 
 class MediaUpload(BaseModel):
     name: str = Field(min_length=1,max_length=160)
@@ -343,6 +402,81 @@ def register_cms_routes(app: FastAPI):
             })
         return await call_next(request)
 
+    @app.get("/api/admin/categories",include_in_schema=False)
+    def list_categories(request:Request):
+        require_admin(request);ensure_cms()
+        base=base_article_categories()
+        with user_auth.db() as db:
+            overrides=db.all("SELECT id,name,description,status,created_at,updated_at FROM atlas_cms_categories ORDER BY created_at,id")
+            entries=db.all("SELECT slug,draft_json,published_json FROM atlas_cms_entries WHERE kind='article'")
+        names=merge_article_categories(base,overrides)
+        base_ids={x["id"] for x in base}
+        by_id={x["id"]:x for x in overrides}
+        existing=base_maps()["articles"]
+        return {"items":[{**item,"source":"repository" if item["id"] in base_ids else "cms",
+                "usage":category_usage(item["id"],existing,entries),
+                "updated_at":by_id.get(item["id"],{}).get("updated_at","")}
+                for item in names]}
+
+    @app.post("/api/admin/categories",include_in_schema=False,status_code=201)
+    def create_category(data:CategoryData,request:Request):
+        session=require_admin(request,mutate=True);ensure_cms()
+        if data.id in {x["id"] for x in base_article_categories()}:
+            user_auth.error(409,"该分类 ID 已经存在，可直接编辑名称。")
+        with user_auth.db() as db:
+            if db.one("SELECT id FROM atlas_cms_categories WHERE id=?",(data.id,)):
+                user_auth.error(409,"该分类 ID 已占用。")
+            now=utc_now()
+            db.execute("""INSERT INTO atlas_cms_categories
+                (id,name,description,status,created_by,updated_by,created_at,updated_at)
+                VALUES(?,?,?,'active',?,?,?,?)""",
+                (data.id,data.name.strip(),data.description.strip(),session["user_id"],session["user_id"],now,now))
+            db.execute("INSERT INTO atlas_cms_category_history(id,category_id,action,actor_id,snapshot_json,created_at) VALUES(?,?,?,?,?,?)",
+                (str(uuid.uuid4()),data.id,"create",session["user_id"],json.dumps(data.model_dump(),ensure_ascii=False),now))
+        return {"ok":True,"id":data.id}
+
+    @app.put("/api/admin/categories/{category_id}",include_in_schema=False)
+    def edit_category(category_id:str,data:CategoryData,request:Request):
+        session=require_admin(request,mutate=True);ensure_cms()
+        if category_id!=data.id:user_auth.error(422,"分类 ID 不可更改。")
+        if category_id not in {x["id"] for x in base_article_categories()}:
+            with user_auth.db() as db:
+                if not db.one("SELECT id FROM atlas_cms_categories WHERE id=?",(category_id,)):
+                    user_auth.error(404,"分类不存在。")
+        with user_auth.db() as db:
+            now=utc_now()
+            db.execute("""INSERT INTO atlas_cms_categories
+                (id,name,description,status,created_by,updated_by,created_at,updated_at)
+                VALUES(?,?,?,'active',?,?,?,?)
+                ON CONFLICT(id) DO UPDATE SET
+                name=excluded.name,description=excluded.description,status='active',
+                updated_by=excluded.updated_by,updated_at=excluded.updated_at""",
+                (category_id,data.name.strip(),data.description.strip(),session["user_id"],session["user_id"],now,now))
+            db.execute("INSERT INTO atlas_cms_category_history(id,category_id,action,actor_id,snapshot_json,created_at) VALUES(?,?,?,?,?,?)",
+                (str(uuid.uuid4()),category_id,"edit",session["user_id"],json.dumps(data.model_dump(),ensure_ascii=False),now))
+        return {"ok":True,"id":category_id}
+
+    @app.delete("/api/admin/categories/{category_id}",include_in_schema=False)
+    def remove_category(category_id:str,request:Request):
+        session=require_admin(request,mutate=True);ensure_cms()
+        base={x["id"] for x in base_article_categories()}
+        with user_auth.db() as db:
+            old=db.one("SELECT id FROM atlas_cms_categories WHERE id=?",(category_id,))
+            if category_id not in base and not old:user_auth.error(404,"分类不存在。")
+            entries=db.all("SELECT slug,draft_json,published_json FROM atlas_cms_entries WHERE kind='article'")
+            if category_usage(category_id,base_maps()["articles"],entries):
+                user_auth.error(409,"分类仍被文章或草稿引用，请先调整这些文章的分类。")
+            now=utc_now()
+            db.execute("""INSERT INTO atlas_cms_categories
+                (id,name,description,status,created_by,updated_by,created_at,updated_at)
+                VALUES(?,?,?,'deleted',?,?,?,?)
+                ON CONFLICT(id) DO UPDATE SET
+                status='deleted',updated_by=excluded.updated_by,updated_at=excluded.updated_at""",
+                (category_id,category_id,"",session["user_id"],session["user_id"],now,now))
+            db.execute("INSERT INTO atlas_cms_category_history(id,category_id,action,actor_id,snapshot_json,created_at) VALUES(?,?,?,?,?,?)",
+                (str(uuid.uuid4()),category_id,"delete",session["user_id"],json.dumps({"id":category_id}),now))
+        return {"ok":True,"id":category_id}
+
     @app.get("/api/admin/content/taxonomy",include_in_schema=False)
     def taxonomy(request:Request):
         require_admin(request)
@@ -355,7 +489,7 @@ def register_cms_routes(app: FastAPI):
             # them even when they have no current articles.
             if kind=="article":
                 configured=seo_routes.read_json(seo_routes.STATIC/"assets"/"articles.json",{})
-                values.update(x["id"] for x in configured.get("categories",[]) if isinstance(x,dict) and x.get("id"))
+                values={x["id"] for x in article_categories()}
             result[kind]=sorted(x for x in values if x)[:120]
         tag_counts={}
         for article in current["articles"].values():
