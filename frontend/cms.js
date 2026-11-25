@@ -1056,7 +1056,7 @@ async function uploadMedia(files){
  if(!batch.length)return 0;
  const picker=$('#cms-media-select'),dropzone=$('#cms-media-drop');
  picker.disabled=true;dropzone.disabled=true;
- let uploaded=0,failed=0,lastUrl='';
+ let uploaded=0,failed=0,lastUrl='',uploadedUrls=[];
  for(const original of batch){
    try{
      $('#cms-media-status').textContent='正在处理 '+original.name;
@@ -1068,6 +1068,7 @@ async function uploadMedia(files){
      });
      const saved=await api('/api/admin/media',{method:'POST',body:JSON.stringify({name:file.name,mime:file.type,content:base64})});
      lastUrl=saved.url||'';
+     if(lastUrl)uploadedUrls.push(lastUrl);
      uploaded++;
      message((file!==original?'已优化并上传：':'媒体已保存：')+file.name);
    }catch(err){failed++;console.error('[CMS] media upload failed',err);message(original.name+' 上传失败：'+err.message,false)}
@@ -1075,6 +1076,9 @@ async function uploadMedia(files){
  $('#cms-media-status').textContent='上传完成：成功 '+uploaded+' 张'+(failed?'，失败 '+failed+' 张，请检查文件格式及权限。':'。图片已保存到媒体库。');
  picker.disabled=false;dropzone.disabled=false;
  await refreshMedia();
+ if(uploadedUrls.length&&state.mediaField==='field-gallery'){
+   state.mediaField=null;$('#cms-media-dialog').close();addGalleryImages(uploadedUrls);return uploaded;
+ }
  if(uploaded===1&&lastUrl&&state.mediaField){
    const target=document.getElementById(state.mediaField);
    if(target){target.value=lastUrl;state.mediaField=null;$('#cms-media-dialog').close();markDraftDirty();syncSiteImage();refreshArticlePreview();message('图片已关联到当前字段，请保存草稿')}
@@ -1498,6 +1502,13 @@ function boot(){
    if(e.target.closest('[data-close-editor]')){closeEditor();return}
    if(e.target.closest('[data-editor-save]')){if(!state.dirty&&state.selected?.status!=='source')message('当前没有待保存的修改。');else if($('#cms-edit-form')?.reportValidity())await saveDraft({preventDefault(){}});return}
    if(e.target.closest('[data-editor-submit]')){await transition('submit');return}
+   if(e.target.closest('[data-gallery-add]')){state.mediaTarget=null;state.mediaField='field-gallery';await openMedia();return}
+   const galleryRemove=e.target.closest('[data-gallery-remove]');
+   if(galleryRemove){const items=galleryValue();items.splice(Number(galleryRemove.dataset.galleryRemove),1);updateGallery(items);return}
+   const galleryMove=e.target.closest('[data-gallery-move]');
+   if(galleryMove){const items=galleryValue(),i=Number(galleryMove.dataset.galleryMove),j=i+Number(galleryMove.dataset.galleryDirection);if(j>=0&&j<items.length){[items[i],items[j]]=[items[j],items[i]];updateGallery(items)}return}
+   const galleryCover=e.target.closest('[data-gallery-cover]');
+   if(galleryCover){const photo=galleryValue()[Number(galleryCover.dataset.galleryCover)],input=$('#field-screenshot_url');if(photo&&input){input.value=photo.url;syncSiteImage();markDraftDirty();message('已设为案例封面。')}return}
    const mediaPicker=e.target.closest('[data-editor-pick-media]');
    if(mediaPicker){state.mediaTarget=null;state.mediaField=mediaPicker.dataset.editorPickMedia;await openMedia();return}
    const tab=e.target.closest('[data-editor-tab]');
@@ -1565,12 +1576,12 @@ function boot(){
    if(pickInline){state.mediaField=null;state.mediaTarget=pickInline.closest('[data-v51-section]');await openMedia();return}
    const clearInline=e.target.closest('[data-v513-clear-image]');
    if(clearInline){clearInline.closest('[data-v51-section]').querySelector('[data-v513-image]').value='';markDraftDirty();refreshArticlePreview();return}
-   const useMedia=e.target.closest('[data-v51-use-media]');if(useMedia){const target=state.mediaField?document.getElementById(state.mediaField):null;if(target){target.value=useMedia.dataset.v51UseMedia;state.mediaField=null;markDraftDirty();syncSiteImage();refreshArticlePreview();$('#cms-media-dialog').close();message('图片已选择，请保存草稿')}return}
+   const useMedia=e.target.closest('[data-v51-use-media]');if(useMedia){if(state.mediaField==='field-gallery'){state.mediaField=null;$('#cms-media-dialog').close();addGalleryImages([useMedia.dataset.v51UseMedia]);return}const target=state.mediaField?document.getElementById(state.mediaField):null;if(target){target.value=useMedia.dataset.v51UseMedia;state.mediaField=null;markDraftDirty();syncSiteImage();refreshArticlePreview();$('#cms-media-dialog').close();message('图片已选择，请保存草稿')}return}
    const copy=e.target.closest('[data-v51-copy-media]');if(copy){try{await navigator.clipboard.writeText(location.origin+copy.dataset.v51CopyMedia);message('图片地址已复制')}catch{message('请从媒体列表中手动复制地址',false)}return}
    if(e.target.closest('[data-media-close]')){state.mediaTarget=null;state.mediaField=null;$('#cms-media-dialog').close();return}
    if(e.target.closest('[data-dialog-close]')){$('#cms-create-dialog').close();return}
  });
- document.addEventListener('input',e=>{if(e.target.closest('#cms-edit-form')){markDraftDirty();syncSiteTitle();refreshArticlePreview();refreshSeoSnippet()}});
+ document.addEventListener('input',e=>{if(e.target.closest('[data-gallery-label]')){syncGalleryLabels();return}if(e.target.closest('#cms-edit-form')){markDraftDirty();syncSiteTitle();refreshArticlePreview();refreshSeoSnippet()}});
  $('#cms-search').addEventListener('input',e=>{state.q=e.target.value;drawItems()});
  $('#cms-status').addEventListener('change',e=>{state.status=e.target.value;markWorkspace(state.status==='review'?'review':'content');drawItems()});
  $('#cms-refresh').addEventListener('click',async()=>{
