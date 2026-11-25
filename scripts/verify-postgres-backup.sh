@@ -20,7 +20,9 @@ if [[ "${2:-}" == "restore-to-disposable-db" ]]; then
   [[ "${ATLAS_RESTORE_CONFIRM:-}" == "DISPOSABLE_DATABASE_ONLY" ]] || {
     echo "Refusing restore. Set ATLAS_RESTORE_CONFIRM=DISPOSABLE_DATABASE_ONLY." >&2; exit 2;
   }
-  # Do not use a production target. This command writes to the supplied database.
+  # Reject production-like DB names BEFORE any restore writes.
+  python3 "$(dirname "$0")/guard_restore.py"
+  # Only write after both explicit confirmation and target-name verification.
   PGDATABASE="$ATLAS_RESTORE_DATABASE_URL" pg_restore --exit-on-error --single-transaction --no-owner --no-privileges "$tmp"
   echo "Disposable restore complete. Validate counts and app flows before production migration."
 fi
