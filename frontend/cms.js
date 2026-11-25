@@ -80,6 +80,7 @@ function applyDraftResult(target,res,payload){
  const status=$('.cms-editor-meta .cms-item-state');
  if(status){status.dataset.status='draft';status.textContent=statusText.draft}
  const submit=$('#cms-edit-form [data-transition="submit"]');
+ const quickSubmit=$('[data-editor-submit]');if(quickSubmit)quickSubmit.disabled=false;
  const publish=$('#cms-edit-form [data-transition="publish"]');
  const archive=$('#cms-edit-form [data-transition="archive"]');
  if(submit)submit.disabled=false;
@@ -211,6 +212,27 @@ function updateSummary(){
 function listFiltered(){
  const q=state.q.toLowerCase().trim();
  return state.items.filter(x=>(!state.status||x.status===state.status)&&(!q||(x.label+' '+x.sector+' '+x.slug).toLowerCase().includes(q)));
+}
+function setStudioMode(editing){
+ const layout=$('.cms-split');if(layout)layout.classList.toggle('cms-editing',Boolean(editing));
+ const metrics=$('#cms-metrics');if(metrics)metrics.hidden=Boolean(editing);
+ const guide=$('.cms-workflow-guide');if(guide)guide.hidden=Boolean(editing);
+}
+function editorUrl(slug){
+ const url=new URL(location.href);url.searchParams.set('kind',state.kind);
+ url.searchParams.delete('edit');url.searchParams.delete('workspace');url.searchParams.delete('status');
+ if(slug)url.searchParams.set('edit',slug);
+ return url.pathname+url.search;
+}
+function closeEditor(push=true){
+ if(state.busy){message('草稿正在保存，请完成后返回。',false);return false}
+ if(state.dirty&&!confirm('修改尚未保存，确定放弃并返回内容列表吗？'))return false;
+ clearTimeout(autosaveTimer);editGeneration++;autosavePaused=false;
+ if(state.dirty)clearRecovery();state.dirty=false;state.selected=null;
+ $('#cms-editor-body').hidden=true;$('#cms-empty').hidden=false;
+ setStudioMode(false);drawItems();
+ if(push)history.pushState({},'',editorUrl(null));
+ return true;
 }
 function rowImage(x){
  if(x.kind==='site')return '/screenshots/sites/'+x.slug+'.webp';
@@ -348,6 +370,7 @@ async function runSeoAudit(){
 function renderForm(item){
  const isPreview=mode==='preview',values=item.payload||{},editable=can('edit');
  const specs=fieldSpecs[item.kind];
+ const topbar='<div class="cms-edit-topbar"><button type="button" class="cms-edit-back" data-close-editor>← 返回内容列表</button><span class="cms-edit-context">'+h(kinds[item.kind].title)+' / '+h(item.slug)+'</span>'+(editable?'<div class="cms-edit-quick-actions"><button type="button" data-editor-save>保存草稿</button><button type="button" data-editor-submit '+(item.status==='draft'?'':'disabled')+'>提交审核</button></div>':'')+'</div>';
  const content='<div class="cms-editor-title"><div><div class="section-eyebrow">EDIT / '+kinds[item.kind].label.toUpperCase()+'</div><h2>'+h(values.name||values.title||item.slug)+'</h2><p>URL 标识：'+h(item.slug)+' · '+h(item.source==='cms'?'CMS 内容记录':'原始内容资料')+'</p></div>'
   +'<a target="_blank" rel="noopener" href="'+h(kinds[item.kind].url+item.slug)+'">'+icon('arrow-up-right')+' 查看前台</a></div>';
  const s=item.status;
@@ -397,19 +420,20 @@ const history=item.history||[];
   +'<button type="button" data-editor-tab="review" role="tab">审核与发布</button>'
   +'<button type="button" data-editor-tab="history" role="tab">版本记录</button></div>';
  const seoPanel=item.kind==='article'?seoStudio(values):'';
- root.innerHTML=content+steps+meta+tabs
+ root.innerHTML=topbar+content+steps+meta+tabs
   +'<div data-editor-pane="content">'+form+'</div>'
   +(item.kind==='article'?'<div data-editor-pane="seo" hidden>'+seoPanel+'</div>':'')
   +'<div data-editor-pane="review" hidden>'+reviewBrief(item)+reviewActions
   +(can('review')?'':'<p class="atlas-v521-readonly-tip">本账户没有审核发布权限。如需审核，请联系最高管理员。</p>')+'</div>'
   +'<div data-editor-pane="history" hidden>'+timeline+'</div>';
  root.hidden=false;
+ setStudioMode(true);
  setEditorTab(state.editorTab||'content');
  syncScheduleEditor(item);
  $('#cms-empty').hidden=true;
  state.dirty=false;autosavePaused=false;
 }
-async function selectItem(slug){
+async function selectItem(slug,push=false){
  if(state.dirty&&!confirm('当前修改还未保存。确定放弃这些更改吗？'))return;
  clearTimeout(autosaveTimer);editGeneration++;
  const item=state.items.find(x=>x.slug===slug);if(!item)return;
@@ -419,8 +443,8 @@ async function selectItem(slug){
     {kind:state.kind,slug,source:'repository',status:'public',revision:0,payload:state.records[slug],history:[]};
    state.selected=result;
    state.editorTab=result.status==='review'&&can('review')?'review':'content';
-   renderForm(result);drawItems();await offerDraftRecovery(result);
- }catch(e){$('#cms-empty').innerHTML='<div class="cms-error">'+h(e.message)+'</div>';message(e.message,false)}
+   renderForm(result);drawItems();if(push)history.pushState({},'',editorUrl(slug));await offerDraftRecovery(result);
+ }catch(e){setStudioMode(false);$('#cms-empty').innerHTML='<div class="cms-error">'+h(e.message)+'</div>';message(e.message,false)}
 }
 function takeFields(){
  const base=JSON.parse(JSON.stringify(state.selected.payload)),controls=$$('#cms-edit-form [data-field]');
@@ -535,7 +559,7 @@ async function createNew(e){
  try{
    await api('/api/admin/content',{method:'POST',body:JSON.stringify({kind,slug,payload})});
    $('#cms-create-dialog').close();form.reset();state.kind=kind;state.selected=null;state.q='';state.status='';$('#cms-search').value='';$('#cms-status').value='';
-   history.replaceState({},'',listUrl());await loadKind();await selectItem(slug);message('新建草稿成功。请完善内容，再提交审核。');
+   history.replaceState({},'',listUrl());await loadKind();await selectItem(slug,true);message('新建草稿成功。请完善内容，再提交审核。');
  }catch(err){message(err.message,false)}
 }
 async function exportCms(){
@@ -547,16 +571,17 @@ async function exportCms(){
  }catch(e){message(e.message,false)}
 }
 function closeMobile(){document.body.classList.remove('sidebar-open');$('#cms-backdrop').hidden=true;$('#cms-menu').setAttribute('aria-expanded','false')}
-async function changeKind(kind){
+async function changeKind(kind,push=true){
  if(!kinds[kind])return;
  if(state.busy){message('草稿正在保存，请完成后切换内容类型。',false);return}
  if(state.dirty&&!confirm('当前修改尚未保存，确定切换？'))return;
- state.kind=kind;state.selected=null;state.dirty=false;state.records={};state.q='';state.status='';state.selectedSlugs.clear();
+ state.kind=kind;state.selected=null;state.dirty=false;state.records={};
+ setStudioMode(false);state.q='';state.status='';state.selectedSlugs.clear();
  markWorkspace('content');
  $('#cms-search').value='';$('#cms-status').value='';
  $('#cms-empty').hidden=false;$('#cms-editor-body').hidden=true;
  $('#cms-empty').innerHTML='<div class="cms-empty-symbol">✳</div><span class="section-eyebrow">EDITORIAL WORKSPACE</span><h2>选择一个案例，开始研究。</h2><p>选择左侧内容后，可以在这里编辑、审阅和发布。</p>';
- history.pushState({},'',listUrl());
+ if(push)history.pushState({},'',listUrl());
  closeMobile();
  try{await loadKind()}catch(e){message(e.message,false);$('#cms-items').innerHTML='<div class="cms-error">'+h(e.message)+'</div>'}
 }
@@ -1354,12 +1379,15 @@ function boot(){
    if(teamEntry){chooseTeamPerson(teamEntry.dataset.v514TeamId);return}
    const close=e.target.closest('[data-v514-close]');
    if(close){$('#cms-'+close.dataset.v514Close+'-dialog').close();return}
+   if(e.target.closest('[data-close-editor]')){closeEditor();return}
+   if(e.target.closest('[data-editor-save]')){if(!state.dirty)message('当前没有待保存的修改。');else await persistDraft(false);return}
+   if(e.target.closest('[data-editor-submit]')){await transition('submit');return}
    const tab=e.target.closest('[data-editor-tab]');
    if(tab){setEditorTab(tab.dataset.editorTab);return}
    const themeButton=e.target.closest('[data-set-theme]');if(themeButton){setTheme(themeButton.dataset.setTheme);return}
    if(e.target.closest('[data-editor-open-media]')){state.mediaTarget=null;await openMedia();return}
    const type=e.target.closest('[data-kind-link]');if(type){e.preventDefault();await changeKind(type.dataset.kindLink);return}
-   const choice=e.target.closest('[data-pick]');if(choice){if(state.busy)return;await selectItem(choice.dataset.pick);return}
+   const choice=e.target.closest('[data-pick]');if(choice){if(state.busy)return;await selectItem(choice.dataset.pick,true);return}
    const action=e.target.closest('[data-transition]');if(action){await transition(action.dataset.transition);return}
    const restore=e.target.closest('[data-restore]');if(restore){await restoreRevision(Number(restore.dataset.restore));return}
    const bulkCheck=e.target.closest('[data-bulk-select]');if(bulkCheck){const slug=bulkCheck.dataset.bulkSelect;if(bulkCheck.checked)state.selectedSlugs.add(slug);else state.selectedSlugs.delete(slug);updateBulkToolbar();return}
@@ -1504,7 +1532,12 @@ function boot(){
  $('#cms-backdrop').addEventListener('click',closeMobile);
  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMobile()});
  window.addEventListener('beforeunload',e=>{if(state.dirty&&mode==='admin'){e.preventDefault();e.returnValue=''}});
- window.addEventListener('popstate',()=>{const kind=new URLSearchParams(location.search).get('kind')||'site';changeKind(kind)});
+ window.addEventListener('popstate',async()=>{
+   const route=new URLSearchParams(location.search),kind=route.get('kind')||'site',slug=route.get('edit');
+   if(kind!==state.kind)await changeKind(kind,false);
+   if(slug&&state.items.some(x=>x.slug===slug)){await selectItem(slug);return}
+   if(state.selected)closeEditor(false);
+ });
  document.addEventListener('submit',e=>{if(e.target.id==='cms-edit-form')saveDraft(e)});
  (async()=>{
    try{
@@ -1522,6 +1555,7 @@ function boot(){
        state.status='review';$('#cms-status').value='review';markWorkspace('review');
      }
      await loadKind();
+     if(routeParams.get('edit')&&state.items.some(x=>x.slug===routeParams.get('edit')))await selectItem(routeParams.get('edit'));
      if(routeParams.get('workspace')==='schedule'&&can('view'))await openScheduleQueue();
    }catch(e){console.error('[CMS] initial content load failed',e);setNotice('无法读取后台内容：'+e.message);$('#cms-items').innerHTML='<div class="cms-error">'+h(e.message)+'</div>'}
  })();
