@@ -661,8 +661,7 @@ body.cms-editor-active #cms-editor-body.cms-easy-mode .cms-editor-content{paddin
 
 
 /* V52.5 · Focus the content index on actual records, not dashboard duplicates. */
-body[data-cms-mode="admin"] .cms-metrics,
-body[data-cms-mode="admin"] .cms-workflow-guide{display:none!important}
+body[data-cms-mode="admin"] .cms-metrics{display:none!important}
 body[data-cms-mode="admin"] .cms-notice-error[hidden]{display:none!important}
 body[data-cms-mode="admin"] .cms-notice-error:not([hidden]){display:flex!important;border-color:#e4b9b9;background:rgba(193,64,64,.075);color:var(--ink)}
 body[data-cms-mode="admin"]:not(.cms-editor-active) .atlas-v521-layout .cms-split{margin-top:12px}
@@ -909,3 +908,7 @@ body[data-cms-mode="admin"] #cms-media-status{font-size:12px;line-height:1.65}
 .cms-workflow-steps{display:flex;flex-wrap:wrap;gap:8px 18px;border-top:1px solid var(--line);padding:13px 17px 16px}
 .cms-workflow-steps span{font-size:11px;line-height:1.6;color:var(--muted-strong)}
 @media(max-width:540px){.cms-workflow-guide summary{align-items:flex-start}.cms-workflow-steps{display:grid;gap:9px}}
+
+/* V53.5: return-to-list and editor heading can receive programmatic focus. */
+#cms-browser-title:focus,#cms-editor-body .cms-easy-heading h2:focus{outline:none}
+#cms-browser-title:focus-visible,#cms-editor-body .cms-easy-heading h2:focus-visible{outline:2px solid var(--blue);outline-offset:5px;border-radius:4px}
