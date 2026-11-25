@@ -31,7 +31,9 @@ def patch_main(source: str) -> str:
         "from app.cms_routes import register_cms_routes\n"
         "register_cms_routes(app)\n"
         "from app.analytics_routes import register_analytics_routes\n"
-        "register_analytics_routes(app)\n\n"
+        "register_analytics_routes(app)\n"
+        "from app.analytics_growth import register_growth_routes\n"
+        "register_growth_routes(app)\n\n"
     )
     source=source.replace(SPA,extra+SPA,1)
     source=source.replace(HTML_RESPONSE,"return seo_document(full_path)",1)
