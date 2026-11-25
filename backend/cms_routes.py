@@ -90,6 +90,24 @@ def base_maps():
 def parse_json(s):
     return json.loads(s) if s else None
 
+def published_overrides(rows, archived_keys):
+    """Pure public-visibility rule: published snapshot wins, then archive tombstone.
+
+    Drafts following an archive must never resurrect the original file-backed
+    resource. A later successful publish replaces the tombstone with its new
+    published snapshot.
+    """
+    overlays={}
+    for row in rows:
+        key=(row["kind"],row["slug"])
+        if row["status"]=="archived":
+            overlays[key]=None
+        elif row["published_json"]:
+            overlays[key]=parse_json(row["published_json"])
+        elif key in archived_keys:
+            overlays[key]=None
+    return overlays
+
 def active_overrides():
     """Short shared cache keeps public pages quick while allowing editing."""
     with CACHE_LOCK:
@@ -98,13 +116,13 @@ def active_overrides():
     try:
         ensure_cms()
         with user_auth.db() as db:
-            rows=db.all("SELECT kind,slug,status,published_json FROM atlas_cms_entries WHERE published_json IS NOT NULL OR status='archived'")
-        overlays={}
-        for row in rows:
-            if row["status"] == "archived":
-                overlays[(row["kind"],row["slug"])] = None
-            elif row["published_json"]:
-                overlays[(row["kind"],row["slug"])] = parse_json(row["published_json"])
+            rows=db.all("SELECT kind,slug,status,published_json FROM atlas_cms_entries")
+            # An archived item remains unpublished while a new draft is edited.
+            # Without the tombstone from history, original file-backed records
+            # would silently reappear after a save/restore of archived content.
+            archived=db.all("SELECT DISTINCT kind,slug FROM atlas_cms_history WHERE action='archive'")
+        archived_keys={(r["kind"],r["slug"]) for r in archived}
+        overlays=published_overrides(rows, archived_keys)
     except Exception:
         # The legacy immutable catalog remains available even if the new DB
         # is down. Only the administrative API must fail closed.
