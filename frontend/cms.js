@@ -223,7 +223,7 @@ function drawItems(){
    const img=rowImage(item);
    return '<div class="cms-v51-row">'+(mode==='admin'?'<label class="cms-v51-select" aria-label="选择 '+h(item.label)+'"><input type="checkbox" data-bulk-select="'+h(item.slug)+'" '+(state.selectedSlugs.has(item.slug)?'checked':'')+'></label>':'')+'<button type="button" class="cms-item '+(state.selected?.slug===item.slug?'active':'')+'" data-pick="'+h(item.slug)+'" aria-label="查看 '+h(item.label)+'">'
    +'<span class="cms-item-thumb">'+(img?'<img src="'+h(img)+'" loading="lazy" alt="">':icon(kinds[state.kind].icon))+'</span>'
-   +'<span class="cms-item-copy"><strong>'+h(item.label)+'</strong><small>'+h(item.sector||item.slug)+'</small></span>'
+   +'<span class="cms-item-copy"><strong>'+h(item.label)+'</strong><small>'+h(item.sector||item.slug)+'</small><small class="cms-item-open-label">打开编辑 →</small></span>'
    +stateClasses(item.status)+'</button></div>';
  }).join(''):'<div class="cms-loading">没有符合条件的内容。可清除筛选或创建新内容。</div>';
  $('#cms-count').textContent=items.length+' ITEMS';
@@ -355,7 +355,8 @@ function renderForm(item){
  const index=s==='source'||s==='public'?-1:statuses.indexOf(s);
  const steps='<div class="cms-steps">'+['内容准备','保存草稿','提交审核','正式发布'].map((title,i)=>'<span class="cms-step '+(i===index+1?'current':i<index+1?'passed':'')+'"><span>'+String(i+1).padStart(2,'0')+'</span>'+title+'</span>'+(i<3?'<span class="cms-step-line"></span>':'')).join('')+'</div>';
  const meta='<div class="cms-editor-meta">'+stateClasses(s)+'<span>修订版本 <strong>v'+item.revision+'</strong></span><span>内容来源：'+h(item.source==='cms'?'PostgreSQL CMS':'项目内容文件')+'</span>'+(item.published_at?'<span>发布时间：'+h(item.published_at.slice(0,16))+'</span>':'')+'</div>';
- const form='<div class="cms-editor-content">'+(isPreview?'<div class="cms-readonly-banner">当前是公开设计预览。字段来自公开目录，无法在这里保存或发布。正式操作请使用管理员账户。</div>':'')+
+ const mediaHint=mode==='admin'&&can('media')?'<div class="cms-editor-media-hint"><span>需要上传或更换图片？</span><button type="button" data-editor-open-media>打开媒体库 / 上传图片</button></div>':'';
+ const form='<div class="cms-editor-content">'+mediaHint+(isPreview?'<div class="cms-readonly-banner">当前是公开设计预览。字段来自公开目录，无法在这里保存或发布。正式操作请使用管理员账户。</div>':'')+
  '<form id="cms-edit-form" class="cms-form"><div class="cms-form-group-label"><span>基础资料与内容字段</span><small>自动保存开启 · 发布仍需审核</small></div>'
  +(editable?'<div class="cms-autosave-strip"><span class="cms-autosave-led"></span><span id="cms-autosave-status" role="status" aria-live="polite">已加载 · 修改后 3 秒自动保存草稿</span><button type="button" data-autosave-retry>立即保存</button></div>':'')
  +specs.filter(spec=>!(item.kind==='article'&&['tags','takeaways','sections'].includes(spec[0]))).map(spec=>formField(spec,values,editable)).join('')
@@ -803,8 +804,9 @@ async function runBulk(){
  }catch(e){message(e.message,false)}finally{btnDisable(false)}
 }
 async function openMedia(){
- if(mode!=='admin')return;
- $('#cms-media-dialog').showModal();
+ if(mode!=='admin'||!can('media')){message('当前账号没有媒体管理权限，请联系管理员。',false);return}
+ const dialog=$('#cms-media-dialog');if(!dialog.open)dialog.showModal();
+ $('#cms-media-status').textContent='正在加载已有图片…';
  await refreshMedia();
 }
 let cropBitmap=null,cropFilename='';
@@ -882,7 +884,7 @@ async function refreshMedia(){
      +(state.mediaTarget?'<button type="button" data-v513-use-inline="'+h(item.url)+'">插入当前章节</button>':state.selected?.kind==='article'?'<button type="button" data-v51-use-media="'+h(item.url)+'">设为当前文章封面</button>':'')
      +'<button type="button" data-v51-delete-media="'+h(item.id)+'" class="cms-v51-delete">删除图片</button></div>').join('')
      :'<p class="cms-loading">暂无上传图片。可以上传 JPG、PNG 或 WebP。</p>';
- }catch(e){message(e.message,false)}
+ }catch(e){$('#cms-media-status').textContent='媒体列表加载失败：'+e.message;message(e.message,false)}
 }
 // V51.6 · Optimize oversized images locally; never upload unsupported content.
 async function optimizeMediaFile(original){
@@ -912,9 +914,13 @@ async function optimizeMediaFile(original){
  }finally{if(typeof bitmap.close==='function')bitmap.close()}
 }
 async function uploadMedia(files){
- if(mode!=='admin'||!can('media'))return 0;
- let uploaded=0;
- for(const original of [...files].slice(0,10)){
+ if(mode!=='admin'||!can('media')){message('没有上传图片权限',false);return 0}
+ const batch=Array.from(files||[]).slice(0,10);
+ if(!batch.length)return 0;
+ const picker=$('#cms-media-select'),dropzone=$('#cms-media-drop');
+ picker.disabled=true;dropzone.disabled=true;
+ let uploaded=0,failed=0,lastUrl='';
+ for(const original of batch){
    try{
      $('#cms-media-status').textContent='正在处理 '+original.name;
      const file=await optimizeMediaFile(original);
@@ -923,13 +929,19 @@ async function uploadMedia(files){
        const reader=new FileReader();reader.onerror=()=>reject(Error('文件读取失败'));
        reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.readAsDataURL(file);
      });
-     await api('/api/admin/media',{method:'POST',body:JSON.stringify({name:file.name,mime:file.type,content:base64})});
+     const saved=await api('/api/admin/media',{method:'POST',body:JSON.stringify({name:file.name,mime:file.type,content:base64})});
+     lastUrl=saved.url||'';
      uploaded++;
      message((file!==original?'已优化并上传：':'媒体已保存：')+file.name);
-   }catch(err){message(err.message,false)}
+   }catch(err){failed++;console.error('[CMS] media upload failed',err);message(original.name+' 上传失败：'+err.message,false)}
  }
- $('#cms-media-status').textContent='媒体安全保存在 PostgreSQL';
+ $('#cms-media-status').textContent='上传完成：成功 '+uploaded+' 张'+(failed?'，失败 '+failed+' 张，请检查文件格式及权限。':'。选择下方图片即可用于文章。');
+ picker.disabled=false;dropzone.disabled=false;
  await refreshMedia();
+ if(uploaded===1&&lastUrl&&state.mediaTarget){
+   const target=state.mediaTarget.querySelector('[data-block-image],[data-v513-image]');
+   if(target){target.value=lastUrl;state.mediaTarget=null;$('#cms-media-dialog').close();markDraftDirty();refreshArticlePreview();message('图片已插入正文，记得保存草稿')}
+ }
  return uploaded;
 }
 
@@ -1345,6 +1357,7 @@ function boot(){
    const tab=e.target.closest('[data-editor-tab]');
    if(tab){setEditorTab(tab.dataset.editorTab);return}
    const themeButton=e.target.closest('[data-set-theme]');if(themeButton){setTheme(themeButton.dataset.setTheme);return}
+   if(e.target.closest('[data-editor-open-media]')){state.mediaTarget=null;await openMedia();return}
    const type=e.target.closest('[data-kind-link]');if(type){e.preventDefault();await changeKind(type.dataset.kindLink);return}
    const choice=e.target.closest('[data-pick]');if(choice){if(state.busy)return;await selectItem(choice.dataset.pick);return}
    const action=e.target.closest('[data-transition]');if(action){await transition(action.dataset.transition);return}
@@ -1463,7 +1476,8 @@ function boot(){
  $('#cms-crop-y').addEventListener('input',paintCrop);
  $('#cms-crop-save').addEventListener('click',saveCrop);
  $('#cms-media-open').addEventListener('click',()=>{state.mediaTarget=null;openMedia()});
- $('#cms-media-file').addEventListener('change',e=>{uploadMedia(e.target.files);e.target.value=''});
+ $('#cms-media-select').addEventListener('click',()=>$('#cms-media-file').click());
+ $('#cms-media-file').addEventListener('change',async e=>{const files=Array.from(e.target.files||[]);e.target.value='';await uploadMedia(files)});
  const drop=$('#cms-media-drop');
  drop.addEventListener('click',()=>$('#cms-media-file').click());
  for(const eventName of ['dragenter','dragover']){
