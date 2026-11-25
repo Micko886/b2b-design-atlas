@@ -29,8 +29,8 @@ class CMSV525VisualAndInteractionContracts(unittest.TestCase):
         self.assertIn(".cms-notice-error:not([hidden])",self.css)
 
     def test_media_library_reports_loaded_and_finished_states(self):
-        self.assertIn("媒体库暂无图片 · 可上传",self.js)
-        self.assertIn("已加载 '+items.length+' 张图片",self.js)
+        self.assertIn("媒体库暂无图片或没有匹配结果 · 可上传",self.js)
+        self.assertIn("已加载 '+mediaWorkbench.total+' 张符合条件的图片",self.js)
         self.assertIn("const refreshed=await refreshMedia()",self.js)
         self.assertIn("上传完成：成功 ",self.js)
         self.assertLess(self.js.index("const refreshed=await refreshMedia()"),
