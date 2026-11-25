@@ -20,7 +20,7 @@ tmp="$(mktemp "${TMPDIR:-/tmp}/atlas-pg-XXXXXXXX.dump")"
 trap 'rm -f -- "$tmp"' EXIT
 # Include ALL database tables: accounts, password hashes, sessions, private collections,
 # comparisons, CMS content and audit history. Never save plaintext backup at the destination.
-pg_dump --dbname="$ATLAS_BACKUP_DATABASE_URL" --format=custom --compress=6 --no-owner --no-privileges --file="$tmp"
+PGDATABASE="$ATLAS_BACKUP_DATABASE_URL" pg_dump --format=custom --compress=6 --no-owner --no-privileges --file="$tmp"
 pg_restore --list "$tmp" >/dev/null
 age -r "$ATLAS_BACKUP_AGE_RECIPIENT" -o "$prefix.dump.age" "$tmp"
 (cd "$ATLAS_BACKUP_DIR" && sha256sum "$(basename "$prefix.dump.age")") > "$prefix.dump.age.sha256"
