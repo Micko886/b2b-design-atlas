@@ -14,6 +14,8 @@ COPY backend/seo_routes.py /srv/atlas/app/seo_routes.py
 COPY backend/admin_routes.py /srv/atlas/app/admin_routes.py
 COPY backend/cms_routes.py /srv/atlas/app/cms_routes.py
 COPY backend/cms_access.py /srv/atlas/app/cms_access.py
+COPY backend/cms_team.py /srv/atlas/app/cms_team.py
+COPY backend/cms_schedule.py /srv/atlas/app/cms_schedule.py
 COPY backend/analytics_routes.py /srv/atlas/app/analytics_routes.py
 COPY backend/analytics_growth.py /srv/atlas/app/analytics_growth.py
 COPY backend/install_auth.py /srv/atlas/install_auth.py
