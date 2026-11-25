@@ -1118,3 +1118,7 @@ body{color:var(--ink);background:#fff;font-family:Inter,"Noto Sans CJK SC",ui-sa
 @media(max-width:480px){.discovery-advanced-inner{padding:12px}.discovery-advanced-fields{grid-template-columns:1fr}.discovery-advanced-fields select{width:100%}.discovery-active>button{max-width:100%}}
 
 .insight-inline-figure{margin:28px 0}.insight-inline-figure img{display:block;max-width:100%;width:100%;height:auto;max-height:680px;object-fit:contain;border-radius:12px}.insight-inline-figure figcaption{font-size:12px;line-height:1.7;color:var(--muted);margin-top:9px;text-align:center}
+
+/* V51.4 · Published inline typography */
+.insight-prose-section code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.86em;border-radius:5px;padding:2px 6px;background:rgba(110,125,150,.12);overflow-wrap:anywhere}
+.insight-prose-section strong{font-weight:800}
