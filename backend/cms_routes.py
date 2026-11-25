@@ -924,7 +924,7 @@ def register_cms_routes(app: FastAPI):
     def reject_content(kind:KIND,slug:str,data:RejectDecision,request:Request):
         session=require_admin(request,mutate=True)
         validate_review_reason(data.reason)
-        return transition(kind,slug,data.expected_revision,"reject",session)
+        return transition(kind,slug,data.expected_revision,"reject",session,data.reason)
 
     @app.post("/api/admin/content/{kind}/{slug}/publish",include_in_schema=False)
     def publish_content(kind:KIND,slug:str,data:Change,request:Request):
