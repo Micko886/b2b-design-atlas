@@ -71,6 +71,9 @@ class UnifiedEditorUI(unittest.TestCase):
             with self.subTest(needle=needle):
                 self.assertIn(needle,self.js)
 
+    def test_blank_optional_reading_time_does_not_block_article_save(self):
+        self.assertIn("else if(type==='number')base[name]=value===''?null:Number(value)",self.js)
+
     def test_draft_and_review_workflow_unchanged(self):
         for needle in (
             "async function persistDraft(automatic=false)",
@@ -98,6 +101,13 @@ class UnchangedContentSchema(unittest.TestCase):
         result=cms_routes.cleaned("module","demo-module",payload)
         self.assertEqual(result["crop_px"],[0,0,800,600])
         self.assertEqual(result["screenshot_url"],payload["screenshot_url"])
+
+    def test_blank_article_reading_time_is_valid(self):
+        payload={"id":"demo-article","title":"Design Notes","subtitle":"Research summary",
+                 "category":"research","author":"Atlas","sections":[{"title":"Introduction"}],
+                 "reading_minutes":None}
+        result=cms_routes.cleaned("article","demo-article",payload)
+        self.assertIsNone(result["reading_minutes"])
 
     def test_pattern_associations_remain_array(self):
         payload={"id":"demo-pattern","title":"Feature comparison","family":"Compare",
