@@ -105,7 +105,8 @@ class CMSStudioV513Tests(unittest.TestCase):
         self.assertEqual(result["revision"],3)
         sql=[call.args[0] for call in db.execute.call_args_list]
         self.assertTrue(any("atlas_cms_review_notes" in query for query in sql))
-        self.assertIn("'draft'",sql[0])
+        self.assertIn("SET status=?",sql[0])
+        self.assertEqual(db.execute.call_args_list[0].args[1][0],"draft")
         self.assertIn('{"title":"Live"}',db.execute.call_args_list[0].args[1])
 
     def test_registered_tag_routes_have_expected_methods(self):
