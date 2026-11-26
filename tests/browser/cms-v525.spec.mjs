@@ -1027,8 +1027,10 @@ test('V54.9 switching content types discards stale recovery and clears edit URL'
  await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
  await page.locator('#field-name').fill('Change to discard before switching');
  const accepted=page.waitForEvent('dialog').then(dialog=>dialog.accept());
- await page.locator('[data-kind-link="module"]').click();
+ await page.locator('[data-close-editor]').click();
  await accepted;
+ await expect(page.locator('#cms-editor-body')).toBeHidden();
+ await page.locator('[data-kind-link="module"]').click();
  await expect(page.locator('[data-pick="demo-module"]')).toBeVisible();
  await expect(page).toHaveURL(/\\?kind=module$/);
  expect(await page.evaluate(()=>Object.keys(sessionStorage).filter(key=>key.startsWith('atlas-cms-working-v1:')))).toEqual([]);
