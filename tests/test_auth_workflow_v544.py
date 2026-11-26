@@ -48,7 +48,7 @@ class AuthenticatedWorkflowTests(unittest.TestCase):
         admin_routes.register_admin_routes(app)
         all_routes=[(route.path,route) for route in app.routes
                     if getattr(route,"methods",None)]
-        all_routes.extend((auth_router.prefix+route.path,route)
+        all_routes.extend((route.path,route)
                           for route in auth_router.routes
                           if getattr(route,"methods",None))
         self.endpoints={(url,method):route.endpoint for url,route in all_routes
