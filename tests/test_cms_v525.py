@@ -19,8 +19,8 @@ class CMSV525VisualAndInteractionContracts(unittest.TestCase):
         self.assertIn("点击一条记录进入编辑页",self.html)
         self.assertIn("选择栏目和内容",self.html)
         self.assertIn('body[data-cms-mode="admin"] .cms-metrics',self.css)
-        self.assertIn('body[data-cms-mode="admin"] .cms-workflow-guide',self.css)
-        self.assertIn("编辑页，可直接修改文字、图片并保存草稿",self.js)
+        self.assertIn('.cms-workflow-guide',self.css)
+        self.assertIn("选择一条记录，查看详情或直接编辑",self.js)
 
     def test_errors_remain_visible_even_when_normal_notice_is_hidden(self):
         self.assertIn("function setNotice(text,error=false)",self.js)

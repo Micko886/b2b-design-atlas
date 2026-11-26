@@ -107,7 +107,8 @@ class UnifiedNavigationContracts(unittest.TestCase):
             self.assertIn('data-editor-tab="'+tab+'"',self.cms_js)
             self.assertIn('data-editor-pane="'+tab+'"',self.cms_js)
         self.assertIn("function setEditorTab(tab)",self.cms_js)
-        self.assertIn("pane.hidden=pane.dataset.editorPane!==selected",self.cms_js)
+        self.assertIn("panel.hidden=!active",self.cms_js)
+        self.assertIn("panel.setAttribute('aria-labelledby',tabId)",self.cms_js)
         self.assertIn("role=\"tablist\"",self.cms_js)
 
     def test_settings_and_logout_fail_closed(self):
