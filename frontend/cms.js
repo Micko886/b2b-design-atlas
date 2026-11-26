@@ -167,13 +167,41 @@ function setEditorTab(tab){
  const selected=options.some(x=>x.dataset.editorTab===tab)?tab:'content';
  state.editorTab=selected;
  for(const button of options){
-   const active=button.dataset.editorTab===selected;
+   const name=button.dataset.editorTab,active=name===selected;
+   const tabId='cms-editor-tab-'+name,paneId='cms-editor-pane-'+name;
+   button.id=tabId;
+   button.setAttribute('aria-controls',paneId);
    button.setAttribute('aria-selected',String(active));
    button.tabIndex=active?0:-1;
+   const panel=root.querySelector('[data-editor-pane="'+name+'"]');
+   if(panel){
+     panel.id=paneId;
+     panel.setAttribute('role','tabpanel');
+     panel.setAttribute('aria-labelledby',tabId);
+     panel.tabIndex=0;
+     panel.hidden=!active;
+   }
  }
- for(const pane of root.querySelectorAll('[data-editor-pane]'))
-   pane.hidden=pane.dataset.editorPane!==selected;
  if(selected==='preview')refreshContentPreview();
+}
+// Horizontal editor tabs follow the same arrow / Home / End keyboard pattern on all screens.
+function onEditorTabKeyDown(event){
+ const button=event.target.closest?.('[data-editor-tab]');
+ const bar=button?.closest('.atlas-v521-editor-tabs');
+ if(!bar||!$('#cms-editor-body')?.contains(bar))return;
+ const options=Array.from(bar.querySelectorAll('[data-editor-tab]'));
+ const current=options.indexOf(button);if(current<0)return;
+ let next;
+ if(event.key==='ArrowRight')next=(current+1)%options.length;
+ else if(event.key==='ArrowLeft')next=(current-1+options.length)%options.length;
+ else if(event.key==='Home')next=0;
+ else if(event.key==='End')next=options.length-1;
+ else return;
+ event.preventDefault();
+ const target=options[next];
+ setEditorTab(target.dataset.editorTab);
+ target.focus({preventScroll:true});
+ target.scrollIntoView({block:'nearest',inline:'nearest'});
 }
 async function logoutCms(){
  if(state.busy){message('草稿正在保存，请稍后再退出。',false);return}
@@ -2241,7 +2269,7 @@ function boot(){
  $('#cms-create-form').addEventListener('submit',createNew);
  $('#cms-menu').addEventListener('click',()=>{const open=!document.body.classList.contains('sidebar-open');document.body.classList.toggle('sidebar-open',open);$('#cms-backdrop').hidden=!open;$('#cms-menu').setAttribute('aria-expanded',String(open))});
  $('#cms-backdrop').addEventListener('click',closeMobile);
- document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMobile()});
+ document.addEventListener('keydown',e=>{onEditorTabKeyDown(e);if(e.key==='Escape')closeMobile()});
  window.addEventListener('beforeunload',e=>{if(state.dirty&&mode==='admin'){e.preventDefault();e.returnValue=''}});
  window.addEventListener('popstate',async()=>{
    const route=new URLSearchParams(location.search),kind=route.get('kind')||'site',slug=route.get('edit');

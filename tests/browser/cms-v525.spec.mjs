@@ -678,3 +678,60 @@ test('V53.9 reviewers can compare history but cannot restore it',async({page})=>
  await expect(page.locator('[data-restore]')).toHaveCount(0);
  await expect(page.locator('[data-review-diff="2"]')).toBeVisible();
 });
+
+test('V54 editor tabs have linked panels and support arrow, Home and End keys',async({page})=>{
+ await mockCms(page);
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ const content=page.locator('[data-editor-tab="content"]');
+ const preview=page.locator('[data-editor-tab="preview"]');
+ const history=page.locator('[data-editor-tab="history"]');
+ await expect(content).toHaveAttribute('aria-controls','cms-editor-pane-content');
+ await expect(page.locator('#cms-editor-pane-content')).toHaveAttribute('aria-labelledby','cms-editor-tab-content');
+ await expect(page.locator('#cms-editor-pane-content')).toHaveAttribute('role','tabpanel');
+ await content.focus();
+ await page.keyboard.press('ArrowRight');
+ await expect(preview).toBeFocused();
+ await expect(preview).toHaveAttribute('aria-selected','true');
+ await expect(page.locator('#cms-editor-pane-preview')).toBeVisible();
+ await expect(page.locator('#cms-editor-pane-content')).toBeHidden();
+ await page.keyboard.press('End');
+ await expect(history).toBeFocused();
+ await expect(page.locator('#cms-editor-pane-history')).toBeVisible();
+ await page.keyboard.press('Home');
+ await expect(content).toBeFocused();
+ await expect(page.locator('#cms-editor-pane-content')).toBeVisible();
+ await page.keyboard.press('ArrowLeft');
+ await expect(history).toBeFocused();
+});
+
+test('V54 article keyboard tabs and mobile width do not overflow',async({page})=>{
+ await mockCms(page);
+ await page.setViewportSize({width:320,height:760});
+ await page.goto(origin+'/admin/content?kind=article&edit=demo-article');
+ const content=page.locator('[data-editor-tab="content"]');
+ const seo=page.locator('[data-editor-tab="seo"]');
+ await content.focus();
+ await page.keyboard.press('ArrowRight');
+ await page.keyboard.press('ArrowRight');
+ await expect(seo).toBeFocused();
+ await expect(page.locator('#cms-editor-pane-seo')).toBeVisible();
+ await expect(page.locator('[data-editor-tab="content"]')).toHaveAttribute('tabindex','-1');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
+ await page.keyboard.press('End');
+ await expect(page.locator('[data-editor-tab="history"]')).toBeFocused();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
+});
+
+test('V54 read-only reviewer can navigate panels with keyboard, without edit actions',async({page})=>{
+ const {records}=await mockCms(page,'reviewer');
+ records.site.status='review';
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ const review=page.locator('[data-editor-tab="review"]');
+ await expect(review).toHaveAttribute('aria-selected','true');
+ await review.focus();
+ await page.keyboard.press('ArrowRight');
+ await expect(page.locator('[data-editor-tab="history"]')).toBeFocused();
+ await expect(page.locator('#cms-editor-pane-history')).toBeVisible();
+ await expect(page.locator('[data-editor-save]')).toHaveCount(0);
+ await expect(page.locator('[data-restore]')).toHaveCount(0);
+});

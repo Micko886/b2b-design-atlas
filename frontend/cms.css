@@ -952,3 +952,19 @@ body[data-cms-mode="admin"] #cms-media-status{font-size:12px;line-height:1.65}
 .cms-history-current{font-size:11px;white-space:nowrap;color:var(--muted-strong);font-weight:750}
 .cms-history-footnote{margin-top:16px}
 @media(max-width:630px){.cms-timeline-row{align-items:flex-start;flex-wrap:wrap}.cms-timeline-row .cms-history-row-actions{width:100%;justify-content:flex-start;padding-left:20px}}
+
+/* V54 · Unified tab focus and mobile navigation for content, review and history. */
+.cms-easy-mode .atlas-v521-editor-tabs>button:focus-visible{
+ outline:2px solid var(--blue);outline-offset:-2px;border-radius:6px;
+}
+.cms-easy-mode .atlas-v521-editor-tabs>button{scroll-margin-inline:12px}
+.cms-easy-mode [role="tabpanel"]:focus-visible{outline:2px solid var(--blue);outline-offset:-3px}
+@media(max-width:700px){
+ .cms-easy-mode .atlas-v521-editor-tabs{
+  gap:18px;overflow-x:auto;overscroll-behavior-inline:contain;
+  -webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;
+ }
+ .cms-easy-mode .atlas-v521-editor-tabs>button{
+  min-height:44px;scroll-snap-align:start;flex-shrink:0;
+ }
+}

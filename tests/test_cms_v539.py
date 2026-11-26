@@ -26,8 +26,8 @@ class HistoryUX(unittest.TestCase):
         self.assertIn('cms-diff-right-title',self.html)
 
     def test_assets_are_current(self):
-        self.assertIn('/assets/cms.js?v=5390',self.html)
-        self.assertIn('/assets/cms.css?v=5390',self.html)
+        self.assertIn('/assets/cms.js?v=5400',self.html)
+        self.assertIn('/assets/cms.css?v=5400',self.html)
 
 if __name__=='__main__':
     unittest.main()
