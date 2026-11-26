@@ -1464,13 +1464,13 @@ function updateBulkToolbar(){
  const selectedVisible=visibleEligible.filter(x=>state.selectedSlugs.has(x.slug)).length;
  $('#cms-select-all').checked=cap>0&&selectedVisible===cap;
  $('#cms-select-all').disabled=cap===0;
- for(const input of $('[data-bulk-select]')){
+ $('[data-bulk-select]').forEach(input=>{
   const item=state.items.find(x=>x.slug===input.dataset.bulkSelect);
   const eligibility=item?bulkEligibility(item):{ok:false,reason:'记录已变化，请刷新列表'};
   const atLimit=chosen>=20&&!input.checked;
   input.disabled=!eligibility.ok||atLimit;
   input.title=!eligibility.ok?eligibility.reason:atLimit?'每批最多选择 20 条':'';
- }
+ });
 }
 async function runBulk(){
  if(mode!=='admin'||state.busy)return;
