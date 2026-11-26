@@ -64,7 +64,10 @@ class PreviewAndReviewSafetyV528(unittest.TestCase):
                         self.js.index("async function restoreRevision(",self.js.index("async function transition(action){"))]
         self.assertLess(segment.index("await api('/api/admin/content/"),
                         segment.index("applied=true"))
-        self.assertLess(segment.index("await selectItem(item.slug)"),
+        self.assertIn("if(!await selectItem(item.slug,false,true))throw Error(",segment)
+        self.assertLess(segment.index("if(!await selectItem(item.slug,false,true))"),
+                        segment.index("showTransitionSuccess(action,state.selected)"))
+        self.assertLess(segment.index("showTransitionSuccess(action,state.selected)"),
                         segment.index("message({submit:"))
         self.assertIn("showTransitionFeedback(e,action,applied)",segment)
         self.assertIn("finally{btnDisable(false)}",segment)
