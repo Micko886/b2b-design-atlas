@@ -39,12 +39,20 @@ class AuthenticatedWorkflowTests(unittest.TestCase):
         cms_routes.invalidate()
         self.addCleanup(cms_routes.invalidate)
         app=FastAPI()
-        user_auth.register_auth_routes(app)
+        # The auth module mounts an APIRouter. Capture its child endpoints
+        # explicitly: this also works with lightweight FastAPI route wrappers.
+        with patch.object(app,"include_router",wraps=app.include_router) as mount:
+            user_auth.register_auth_routes(app)
+        auth_router=mount.call_args.args[0]
         cms_routes.register_cms_routes(app)
         admin_routes.register_admin_routes(app)
-        self.endpoints={(path,method):route.endpoint for route in app.routes
-                        for method in (getattr(route,"methods",None) or set())
-                        for path in [route.path]}
+        all_routes=[(route.path,route) for route in app.routes
+                    if getattr(route,"methods",None)]
+        all_routes.extend((auth_router.prefix+route.path,route)
+                          for route in auth_router.routes
+                          if getattr(route,"methods",None))
+        self.endpoints={(url,method):route.endpoint for url,route in all_routes
+                        for method in route.methods}
 
     def call(self,method,path,*args):
         return self.endpoints[(path,method)](*args)
