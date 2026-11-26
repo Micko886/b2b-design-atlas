@@ -940,7 +940,7 @@ test('V54.7 filters discard hidden bulk selections before any action',async({pag
  records.site.status='draft';records.site.source='cms';records.site.revision=2;
  await page.goto(origin+'/admin/content?kind=site');
  await page.locator('[data-bulk-select="demo-site"]').check();
- await expect(page.locator('#cms-selected-count')).toContainText('1 项已选择');
+ await expect(page.locator('#cms-selected-count')).toContainText('已选 1 / 20 条');
  await page.locator('#cms-status').selectOption('review');
  await expect(page.locator('#cms-selected-count')).toBeHidden();
  await expect(page.locator('#cms-bulk-run')).toBeHidden();
@@ -1292,7 +1292,7 @@ test('V55.3 reviewer can select review or published items but not submit drafts'
  records.sitePublished={kind:'site',slug:'published-site',status:'published',source:'cms',revision:4,payload:{id:'published-site',name:'Published demo'}};
  await page.goto(origin+'/admin/content?kind=site');
  await expect(page.locator('#cms-bulk-action option')).toHaveCount(2);
- await expect(page.locator('#cms-bulk-action option').first()).toHaveValue('publish');
+ await expect(page.locator('#cms-bulk-action')).toHaveValue('publish');
  await expect(page.locator('[data-bulk-select="demo-site"]')).toBeDisabled();
  await expect(page.locator('[data-bulk-select="review-site"]')).toBeEnabled();
  await expect(page.locator('[data-bulk-select="published-site"]')).toBeDisabled();
