@@ -1409,9 +1409,30 @@ async function runBulk(){
 }
 async function openMedia(){
  if(mode!=='admin'||!can('media')){message('当前账号没有媒体管理权限，请联系管理员。',false);return}
- const dialog=$('#cms-media-dialog');if(!dialog.open)dialog.showModal();
+ const dialog=$('#cms-media-dialog'),picking=Boolean(state.mediaField||state.mediaTarget);
+ const gallery=state.mediaField==='field-gallery',inline=Boolean(state.mediaTarget);
+ dialog.classList.toggle('cms-media-picker-mode',picking);
+ dialog.setAttribute('aria-label',picking?'为当前内容选择图片':'媒体资源与 SEO 工作台');
+ $('#cms-media-dialog-title').textContent=picking?(gallery?'添加案例页面截图':inline?'插入文章图片':'选择展示图片'):'媒体资源与 SEO';
+ $('#cms-media-dialog-description').textContent=picking
+  ?(gallery?'选择已有截图，或上传多张图片加入案例。默认只展示封面，其他截图可稍后管理。'
+    :inline?'选择图片插入当前章节，也可以直接上传一张新图片。'
+    :'选择已有图片，或上传一张新图片自动填入当前内容。')
+  :'查找图片、维护可复用的 ALT 与图注、查看引用关系。删除引用中的图片会被服务器阻止。';
+ $('#cms-media-picker-intro').hidden=!picking;
+ if(picking){
+  // A previously filtered SEO workbench must never look like an empty image picker.
+  Object.assign(mediaWorkbench,{query:'',usage:'all',fileType:'all',seo:'all',offset:0});
+  mediaWorkbench.selected.clear();
+  $('#cms-media-search').value='';
+  $('#cms-media-usage').value='all';
+  $('#cms-media-type').value='all';
+  $('#cms-media-seo').value='all';
+ }
+ if(!dialog.open)dialog.showModal();
  $('#cms-media-status').textContent='正在加载已有图片…';
  await refreshMedia();
+ if(picking)$('#cms-media-search').focus({preventScroll:true});
 }
 let cropBitmap=null,cropFilename='';
 async function openCrop(mediaId){
@@ -1500,6 +1521,8 @@ function renderMediaCards(){
    +'<label class="cms-v532-select"><input type="checkbox" data-media-check="'+h(item.id)+'"'+(isSelected?' checked':'')+(used?' disabled':'')+' aria-label="选择 '+h(item.file_name)+' 以批量删除"><span>选择</span></label></div>'
    +'<strong title="'+h(item.file_name)+'">'+h(item.file_name)+'</strong>'
    +'<small>'+Math.round(Number(item.byte_size||0)/1024)+' KB · '+h(String(item.mime_type||'').replace('image/','').toUpperCase())+' · '+h(String(item.created_at||'').slice(0,10))+'</small>'
+   +(state.mediaTarget?'<button type="button" class="cms-v550-select-photo" data-v513-use-inline="'+h(item.url)+'">插入这张图片</button>'
+     :state.mediaField?'<button type="button" class="cms-v550-select-photo" data-v51-use-media="'+h(item.url)+'">'+(state.mediaField==='field-gallery'?'添加这张截图':'使用这张图片')+'</button>':'')
    +'<div class="cms-v532-state"><span data-media-seo-status="'+(alt.trim()?'ready':'missing')+'">'+(alt.trim()?'已填写 ALT':'待补 ALT')+'</span><span>'+(used?'引用 '+used+' 条内容':'未引用')+'</span></div>'
    +'<details class="cms-v532-details"><summary>SEO 信息与引用关系</summary><div class="cms-v532-details-body">'
    +'<label>图片 ALT（复用建议）<input data-media-alt maxlength="240" value="'+h(alt)+'" placeholder="说明图片内容，而不是堆砌关键词"></label>'
@@ -1508,7 +1531,6 @@ function renderMediaCards(){
    +'<div class="cms-v532-references"><strong>当前引用</strong>'+mediaReferenceLinks(item)+'</div></div></details>'
    +(can('media')?'<button type="button" data-media-crop="'+h(item.id)+'">裁剪 / 设置焦点</button>':'')
    +'<button type="button" data-v51-copy-media="'+h(item.url)+'">复制图片地址</button>'
-   +(state.mediaTarget?'<button type="button" data-v513-use-inline="'+h(item.url)+'">插入当前章节</button>':state.mediaField?'<button type="button" data-v51-use-media="'+h(item.url)+'">使用此图片</button>':'')
    +(can('media')?'<button type="button" data-v51-delete-media="'+h(item.id)+'" class="cms-v51-delete"'+(used?' disabled title="被内容引用，不能删除"':'')+'>'+(used?'引用中 · 不可删除':'删除图片')+'</button>':'')
    +'</article>';
  }).join(''):'<p class="cms-loading">没有匹配的媒体。可以修改筛选条件，或上传新图片。</p>';

@@ -1035,3 +1035,49 @@ test('V54.9 switching content types discards stale recovery and clears edit URL'
  await expect(page).toHaveURL(/\\?kind=module$/);
  expect(await page.evaluate(()=>Object.keys(sessionStorage).filter(key=>key.startsWith('atlas-cms-working-v1:')))).toEqual([]);
 });
+
+test('V55.0 editor image picker hides destructive workbench actions and resets stale filters',async({page})=>{
+ const {uploads}=await mockCms(page);
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ // Seed the library through the full workbench before opening the focused picker.
+ await page.locator('#cms-media-open').click();
+ await expect(page.locator('#cms-media-dialog-title')).toHaveText('媒体资源与 SEO');
+ await expect(page.locator('#cms-media-usage')).toBeVisible();
+ await page.locator('#cms-media-file').setInputFiles({name:'factory.png',mimeType:'image/png',buffer:png});
+ await expect(page.locator('[data-media-id]')).toHaveCount(1);
+ await page.locator('#cms-media-search').fill('does-not-exist');
+ await expect(page.locator('[data-media-id]')).toHaveCount(0);
+ await page.locator('[data-media-close]').first().click();
+ await page.locator('[data-editor-pick-media="field-screenshot_url"]').click();
+ await expect(page.locator('#cms-media-dialog')).toHaveClass(/cms-media-picker-mode/);
+ await expect(page.locator('#cms-media-dialog-title')).toHaveText('选择展示图片');
+ await expect(page.locator('#cms-media-search')).toHaveValue('');
+ await expect(page.locator('#cms-media-usage')).toBeHidden();
+ await expect(page.locator('#cms-media-select-unused')).toBeHidden();
+ await expect(page.locator('[data-v51-delete-media]')).toBeHidden();
+ await expect(page.locator('[data-v51-copy-media]')).toBeHidden();
+ await expect(page.locator('[data-v51-use-media]')).toHaveText('使用这张图片');
+ await page.locator('[data-v51-use-media]').click();
+ await expect(page.locator('#cms-media-dialog')).not.toHaveJSProperty('open',true);
+ expect(await page.locator('#field-screenshot_url').inputValue()).toBe(uploads[0].url);
+ await page.locator('#cms-media-open').click();
+ await expect(page.locator('#cms-media-dialog')).not.toHaveClass(/cms-media-picker-mode/);
+ await expect(page.locator('#cms-media-usage')).toBeVisible();
+ await expect(page.locator('[data-v51-delete-media]')).toBeVisible();
+});
+
+test('V55.0 gallery chooser remains simple and batch-upload works',async({page})=>{
+ await mockCms(page);
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await page.locator('.cms-easy-gallery summary').click();
+ await page.locator('[data-gallery-add]').click();
+ await expect(page.locator('#cms-media-dialog-title')).toHaveText('添加案例页面截图');
+ await expect(page.locator('#cms-media-picker-intro')).toBeVisible();
+ await expect(page.locator('#cms-media-bulk-delete')).toBeHidden();
+ await page.locator('#cms-media-file').setInputFiles([
+  {name:'factory-1.png',mimeType:'image/png',buffer:png},
+  {name:'factory-2.png',mimeType:'image/png',buffer:png}
+ ]);
+ await expect(page.locator('#cms-gallery-count')).toContainText('2 张');
+ await expect(page.locator('[data-gallery-index]')).toHaveCount(2);
+});
