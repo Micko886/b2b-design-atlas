@@ -812,8 +812,9 @@ const history=item.history||[];
  $('#cms-empty').hidden=true;
  state.dirty=false;autosavePaused=false;
 }
-async function selectItem(slug,push=false){
- if(state.busy){message('草稿正在保存，请完成后打开其他内容。',false);return false}
+async function selectItem(slug,push=false,afterWrite=false){
+ // The form stays locked during a successful review/restore, but its own reload is safe.
+ if(state.busy&&!afterWrite){message('草稿正在保存，请完成后打开其他内容。',false);return false}
  const item=state.items.find(x=>x.slug===slug);if(!item)return false;
  if(state.dirty&&!confirm('当前修改还未保存。确定放弃这些更改吗？'))return false;
  if(state.dirty)clearRecovery();
@@ -960,7 +961,8 @@ async function transition(action){
    await api('/api/admin/content/'+item.kind+'/'+item.slug+'/'+action,{
     method:'POST',body:JSON.stringify({expected_revision:item.revision,...(action==='reject'?{reason}:{})})});
    applied=true;
-   state.dirty=false;await loadKind(false);await selectItem(item.slug);
+   state.dirty=false;await loadKind(false);
+   if(!await selectItem(item.slug,false,true))throw Error('操作已提交，但最新内容尚未成功载入。');
    showTransitionSuccess(action,state.selected);
    message({submit:'已提交审核',publish:'内容已发布到前台',archive:'已归档下线',reject:'已退回草稿并记录审核意见'}[action]||'操作完成');
  }catch(e){showTransitionFeedback(e,action,applied);message(applied?'操作可能已完成，请重新读取服务器状态':e.message,false)}
@@ -979,7 +981,9 @@ async function restoreRevision(revision){
  try{
    await api('/api/admin/content/'+target.kind+'/'+target.slug+'/restore',{
     method:'POST',body:JSON.stringify({expected_revision:target.revision,revision:targetRevision})});
-   state.dirty=false;await loadKind(false);await selectItem(target.slug);message('已从历史版本生成新草稿');
+   state.dirty=false;await loadKind(false);
+   if(!await selectItem(target.slug,false,true))throw Error('恢复已提交，但最新内容尚未成功载入。');
+   message('已从历史版本生成新草稿');
  }catch(e){message(e.status===409?'版本已经变化，请刷新记录后再恢复历史。':e.message,false)}
  finally{btnDisable(false)}
 }
