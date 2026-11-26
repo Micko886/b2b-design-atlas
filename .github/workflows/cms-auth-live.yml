@@ -1,0 +1,74 @@
+name: Authenticated CMS Browser QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'tests/browser/cms-auth-live.spec.mjs'
+      - 'Dockerfile'
+      - '.github/workflows/cms-auth-live.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'tests/browser/cms-auth-live.spec.mjs'
+      - 'Dockerfile'
+      - '.github/workflows/cms-auth-live.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: cms-auth-browser-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  browser-auth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Build application with existing backend regression tests
+        run: docker build -t atlas-auth-local .
+      - name: Prepare ephemeral owner password
+        run: |
+          QA_OWNER_PASS="$(openssl rand -hex 24)"
+          echo "::add-mask::$QA_OWNER_PASS"
+          echo "QA_OWNER_PASS=$QA_OWNER_PASS" >> "$GITHUB_ENV"
+      - name: Start loopback-only SQLite CMS instance
+        run: |
+          docker run -d --name atlas-auth-local --network host \
+            -e PORT=8765 \
+            -e ATLAS_ALLOW_EPHEMERAL_AUTH=1 \
+            -e ATLAS_USERS_DB_PATH=/tmp/auth-e2e.sqlite3 \
+            -e ATLAS_BOOTSTRAP_ADMIN_ID=11111111-1111-4111-8111-111111111111 \
+            -e ATLAS_ADMIN_USER_IDS=11111111-1111-4111-8111-111111111111 \
+            -e ATLAS_BOOTSTRAP_ADMIN_EMAIL=owner-v545@example.test \
+            -e ATLAS_BOOTSTRAP_ADMIN_PASSWORD="$QA_OWNER_PASS" \
+            atlas-auth-local
+          for i in $(seq 1 40); do
+            if curl --fail --silent http://localhost:8765/api/health >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          docker logs atlas-auth-local
+          exit 1
+      - name: Verify UI login, CSRF, editors, reviewers and publishing
+        env:
+          CMS_E2E_URL: http://localhost:8765
+        run: npx playwright test tests/browser/cms-auth-live.spec.mjs --reporter=list --workers=1
+      - name: Show test server logs if unsuccessful
+        if: failure()
+        run: docker logs --tail 140 atlas-auth-local || true
+      - name: Destroy isolated test instance
+        if: always()
+        run: docker rm -f atlas-auth-local || true
