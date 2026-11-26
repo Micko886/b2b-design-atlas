@@ -909,7 +909,7 @@ test('V54.7 list next action respects status and current role',async({page})=>{
  await expect(page.locator('.cms-item-open-label')).toHaveText('核对修改 · 审核发布 →');
  await page.locator('#cms-review-shortcut').click();
  await expect(page.locator('[data-review-open-kind="site"]')).toHaveText('查看并审核');
- await page.locator('[data-v530-close="review"]').click();
+ await page.locator('#cms-review-dialog [data-v530-close="review"]').first().click();
  records.site.status='published';
  await page.reload();
  await expect(page.locator('.cms-item-open-label')).toHaveText('查看发布记录 →');
