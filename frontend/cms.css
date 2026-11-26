@@ -968,3 +968,39 @@ body[data-cms-mode="admin"] #cms-media-status{font-size:12px;line-height:1.65}
   min-height:44px;scroll-snap-align:start;flex-shrink:0;
  }
 }
+
+/* V54.1 · One content-list hierarchy, progressive bulk actions and quiet review queue. */
+.cms-browser-head{align-items:center;gap:18px}
+.cms-browser-head #cms-count{white-space:nowrap;font-size:12px;letter-spacing:0;color:var(--muted-strong);font-weight:730}
+.cms-browser-head .section-eyebrow{font-size:10px;letter-spacing:.08em}
+.cms-search-row{align-items:stretch;gap:10px}
+.cms-search-row .cms-search,.cms-search-row #cms-status{min-height:42px}
+.cms-v51-bulk{align-items:center;gap:10px;border-radius:10px;padding:10px 13px;background:var(--surface-2)}
+.cms-v51-bulk[data-has-selection="true"]{border-color:var(--line-strong)}
+.cms-v51-bulk [hidden]{display:none!important}
+.cms-v51-bulk #cms-selected-count{font-size:11px;color:var(--ink-strong)}
+.cms-v51-bulk #cms-bulk-action{margin-left:auto;min-height:36px}
+.cms-v51-bulk #cms-bulk-run{min-height:36px}
+.cms-v51-select{background:var(--surface);border-right:1px solid var(--line)}
+.cms-v51-select:focus-within{box-shadow:inset 0 0 0 2px var(--blue)}
+.cms-v51-row .cms-item{min-height:84px}
+.cms-v51-row .cms-item:focus-visible{outline:2px solid var(--blue);outline-offset:-2px}
+.cms-v530-status{display:flex;align-items:center;justify-content:space-between;gap:9px 20px;flex-wrap:wrap;margin:16px 0 14px;padding:13px 15px}
+.cms-v530-status strong{font-size:13px;color:var(--ink-strong);font-weight:800}
+.cms-v530-status span{font-size:11px;color:var(--muted-strong);line-height:1.7}
+.cms-v530-status[data-state="warning"]{border-color:var(--line-strong)}
+.cms-v530-review-row{padding:16px 17px;gap:14px;border-radius:12px}
+.cms-v530-review-row>div{gap:4px}
+.cms-v530-review-row strong{font-size:14px;line-height:1.45}
+.cms-v530-review-row>button{min-height:38px}
+.cms-easy-mode .cms-easy-intro h3{font-size:13px;line-height:1.45;font-weight:790}
+.cms-easy-mode .cms-easy-intro p{max-width:720px}
+@media(max-width:600px){
+ .cms-search-row{flex-wrap:wrap}
+ .cms-search-row .cms-search{flex:1 1 100%}
+ .cms-search-row #cms-status{flex:1 1 100%;min-width:0}
+ .cms-v51-bulk{gap:9px}
+ .cms-v51-bulk #cms-bulk-action{margin-left:0;flex:1 1 100%}
+ .cms-v51-bulk #cms-bulk-run{width:100%}
+ .cms-v530-status{align-items:flex-start;flex-direction:column}
+}

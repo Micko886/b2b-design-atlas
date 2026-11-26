@@ -735,3 +735,47 @@ test('V54 read-only reviewer can navigate panels with keyboard, without edit act
  await expect(page.locator('[data-editor-save]')).toHaveCount(0);
  await expect(page.locator('[data-restore]')).toHaveCount(0);
 });
+
+test('V54.1 batch actions appear only after eligible CMS records are selected',async({page})=>{
+ const {records}=await mockCms(page);
+ await page.goto(origin+'/admin/content?kind=site');
+ await expect(page.locator('#cms-bulk-toolbar')).toBeHidden();
+ await expect(page.locator('[data-bulk-select]')).toHaveCount(0);
+ records.site.status='draft';records.site.source='cms';records.site.revision=2;
+ await page.reload();
+ await expect(page.locator('[data-bulk-select="demo-site"]')).toBeVisible();
+ await expect(page.locator('#cms-bulk-toolbar')).toBeVisible();
+ await expect(page.locator('#cms-bulk-action')).toBeHidden();
+ await expect(page.locator('#cms-bulk-run')).toBeHidden();
+ await page.locator('[data-bulk-select="demo-site"]').check();
+ await expect(page.locator('#cms-selected-count')).toContainText('1 项已选择');
+ await expect(page.locator('#cms-bulk-action')).toBeVisible();
+ await expect(page.locator('#cms-bulk-run')).toBeVisible();
+ await page.locator('[data-bulk-select="demo-site"]').uncheck();
+ await expect(page.locator('#cms-bulk-run')).toBeHidden();
+ await expect(page.locator('#cms-selected-count')).toBeHidden();
+});
+
+test('V54.1 review queue separates total from categories and stays usable at 320px',async({page})=>{
+ const {records}=await mockCms(page);
+ records.site.status='review';records.site.revision=3;records.site.source='cms';
+ records.module.status='review';records.module.revision=2;records.module.source='cms';
+ await page.setViewportSize({width:320,height:740});
+ await page.goto(origin+'/admin/content?workspace=review');
+ const status=page.locator('#cms-review-queue-status');
+ await expect(status.locator('strong')).toHaveText('待审核 2 条');
+ await expect(status.locator('span')).toContainText('网站 1 · 模块 1');
+ await expect(page.locator('[data-review-open-kind]')).toHaveCount(2);
+ await expect(page.locator('.cms-v530-review-row')).toHaveCount(2);
+ await expect(page.locator('[data-review-open-kind="site"]')).toHaveAttribute('aria-label',/查看 .* 的审核变更/);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
+
+test('V54.1 all four editors have a single consistent basic-info heading',async({page})=>{
+ const {records}=await mockCms(page);
+ for(const kind of ['site','module','pattern','article']){
+  await page.goto(origin+'/admin/content?kind='+kind+'&edit='+records[kind].slug);
+  await expect(page.locator('.cms-easy-intro h3')).toHaveText('基本信息');
+  await expect(page.locator('.cms-easy-heading h2')).toBeVisible();
+ }
+});

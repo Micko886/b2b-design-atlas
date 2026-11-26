@@ -250,7 +250,7 @@ function listUrl(){const u=new URL(location.href);u.searchParams.set('kind',stat
 function showKind(){
  $('#cms-current-kind').textContent=kinds[state.kind].label.toUpperCase();
  $('#cms-browser-title').textContent=kinds[state.kind].title;
- const subtitle=$('#cms-browser-subtitle');if(subtitle)subtitle.textContent='选择记录进入独立编辑页，可直接修改文字、图片并保存草稿。';
+ const subtitle=$('#cms-browser-subtitle');if(subtitle)subtitle.textContent='选择一条记录，查看详情或直接编辑。';
  $$('[data-kind-link]').forEach(a=>{a.classList.toggle('active',a.dataset.kindLink===state.kind);a.href='?kind='+a.dataset.kindLink});
  $('#cms-create-kind').value=state.kind;
 }
@@ -299,13 +299,13 @@ function drawItems(){
  const items=listFiltered(),root=$('#cms-items');
  root.innerHTML=items.length?items.map(item=>{
    const img=rowImage(item),actionLabel=can('edit')?'编辑内容':can('review')?'查看并审核':'查看内容';
-   return '<div class="cms-v51-row">'+(mode==='admin'?'<label class="cms-v51-select" aria-label="选择 '+h(item.label)+'"><input type="checkbox" data-bulk-select="'+h(item.slug)+'" '+(state.selectedSlugs.has(item.slug)?'checked':'')+'></label>':'')+'<button type="button" class="cms-item '+(state.selected?.slug===item.slug?'active':'')+'" data-pick="'+h(item.slug)+'" aria-label="'+actionLabel+'：'+h(item.label)+'">'
+   return '<div class="cms-v51-row">'+(mode==='admin'&&item.status!=='source'?'<label class="cms-v51-select" aria-label="选择 '+h(item.label)+'"><input type="checkbox" data-bulk-select="'+h(item.slug)+'" '+(state.selectedSlugs.has(item.slug)?'checked':'')+'></label>':'')+'<button type="button" class="cms-item '+(state.selected?.slug===item.slug?'active':'')+'" data-pick="'+h(item.slug)+'" aria-label="'+actionLabel+'：'+h(item.label)+'">'
    +'<span class="cms-item-thumb">'+(img?'<img src="'+h(img)+'" loading="lazy" alt="">':icon(kinds[state.kind].icon))+'</span>'
    +'<span class="cms-item-copy"><strong>'+h(item.label)+'</strong><small>'+h(item.sector||item.slug)+'</small><small class="cms-item-open-label">'+actionLabel+' →</small></span>'
    +stateClasses(item.status)+'</button></div>';
  }).join(''):'<div class="cms-empty-results" role="status"><strong>'+(state.q||state.status?'没有匹配的内容':'当前还没有内容')+'</strong><p>'+(state.q||state.status?'调整关键词或筛选条件，或者直接查看全部记录。':'可以通过右上角的新建内容按钮添加第一条记录。')+'</p>'+(state.q||state.status?'<button type="button" data-clear-content-filters>清除筛选 · 查看全部</button>':'')+'</div>';
- $('#cms-count').textContent=items.length+' ITEMS';
- $('#cms-browser-footer').textContent=items.length+' / '+state.items.length+' 条记录';
+ $('#cms-count').textContent=items.length+' 条';
+ $('#cms-browser-footer').textContent='当前显示 '+items.length+' / '+state.items.length+' 条';
   // Bulk actions are progressive enhancement: never discard a loaded content list if toolbar rendering fails.
   try{updateBulkToolbar()}catch(error){
     console.error('[CMS] bulk toolbar rendering failed; content list remains available',error);
@@ -430,7 +430,7 @@ function siteEditorForm(values,editable){
  const raw=String(values.screenshot_url||'');
  const picture=/^\/screenshots\/[a-zA-Z0-9_./-]{1,200}$/.test(raw)&&!raw.includes('..')||
    /^\/api\/media\/[0-9a-f-]{36}$/.test(raw);
- return '<section class="cms-easy-intro"><div><h3>编辑案例</h3><p>填写名称、网址、行业和简介，再选一张封面图即可。其他内容均为选填。</p></div></section>'
+ return '<section class="cms-easy-intro"><div><h3>基本信息</h3><p>填写名称、网址、行业和简介，再选一张封面图即可。其他内容均为选填。</p></div></section>'
  +'<div class="cms-easy-layout"><div class="cms-easy-fields">'
  +basic.map(spec=>formField(spec,values,editable)).join('')
  +'<datalist id="cms-site-sector-options"><option value="工业制造"><option value="工业软件"><option value="机器人"><option value="新能源"><option value="医疗科技"><option value="航空航天"></datalist>'
@@ -460,13 +460,13 @@ function easyImagePreview(field,values,editable,explanation){
 function simpleEditorForm(kind,values,editable){
  let title='基本信息',description='',basic=[],extra=[],aside='';
  if(kind==='module'){
-   title='编辑页面模块';description='填写模块标题、所属网站和设计说明，右侧可更换截图。';
+   title='基本信息';description='填写模块标题、所属网站和设计说明，右侧可更换截图。';
    basic=[['title','模块标题','text',true],['site_id','所属网站','text',true],
      ['category','模块分类','text',true],['lesson','设计方法','long',true],['summary','模块介绍','long']];
    extra=[['url','原始页面链接','url'],['type','模块类型','text']];
    aside=easyImagePreview('screenshot_url',values,editable,'这张截图会展示在页面模块卡片和详情页中。');
  }else if(kind==='pattern'){
-   title='编辑设计模式';description='描述设计要解决的问题、核心方法，以及适合什么场景。';
+   title='基本信息';description='描述设计要解决的问题、核心方法，以及适合什么场景。';
    basic=[['title','模式名称','text',true],['family','所属类别','text',true],
      ['question','解决什么问题','long',true],['principle','核心设计原则','long',true]];
    extra=[['when','适用场景','long'],['compare','可以比较什么','long'],
@@ -478,7 +478,7 @@ function simpleEditorForm(kind,values,editable){
     +'<div id="cms-preview-principle">'+h(values.principle||'这里会显示核心设计原则')+'</div></div>'
     +'<small>预览只在当前浏览器显示，未发布的内容不会公开。</small></aside>';
  }else{
-   title='文章基本信息';description='先填写标题、摘要和分类，再在下方逐章编辑文章正文。';
+   title='基本信息';description='先填写标题、摘要和分类，再在下方逐章编辑文章正文。';
    basic=[['title','文章标题','text',true],['subtitle','文章摘要','long',true],
      ['category','文章分类','text',true],['author','作者','text',true]];
    extra=[['seo_title','SEO 标题','text'],['seo_description','SEO 描述','long'],
@@ -1310,10 +1310,17 @@ function reindexSections(){
 }
 function updateBulkToolbar(){
  const bar=$('#cms-bulk-toolbar');if(!bar)return;
- bar.hidden=mode!=='admin'||!(can('edit')||can('review'));
- $('#cms-selected-count').textContent=state.selectedSlugs.size+' 项已选择';
+ const selectable=state.items.filter(x=>x.status!=='source');
  const visible=listFiltered().filter(x=>x.status!=='source');
+ bar.hidden=mode!=='admin'||!(can('edit')||can('review'))||selectable.length===0;
+ const chosen=state.selectedSlugs.size>0;
+ bar.dataset.hasSelection=chosen?'true':'false';
+ $('#cms-selected-count').textContent=chosen?state.selectedSlugs.size+' 项已选择':'';
+ $('#cms-selected-count').hidden=!chosen;
+ $('#cms-bulk-action').hidden=!chosen;
+ $('#cms-bulk-run').hidden=!chosen;
  $('#cms-select-all').checked=visible.length>0&&visible.every(x=>state.selectedSlugs.has(x.slug));
+ $('#cms-select-all').disabled=visible.length===0;
 }
 async function runBulk(){
  if(mode!=='admin'||state.busy)return;
@@ -1920,12 +1927,17 @@ async function refreshReviewQueue(){
  pending.sort((a,b)=>String(b.updated_at||b.updatedAt||'').localeCompare(String(a.updated_at||a.updatedAt||''),'zh'));
  const count=$('#cms-review-total');
  if(count){count.textContent=String(pending.length);count.hidden=!pending.length}
- if(failures.length)status.textContent='部分栏目读取失败：'+failures.join('、')+'。请刷新后再核对。';
- else status.textContent='待审核 '+pending.length+' 条 · 网站 '+(counts.site||0)+' / 模块 '+(counts.module||0)+' / 模式 '+(counts.pattern||0)+' / 文章 '+(counts.article||0);
+ status.dataset.state=failures.length?'warning':'ready';
+ if(failures.length){
+   status.textContent='部分栏目读取失败：'+failures.join('、')+'。已读取 '+pending.length+' 条待审核内容，请刷新后再核对。';
+ }else{
+   status.innerHTML='<strong>待审核 '+pending.length+' 条</strong>'
+     +'<span>网站 '+(counts.site||0)+' · 模块 '+(counts.module||0)+' · 模式 '+(counts.pattern||0)+' · 文章 '+(counts.article||0)+'</span>';
+ }
  root.innerHTML=pending.length?pending.map(item=>
-  '<article class="cms-v530-review-row"><div><span>'+h(kinds[item.kind].title)+' · 等待审核</span>'
-   +'<strong>'+h(item.label||item.slug)+'</strong><small>'+h(item.slug)+' · v'+h(item.revision??0)+'</small></div>'
-   +'<button type="button" data-review-open-kind="'+h(item.kind)+'" data-review-open-slug="'+h(item.slug)+'">查看变更</button></article>').join('')
+  '<article class="cms-v530-review-row"><div><span>'+h(kinds[item.kind].title)+'</span>'
+   +'<strong>'+h(item.label||item.slug)+'</strong><small>版本 v'+h(item.revision??0)+' · '+h(item.slug)+'</small></div>'
+   +'<button type="button" data-review-open-kind="'+h(item.kind)+'" data-review-open-slug="'+h(item.slug)+'" aria-label="查看 '+h(item.label||item.slug)+' 的审核变更">查看变更</button></article>').join('')
   :'<p class="cms-v530-review-empty">'+(failures.length?'已读取的栏目暂无待审核稿，其他栏目尚未成功读取。':'目前没有待审核内容，可以继续编辑或计划发布。')+'</p>';
 }
 async function openReviewQueue(){
