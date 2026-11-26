@@ -43,7 +43,7 @@ class AuthenticatedWorkflowTests(unittest.TestCase):
         cms_routes.register_cms_routes(app)
         admin_routes.register_admin_routes(app)
         self.endpoints={(path,method):route.endpoint for route in app.routes
-                        for method in (route.methods or set())
+                        for method in (getattr(route,"methods",None) or set())
                         for path in [route.path]}
 
     def call(self,method,path,*args):
