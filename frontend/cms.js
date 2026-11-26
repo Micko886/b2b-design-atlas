@@ -262,7 +262,7 @@ function updateSummary(){
  const counts={source:0,draft:0,review:0,published:0,archived:0,public:0};
  for(const x of state.items)counts[x.status]=(counts[x.status]||0)+1;
  const numbers=[state.items.length,counts.source+counts.public,counts.draft,counts.review,counts.published];
- $('.cms-metric strong').forEach((el,i)=>el.textContent=numbers[i].toLocaleString('zh-CN'));
+ document.querySelectorAll('.cms-metric strong').forEach((el,i)=>el.textContent=numbers[i].toLocaleString('zh-CN'));
  const button=$('#cms-review-filter');
  if(button){button.hidden=mode!=='admin'||!can('review')||!counts.review;button.textContent='待审核 '+counts.review+' 条 · 直接处理'}
 }
