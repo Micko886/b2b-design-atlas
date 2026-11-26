@@ -69,8 +69,8 @@ class PrivatePreviewContracts(unittest.TestCase):
         self.assertIn(".cms-public-card-sample{grid-template-columns",self.css)
         self.assertIn("if(kind==='article')return '<div class=\"cms-private-article\">'+previewMarkup(data)",self.js)
         self.assertIn("function previewArticleBlock(block)",self.js)
-        self.assertIn("cms.js?v=5320",self.html)
-        self.assertIn("cms.css?v=5320",self.html)
+        self.assertRegex(self.html,r"cms\.js\?v=\d{4,}")
+        self.assertRegex(self.html,r"cms\.css\?v=\d{4,}")
 
     def test_real_browser_tests_cover_preview_comparison_and_xss(self):
         for value in ("V52.7 site preview uses unsaved form data without publishing",

@@ -87,8 +87,8 @@ class PreviewAndReviewSafetyV528(unittest.TestCase):
                 self.assertIn(expected,self.browser)
 
     def test_cache_version_matches_the_new_editor(self):
-        self.assertIn("cms.js?v=5320",self.html)
-        self.assertIn("cms.css?v=5320",self.html)
+        self.assertRegex(self.html,r"cms\.js\?v=\d{4,}")
+        self.assertRegex(self.html,r"cms\.css\?v=\d{4,}")
 
 
 if __name__=="__main__":

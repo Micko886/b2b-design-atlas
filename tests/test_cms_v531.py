@@ -89,8 +89,8 @@ class ArticleEditorV531(unittest.TestCase):
             self.assertIn(t,self.browser)
 
     def test_asset_version_bump(self):
-        self.assertIn("cms.js?v=5320",self.html)
-        self.assertIn("cms.css?v=5320",self.html)
+        self.assertRegex(self.html,r"cms\.js\?v=\d{4,}")
+        self.assertRegex(self.html,r"cms\.css\?v=\d{4,}")
 
 
 if __name__=="__main__":

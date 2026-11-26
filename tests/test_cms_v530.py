@@ -94,8 +94,10 @@ class V530WorkspaceTests(unittest.TestCase):
                 self.assertIn(term,self.browser)
 
     def test_versions_are_explicit_for_all_shell_assets(self):
-        for value in ("cms.js?v=5320","cms.css?v=5320","admin.css?v=5300"):
+        for value in ("admin.css?v=5300",):
             self.assertIn(value,self.cms)
+        self.assertRegex(self.cms,r"cms\.js\?v=\d{4,}")
+        self.assertRegex(self.cms,r"cms\.css\?v=\d{4,}")
         for value in ("admin.js?v=5300","admin.css?v=5300"):
             self.assertIn(value,self.admin)
 

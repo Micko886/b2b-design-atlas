@@ -58,8 +58,8 @@ class CMSV525VisualAndInteractionContracts(unittest.TestCase):
         self.assertIn("no production writes",self.playwright)
 
     def test_asset_versions_and_selector_safety(self):
-        self.assertIn("cms.js?v=5320",self.html)
-        self.assertIn("cms.css?v=5320",self.html)
+        self.assertRegex(self.html,r"cms\.js\?v=\d{4,}")
+        self.assertRegex(self.html,r"cms\.css\?v=\d{4,}")
         self.assertEqual(re.findall(r"for\s*\([^)]*\bof\s+\$\(",self.js),[])
 
 

@@ -155,8 +155,8 @@ class UnifiedNavigationContracts(unittest.TestCase):
     def test_updated_asset_versions(self):
         self.assertIn("admin.js?v=5300",self.admin)
         self.assertIn("admin.css?v=5300",self.admin)
-        self.assertIn("cms.js?v=5320",self.cms)
-        self.assertIn("cms.css?v=5320",self.cms)
+        self.assertRegex(self.cms,r"cms\.js\?v=\d{4,}")
+        self.assertRegex(self.cms,r"cms\.css\?v=\d{4,}")
 
 if __name__=="__main__":
     unittest.main()

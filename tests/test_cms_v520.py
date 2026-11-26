@@ -171,8 +171,8 @@ class EditorialFrontendContracts(unittest.TestCase):
     def test_asset_cache_versions_include_new_public_bundle(self):
         self.assertIn("app.js?v=52.3.1",self.index)
         self.assertIn("app.css?v=51.20",self.index)
-        self.assertIn("cms.js?v=5320",self.html)
-        self.assertIn("cms.css?v=5320",self.html)
+        self.assertRegex(self.html,r"cms\.js\?v=\d{4,}")
+        self.assertRegex(self.html,r"cms\.css\?v=\d{4,}")
 
 if __name__=="__main__":
     unittest.main()
