@@ -6,8 +6,8 @@
 <meta name="theme-color" content="#f5f7fb">
 <title>内容管理 · B2B Atlas Control Room</title>
 <link rel="stylesheet" href="/assets/admin.css?v=5300">
-<link rel="stylesheet" href="/assets/cms.css?v=5520">
-<script defer src="/assets/cms.js?v=5520"></script>
+<link rel="stylesheet" href="/assets/cms.css?v=5530">
+<script defer src="/assets/cms.js?v=5530"></script>
 </head>
 <body data-cms-mode="__CMS_MODE__">
 <svg xmlns="http://www.w3.org/2000/svg" class="icon-sprite" aria-hidden="true">
@@ -33,7 +33,7 @@
 </svg>
 <div class="dashboard-layout cms-layout atlas-v521-layout">
  <aside class="sidebar" id="cms-sidebar">
-  <div class="sidebar-brand"><div class="brand-symbol" aria-hidden="true"><span></span><span></span><span></span><span></span></div><div class="brand-wordmark"><strong>B2B Atlas</strong><small>CONTROL ROOM</small></div><span class="brand-version">V55.2</span></div>
+  <div class="sidebar-brand"><div class="brand-symbol" aria-hidden="true"><span></span><span></span><span></span><span></span></div><div class="brand-wordmark"><strong>B2B Atlas</strong><small>CONTROL ROOM</small></div><span class="brand-version">V55.3</span></div>
   <div class="workspace-chip"><span class="workspace-chip-icon">A</span><span><strong>Atlas Workspace</strong><small>Content Studio</small></span></div>
   <nav class="side-nav atlas-v521-nav atlas-v530-nav" aria-label="后台主导航">
    <span class="nav-group-label">工作区 <span>WORKSPACE</span></span>
@@ -78,7 +78,15 @@
     <section class="cms-browser panel" aria-label="内容列表">
      <div class="cms-browser-head"><div><span class="section-eyebrow">LIBRARY / <span id="cms-current-kind">WEBSITES</span></span><h2 id="cms-browser-title">网站内容</h2><p id="cms-browser-subtitle">点击一条记录进入编辑页，直接修改文字和图片</p></div><strong id="cms-count">—</strong></div>
      <div class="cms-search-row"><label class="cms-search"><svg class="icon"><use href="#i-search"></use></svg><input id="cms-search" type="search" placeholder="搜索名称、行业或 URL…" aria-label="搜索内容"></label><select id="cms-status" aria-label="筛选内容状态"><option value="">全部状态</option><option value="source">文件收录</option><option value="draft">草稿</option><option value="review">待审核</option><option value="published">后台已发布</option><option value="archived">已归档</option></select></div>
-     <div id="cms-bulk-toolbar" class="cms-v51-bulk" hidden><label><input type="checkbox" id="cms-select-all"> 全选当前列表</label><strong id="cms-selected-count">0 项已选择</strong><select id="cms-bulk-action" aria-label="批量操作"><option value="submit">提交审核</option><option value="publish">批量发布</option><option value="archive">归档下线</option></select><button type="button" id="cms-bulk-run" class="toolbar-button">应用操作</button></div>
+     <div id="cms-bulk-toolbar" class="cms-v51-bulk cms-v553-bulk" hidden>
+      <div class="cms-v553-bulk-head"><label for="cms-bulk-action">批量操作</label><select id="cms-bulk-action" aria-label="选择批量操作"><option value="submit">提交审核</option><option value="publish">批量发布</option><option value="archive">归档下线</option></select></div>
+      <small id="cms-bulk-help" class="cms-v553-bulk-help">先选择操作，再勾选符合条件的内容；每批最多 20 条。</small>
+      <div class="cms-v553-bulk-controls"><label><input type="checkbox" id="cms-select-all"> 选择当前符合条件的内容（最多 20 条）</label>
+       <span id="cms-selected-count" aria-live="polite" hidden></span>
+       <button type="button" id="cms-bulk-clear" hidden>清空选择</button>
+       <button type="button" id="cms-bulk-run" class="toolbar-button" hidden>执行操作</button>
+      </div>
+     </div>
      <div id="cms-items" class="cms-items"><div class="visual-loading">正在加载内容…</div></div>
      <div class="cms-browser-footer"><span id="cms-browser-footer">查看内容后编辑或审核</span><a href="/" target="_blank" rel="noopener">公开资源 ↗</a></div>
     </section>

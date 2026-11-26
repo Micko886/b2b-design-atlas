@@ -268,6 +268,19 @@ function listFiltered(){
  const q=state.q.toLowerCase().trim();
  return state.items.filter(x=>(!state.status||x.status===state.status)&&(!q||(x.label+' '+x.sector+' '+x.slug).toLowerCase().includes(q)));
 }
+const bulkActionRules={
+ submit:{status:'draft',permission:'edit',verb:'提交审核',button:'提交审核',help:'草稿'},
+ publish:{status:'review',permission:'review',verb:'发布',button:'批量发布',help:'待审核内容'},
+ archive:{status:'published',permission:'review',verb:'归档下线',button:'归档下线',help:'已发布内容'}
+};
+function bulkEligibility(item,action=$('#cms-bulk-action')?.value||'submit'){
+ const rule=bulkActionRules[action];
+ if(!rule)return {ok:false,reason:'请先选择批量操作'};
+ if(!can(rule.permission))return {ok:false,reason:'当前账号没有此操作权限'};
+ if(item.status!==rule.status)return {ok:false,reason:'此操作仅支持'+rule.help};
+ if(!(Number(item.revision)>0))return {ok:false,reason:'此内容还没有可操作的版本'};
+ return {ok:true,reason:''};
+}
 function setStudioMode(editing){
  const layout=$('.cms-split');if(layout)layout.classList.toggle('cms-editing',Boolean(editing));
  document.body.classList.toggle('cms-editor-active',Boolean(editing));
@@ -311,7 +324,10 @@ function drawItems(){
  const items=listFiltered(),root=$('#cms-items');
  root.innerHTML=items.length?items.map(item=>{
    const img=rowImage(item),actionLabel=can('edit')?'编辑内容':can('review')?'查看并审核':'查看内容';
-   return '<div class="cms-v51-row">'+(mode==='admin'&&item.status!=='source'?'<label class="cms-v51-select" aria-label="选择 '+h(item.label)+'"><input type="checkbox" data-bulk-select="'+h(item.slug)+'" '+(state.selectedSlugs.has(item.slug)?'checked':'')+'></label>':'')+'<button type="button" class="cms-item '+(state.selected?.slug===item.slug?'active':'')+'" data-pick="'+h(item.slug)+'" aria-label="'+actionLabel+'：'+h(item.label)+'">'
+   const bulkRule=bulkEligibility(item),bulkChecked=state.selectedSlugs.has(item.slug);
+   const bulkSelect=mode==='admin'&&item.status!=='source'
+    ?'<label class="cms-v51-select" aria-label="选择 '+h(item.label)+'"><input type="checkbox" data-bulk-select="'+h(item.slug)+'" '+(bulkChecked?'checked':'')+(!bulkRule.ok?' disabled title="'+h(bulkRule.reason)+'"':'')+'></label>':'';
+   return '<div class="cms-v51-row">'+bulkSelect+'<button type="button" class="cms-item '+(state.selected?.slug===item.slug?'active':'')+'" data-pick="'+h(item.slug)+'" aria-label="'+actionLabel+'：'+h(item.label)+'">'
    +'<span class="cms-item-thumb">'+(img?'<img src="'+h(img)+'" loading="lazy" alt="">':icon(kinds[state.kind].icon))+'</span>'
    +'<span class="cms-item-copy"><strong>'+h(item.label)+'</strong><small>'+h(item.sector||item.slug)+'</small><small class="cms-item-open-label">'+h(listNextAction(item))+'</small></span>'
    +stateClasses(item.status)+'</button></div>';
@@ -1432,38 +1448,50 @@ function reindexSections(){
 function updateBulkToolbar(){
  const bar=$('#cms-bulk-toolbar');if(!bar)return;
  const selectable=state.items.filter(x=>x.status!=='source');
- const visible=listFiltered().filter(x=>x.status!=='source');
+ const visibleEligible=listFiltered().filter(x=>bulkEligibility(x).ok);
+ const action=$('#cms-bulk-action')?.value||'submit',rule=bulkActionRules[action];
  bar.hidden=mode!=='admin'||!(can('edit')||can('review'))||selectable.length===0;
- const chosen=state.selectedSlugs.size>0;
+ const chosen=state.selectedSlugs.size;
  bar.dataset.hasSelection=chosen?'true':'false';
- $('#cms-selected-count').textContent=chosen?state.selectedSlugs.size+' 项已选择':'';
- $('#cms-selected-count').hidden=!chosen;
- $('#cms-bulk-action').hidden=!chosen;
- $('#cms-bulk-run').hidden=!chosen;
- $('#cms-select-all').checked=visible.length>0&&visible.every(x=>state.selectedSlugs.has(x.slug));
- $('#cms-select-all').disabled=visible.length===0;
+ const count=$('#cms-selected-count'),run=$('#cms-bulk-run'),clear=$('#cms-bulk-clear');
+ count.textContent=chosen?'已选 '+chosen+' / 20 条':'';
+ count.hidden=!chosen;
+ clear.hidden=!chosen;
+ run.hidden=!chosen;
+ run.textContent=(rule?.button||'执行操作')+(chosen?'（'+chosen+'）':'');
+ $('#cms-bulk-help').textContent=(rule?'仅支持'+rule.help+'；':'')+'当前筛选中 '+visibleEligible.length+' 条符合条件，每批最多 20 条。';
+ const cap=Math.min(visibleEligible.length,20);
+ const selectedVisible=visibleEligible.filter(x=>state.selectedSlugs.has(x.slug)).length;
+ $('#cms-select-all').checked=cap>0&&selectedVisible===cap;
+ $('#cms-select-all').disabled=cap===0;
+ for(const input of $('[data-bulk-select]')){
+  const item=state.items.find(x=>x.slug===input.dataset.bulkSelect);
+  const eligibility=item?bulkEligibility(item):{ok:false,reason:'记录已变化，请刷新列表'};
+  const atLimit=chosen>=20&&!input.checked;
+  input.disabled=!eligibility.ok||atLimit;
+  input.title=!eligibility.ok?eligibility.reason:atLimit?'每批最多选择 20 条':'';
+ }
 }
 async function runBulk(){
  if(mode!=='admin'||state.busy)return;
- if(state.dirty||autosavePaused){message('请先完成草稿保存，再执行批量审核。',false);return}
- const action=$('#cms-bulk-action').value;
- if(!(action==='submit'?can('edit'):can('review'))){message('当前角色没有该批量操作权限。',false);return}
+ if(state.dirty||autosavePaused){message('请先完成草稿保存，再执行批量操作。',false);return}
+ const action=$('#cms-bulk-action').value,rule=bulkActionRules[action];
+ if(!rule||!can(rule.permission)){message('当前角色没有该批量操作权限。',false);return}
  const items=state.items.filter(x=>state.selectedSlugs.has(x.slug));
- if(!items.length){message('请先勾选需要操作的 CMS 内容',false);return}
- const allowed={submit:'draft',publish:'review',archive:'published'};
- if(items.some(x=>x.status!==allowed[action]||x.revision<1)){
-   message('当前操作只能选择'+({submit:'草稿',publish:'待审核',archive:'已发布'}[action])+'内容；文件收录需先保存为草稿。',false);return;
+ if(!items.length){message('请先选择符合条件的内容。',false);return}
+ if(items.some(x=>!bulkEligibility(x,action).ok)){
+  message('所选内容状态已变化，请重新选择符合条件的内容。',false);return;
  }
- if(items.length>20){message('每次最多批量操作 20 条内容',false);return}
- if(!confirm('确定对 '+items.length+' 条内容执行「'+({submit:'提交审核',publish:'发布到公开网站',archive:'归档下线'}[action])+'」？该操作将写入版本历史。'))return;
- btnDisable(true);
+ if(items.length>20){message('每批最多操作 20 条内容，请分批处理。',false);return}
+ if(!confirm('确定对 '+items.length+' 条内容执行「'+rule.verb+'」？该操作将写入版本历史。'))return;
+ btnDisable(true);$('#cms-bulk-run').disabled=true;
  try{
    const res=await api('/api/admin/content/bulk',{method:'POST',body:JSON.stringify({
      kind:state.kind,action,items:items.map(x=>({slug:x.slug,expected_revision:x.revision}))
    })});
    state.dirty=false;await loadKind(false);
-   message('批量操作成功：'+res.results.length+' 条，所有记录已提交。');
- }catch(e){message(e.message,false)}finally{btnDisable(false)}
+   message('批量操作成功：'+res.results.length+' 条，所有记录已更新。');
+ }catch(e){message(e.message,false)}finally{btnDisable(false);updateBulkToolbar()}
 }
 async function openMedia(){
  if(mode!=='admin'||!can('media')){message('当前账号没有媒体管理权限，请联系管理员。',false);return}
@@ -2252,7 +2280,14 @@ function boot(){
    const choice=e.target.closest('[data-pick]');if(choice){if(state.busy)return;await selectItem(choice.dataset.pick,true);return}
    const action=e.target.closest('[data-transition]');if(action){await transition(action.dataset.transition);return}
    const restore=e.target.closest('[data-restore]');if(restore){await restoreRevision(Number(restore.dataset.restore));return}
-   const bulkCheck=e.target.closest('[data-bulk-select]');if(bulkCheck){const slug=bulkCheck.dataset.bulkSelect;if(bulkCheck.checked)state.selectedSlugs.add(slug);else state.selectedSlugs.delete(slug);updateBulkToolbar();return}
+   const bulkCheck=e.target.closest('[data-bulk-select]');if(bulkCheck){
+     const slug=bulkCheck.dataset.bulkSelect;
+     if(bulkCheck.checked){
+       if(state.selectedSlugs.size>=20){bulkCheck.checked=false;message('每批最多选择 20 条内容，请先执行或清空当前选择。',false);return}
+       state.selectedSlugs.add(slug);
+     }else state.selectedSlugs.delete(slug);
+     updateBulkToolbar();return;
+   }
    const tagPick=e.target.closest('[data-v513-tag]');if(tagPick){chooseTag(tagPick.dataset.v513Tag);return}
    if(e.target.closest('[data-v513-close-tags]')){$('#cms-tags-dialog').close();return}
    const picked=e.target.closest('[data-v515-pick]');if(picked){chooseCategory(picked.dataset.v515Pick);return}
@@ -2475,8 +2510,23 @@ function boot(){
  });
  installBlockDrag();
  $('#cms-bulk-run').addEventListener('click',runBulk);
- $('#cms-select-all').addEventListener('change',e=>{for(const item of listFiltered()){if(item.status==='source')continue;if(e.target.checked)state.selectedSlugs.add(item.slug);else state.selectedSlugs.delete(item.slug)}drawItems()});
-
+ $('#cms-bulk-action').addEventListener('change',()=>{
+   state.selectedSlugs.clear();drawItems();
+   message('已切换批量操作，请重新选择符合条件的内容。');
+ });
+ $('#cms-bulk-clear').addEventListener('click',()=>{
+   state.selectedSlugs.clear();drawItems();message('已清空批量选择。');
+ });
+ $('#cms-select-all').addEventListener('change',e=>{
+   const eligible=listFiltered().filter(item=>bulkEligibility(item).ok);
+   if(e.target.checked){
+     state.selectedSlugs=new Set(eligible.slice(0,20).map(item=>item.slug));
+     if(eligible.length>20)message('符合条件的内容有 '+eligible.length+' 条，已选择前 20 条。请分批处理。');
+   }else{
+     for(const item of eligible)state.selectedSlugs.delete(item.slug);
+   }
+   drawItems();
+ });
  $('#cms-create-form').addEventListener('submit',createNew);
  $('#cms-menu').addEventListener('click',()=>{const open=!document.body.classList.contains('sidebar-open');document.body.classList.toggle('sidebar-open',open);$('#cms-backdrop').hidden=!open;$('#cms-menu').setAttribute('aria-expanded',String(open))});
  $('#cms-backdrop').addEventListener('click',closeMobile);

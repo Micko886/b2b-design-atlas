@@ -1218,3 +1218,28 @@ body.cms-editor-active .cms-edit-quick-actions{display:flex;align-items:center;g
  .cms-v552-studio .cms-v51-chapter-head{flex-wrap:wrap}
  .cms-v552-optional-content,.cms-v552-article-tools{padding:13px 11px}
 }
+
+/* V55.3 · Clear action-first batch selection with strict state eligibility. */
+.cms-v553-bulk{display:grid;gap:10px;margin-top:0}
+.cms-v553-bulk-head{display:flex;align-items:center;gap:9px;min-width:0}
+.cms-v553-bulk-head>label{font-size:11px;font-weight:800;color:var(--ink-strong);white-space:nowrap}
+.cms-v553-bulk-head select{flex:1;min-width:0;min-height:38px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);color:var(--ink-strong);padding:8px 10px;font:inherit;font-size:11px}
+.cms-v553-bulk-help{display:block;color:var(--muted);font-size:10px;line-height:1.6}
+.cms-v553-bulk-controls{display:flex;align-items:center;flex-wrap:wrap;gap:9px}
+.cms-v553-bulk-controls>label{display:flex;align-items:center;gap:7px;font-size:10px;font-weight:700;color:var(--ink-strong);min-width:0}
+.cms-v553-bulk-controls>span{font-size:10px;font-weight:800;color:var(--blue);font-variant-numeric:tabular-nums}
+.cms-v553-bulk-controls>button{min-height:34px;border:1px solid var(--line-strong);border-radius:8px;padding:7px 10px;background:var(--surface);color:var(--ink-strong);font-size:10px;font-weight:760;cursor:pointer}
+.cms-v553-bulk-controls>button:hover:not(:disabled){border-color:var(--blue);color:var(--blue)}
+.cms-v553-bulk-controls>#cms-bulk-run{margin-left:auto;background:var(--blue);border-color:var(--blue);color:#fff}
+.cms-v553-bulk-controls>#cms-bulk-run:hover:not(:disabled){background:var(--blue-strong,#2549ba);color:#fff}
+.cms-v553-bulk-controls button[hidden],.cms-v553-bulk-controls span[hidden]{display:none!important}
+.cms-v51-select input:disabled{opacity:.35;cursor:not-allowed}
+.cms-v51-select:has(input:disabled){cursor:not-allowed;opacity:.6}
+@media(max-width:600px){
+ .cms-v553-bulk{padding:11px}
+ .cms-v553-bulk-controls{display:grid;grid-template-columns:1fr 1fr}
+ .cms-v553-bulk-controls>label{grid-column:1/-1;align-items:flex-start;line-height:1.5}
+ .cms-v553-bulk-controls>#cms-selected-count{grid-column:1/-1}
+ .cms-v553-bulk-controls>#cms-bulk-run{grid-column:1/-1;margin:0;width:100%}
+ .cms-v553-bulk-controls>#cms-bulk-clear{grid-column:1/-1;width:100%}
+}

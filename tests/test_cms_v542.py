@@ -25,8 +25,18 @@ class Cms542(unittest.TestCase):
         self.assertIn('max-height:calc(100dvh - 24px)',self.css)
 
     def test_assets(self):
-        self.assertIn('/assets/cms.js?v=5520',self.html)
-        self.assertIn('/assets/cms.css?v=5520',self.html)
+        self.assertIn('/assets/cms.js?v=5530',self.html)
+        self.assertIn('/assets/cms.css?v=5530',self.html)
+
+    def test_bulk_selection_is_action_and_role_aware(self):
+        self.assertIn("const bulkActionRules=",self.js)
+        self.assertIn("function bulkEligibility(",self.js)
+        self.assertIn("visibleEligible=listFiltered().filter(x=>bulkEligibility(x).ok)",self.js)
+        self.assertIn("items.some(x=>!bulkEligibility(x,action).ok)",self.js)
+        self.assertIn("state.selectedSlugs.size>=20",self.js)
+        self.assertIn('id="cms-bulk-clear"',self.html)
+        self.assertIn('id="cms-bulk-help"',self.html)
+        self.assertIn('选择当前符合条件的内容（最多 20 条）',self.html)
 
 if __name__=='__main__':
     unittest.main()

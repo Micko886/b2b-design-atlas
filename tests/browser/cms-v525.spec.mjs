@@ -119,8 +119,18 @@ async function mockCms(page,role='owner',forcedErrors={}){
    }
   }
   else if(p==='/api/admin/content'&&method==='GET'){
-   const kind=url.searchParams.get('kind'),x=records[kind];
-   result={items:x?[{kind,slug:x.slug,label:x.payload.name||x.payload.title,status:x.status,source:x.source,revision:x.revision,sector:x.payload.sector||x.payload.category||x.payload.family||''}]:[]};
+   const kind=url.searchParams.get('kind');
+   result={items:Object.values(records).filter(x=>x.kind===kind).map(x=>({kind,slug:x.slug,label:x.payload.name||x.payload.title,status:x.status,source:x.source,revision:x.revision,sector:x.payload.sector||x.payload.category||x.payload.family||''}))};
+  }
+  else if(p==='/api/admin/content/bulk'&&method==='POST'){
+   const target=(body.items||[]).map(item=>Object.values(records).find(x=>x.kind===body.kind&&x.slug===item.slug));
+   const expected={submit:'draft',publish:'review',archive:'published'}[body.action];
+   if(!expected||target.some((x,i)=>!x||x.revision!==body.items[i].expected_revision||x.status!==expected)){
+    status=409;result={detail:'版本或内容状态已变化'};
+   }else{
+    const next={submit:'review',publish:'published',archive:'archived'}[body.action];
+    result={ok:true,results:target.map(x=>{x.status=next;x.revision++;return {slug:x.slug,revision:x.revision,status:x.status}})};
+   }
   }else{
    const m=p.match(/^\/api\/admin\/content\/(site|module|pattern|article)\/([^/]+)(?:\/(submit|publish|reject|archive))?$/);
    if(m&&records[m[1]]){
@@ -755,12 +765,12 @@ test('V54.1 batch actions appear only after eligible CMS records are selected',a
  await page.reload();
  await expect(page.locator('[data-bulk-select="demo-site"]')).toBeVisible();
  await expect(page.locator('#cms-bulk-toolbar')).toBeVisible();
- await expect(page.locator('#cms-bulk-action')).toBeHidden();
- await expect(page.locator('#cms-bulk-run')).toBeHidden();
- await page.locator('[data-bulk-select="demo-site"]').check();
- await expect(page.locator('#cms-selected-count')).toContainText('1 项已选择');
  await expect(page.locator('#cms-bulk-action')).toBeVisible();
- await expect(page.locator('#cms-bulk-run')).toBeVisible();
+ await expect(page.locator('#cms-bulk-run')).toBeHidden();
+ await expect(page.locator('#cms-bulk-help')).toContainText('草稿');
+ await page.locator('[data-bulk-select="demo-site"]').check();
+ await expect(page.locator('#cms-selected-count')).toContainText('1 / 20');
+ await expect(page.locator('#cms-bulk-run')).toHaveText('提交审核（1）');
  await page.locator('[data-bulk-select="demo-site"]').uncheck();
  await expect(page.locator('#cms-bulk-run')).toBeHidden();
  await expect(page.locator('#cms-selected-count')).toBeHidden();
@@ -1230,5 +1240,93 @@ test('V55.2 simplified article controls fit narrow mobile and reviewer stays rea
  await page.goto(origin+'/admin/content?kind=article&edit=demo-article');
  await expect(page.locator('[data-block-quick]')).toHaveCount(0);
  await expect(page.locator('.cms-v552-studio')).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
+});
+
+
+test('V55.3 bulk selection only permits records eligible for the chosen action',async({page})=>{
+ const {records}=await mockCms(page);
+ records.site.status='draft';records.site.source='cms';records.site.revision=2;
+ records.siteReview={kind:'site',slug:'review-site',status:'review',source:'cms',revision:3,payload:{id:'review-site',name:'Review demo',sector:'Industrial'}};
+ records.sitePublished={kind:'site',slug:'published-site',status:'published',source:'cms',revision:4,payload:{id:'published-site',name:'Published demo',sector:'Industrial'}};
+ await page.goto(origin+'/admin/content?kind=site');
+ await expect(page.locator('#cms-bulk-action')).toHaveValue('submit');
+ await expect(page.locator('[data-bulk-select="demo-site"]')).toBeEnabled();
+ await expect(page.locator('[data-bulk-select="review-site"]')).toBeDisabled();
+ await expect(page.locator('[data-bulk-select="published-site"]')).toBeDisabled();
+ await page.locator('#cms-select-all').check();
+ await expect(page.locator('#cms-selected-count')).toContainText('1 / 20');
+ await page.locator('#cms-bulk-action').selectOption('publish');
+ await expect(page.locator('#cms-selected-count')).toBeHidden();
+ await expect(page.locator('[data-bulk-select="demo-site"]')).toBeDisabled();
+ await expect(page.locator('[data-bulk-select="review-site"]')).toBeEnabled();
+ await page.locator('#cms-select-all').check();
+ await expect(page.locator('#cms-selected-count')).toContainText('1 / 20');
+ await page.locator('#cms-bulk-action').selectOption('archive');
+ await expect(page.locator('#cms-selected-count')).toBeHidden();
+ await expect(page.locator('[data-bulk-select="published-site"]')).toBeEnabled();
+ await expect(page.locator('#cms-bulk-help')).toContainText('已发布内容');
+});
+
+test('V55.3 batch action submits all selected drafts as one revision-safe request',async({page})=>{
+ const {records}=await mockCms(page);
+ records.site.status='draft';records.site.source='cms';records.site.revision=2;
+ records.siteExtra={kind:'site',slug:'demo-site-two',status:'draft',source:'cms',revision:5,payload:{id:'demo-site-two',name:'Second draft',sector:'Manufacturing'}};
+ await page.goto(origin+'/admin/content?kind=site');
+ await page.locator('#cms-select-all').check();
+ await expect(page.locator('#cms-selected-count')).toContainText('2 / 20');
+ page.on('dialog',dialog=>dialog.accept());
+ await page.locator('#cms-bulk-run').click();
+ await expect(page.locator('#cms-toast')).toContainText('批量操作成功：2 条');
+ expect(records.site.status).toBe('review');
+ expect(records.siteExtra.status).toBe('review');
+ expect(records.site.revision).toBe(3);
+ expect(records.siteExtra.revision).toBe(6);
+ await expect(page.locator('#cms-selected-count')).toBeHidden();
+});
+
+test('V55.3 reviewer can select review or published items but not submit drafts',async({page})=>{
+ const {records}=await mockCms(page,'reviewer');
+ records.site.status='draft';records.site.source='cms';records.site.revision=2;
+ records.siteReview={kind:'site',slug:'review-site',status:'review',source:'cms',revision:3,payload:{id:'review-site',name:'Review demo'}};
+ records.sitePublished={kind:'site',slug:'published-site',status:'published',source:'cms',revision:4,payload:{id:'published-site',name:'Published demo'}};
+ await page.goto(origin+'/admin/content?kind=site');
+ await expect(page.locator('#cms-bulk-action option')).toHaveCount(2);
+ await expect(page.locator('#cms-bulk-action option').first()).toHaveValue('publish');
+ await expect(page.locator('[data-bulk-select="demo-site"]')).toBeDisabled();
+ await expect(page.locator('[data-bulk-select="review-site"]')).toBeEnabled();
+ await expect(page.locator('[data-bulk-select="published-site"]')).toBeDisabled();
+ await page.locator('#cms-bulk-action').selectOption('archive');
+ await expect(page.locator('[data-bulk-select="published-site"]')).toBeEnabled();
+});
+
+test('V55.3 select all caps each batch at twenty and clear selection is explicit',async({page})=>{
+ const {records}=await mockCms(page);
+ records.site.status='draft';records.site.source='cms';records.site.revision=2;
+ for(let i=0;i<24;i++){
+  const slug='draft-'+String(i+1).padStart(2,'0');
+  records['extra-'+i]={kind:'site',slug,status:'draft',source:'cms',revision:1,payload:{id:slug,name:'Draft '+i,sector:'Industrial'}};
+ }
+ await page.goto(origin+'/admin/content?kind=site');
+ await expect(page.locator('[data-bulk-select]')).toHaveCount(25);
+ await page.locator('#cms-select-all').check();
+ await expect(page.locator('#cms-selected-count')).toContainText('20 / 20');
+ await expect(page.locator('#cms-bulk-help')).toContainText('25 条符合条件');
+ await expect(page.locator('[data-bulk-select]:checked')).toHaveCount(20);
+ await expect(page.locator('[data-bulk-select]:not(:checked):not(:disabled)')).toHaveCount(0);
+ await page.locator('#cms-bulk-clear').click();
+ await expect(page.locator('#cms-selected-count')).toBeHidden();
+ await expect(page.locator('[data-bulk-select]:checked')).toHaveCount(0);
+});
+
+test('V55.3 batch toolbar stays usable on a 320px screen',async({page})=>{
+ const {records}=await mockCms(page);
+ records.site.status='draft';records.site.source='cms';records.site.revision=2;
+ await page.setViewportSize({width:320,height:760});
+ await page.goto(origin+'/admin/content?kind=site');
+ await expect(page.locator('#cms-bulk-toolbar')).toBeVisible();
+ await expect(page.locator('#cms-bulk-action')).toBeVisible();
+ await page.locator('[data-bulk-select="demo-site"]').check();
+ await expect(page.locator('#cms-bulk-run')).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
 });
