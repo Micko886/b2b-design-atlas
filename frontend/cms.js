@@ -56,6 +56,9 @@ async function api(path,options={}){
 let autosaveTimer=0,editGeneration=0,autosavePaused=false;
 function autosaveLabel(text,kind=''){
  const el=$('#cms-autosave-status');if(el){el.textContent=text;el.dataset.state=kind}
+ const retry=$('[data-autosave-retry]'),backup=$('[data-autosave-copy]');
+ if(retry)retry.hidden=kind!=='error'||autosavePaused;
+ if(backup)backup.hidden=kind!=='error'||!autosavePaused;
 }
 function recoveryKey(){
  return 'atlas-cms-working-v1:'+(state.user?.id||'admin')+':'+state.selected?.kind+':'+state.selected?.slug;
@@ -126,7 +129,7 @@ async function persistDraft(automatic=false){
  }catch(e){
    if(e.status===409){
      autosavePaused=true;
-     autosaveLabel('版本冲突 · 自动保存已暂停，请备份本地编辑后刷新。','error');
+     autosaveLabel('版本冲突 · 自动保存已暂停。先复制当前修改，再重新打开最新记录。','error');
    }else autosaveLabel('保存失败：'+e.message+' · 可手动重试','error');
    if(!automatic)message(e.message,false);
    return false
@@ -295,13 +298,22 @@ function rowImage(x){
  if(x.kind==='module')return '/screenshots/modules/'+x.slug+'.webp';
  return '';
 }
+function listNextAction(item){
+ if(mode==='preview')return '查看公开内容 →';
+ if(item.status==='source')return can('edit')?'完善内容并保存草稿 →':'查看收录资料 →';
+ if(item.status==='draft')return can('edit')?'继续编辑 · 提交审核 →':'查看草稿 →';
+ if(item.status==='review')return can('review')?'核对修改 · 审核发布 →':'查看审核进度 →';
+ if(item.status==='published')return can('edit')?'查看已发布内容 · 可更新 →':'查看发布记录 →';
+ if(item.status==='archived')return can('edit')?'查看归档 · 可重新编辑 →':'查看归档记录 →';
+ return '查看内容 →';
+}
 function drawItems(){
  const items=listFiltered(),root=$('#cms-items');
  root.innerHTML=items.length?items.map(item=>{
    const img=rowImage(item),actionLabel=can('edit')?'编辑内容':can('review')?'查看并审核':'查看内容';
    return '<div class="cms-v51-row">'+(mode==='admin'&&item.status!=='source'?'<label class="cms-v51-select" aria-label="选择 '+h(item.label)+'"><input type="checkbox" data-bulk-select="'+h(item.slug)+'" '+(state.selectedSlugs.has(item.slug)?'checked':'')+'></label>':'')+'<button type="button" class="cms-item '+(state.selected?.slug===item.slug?'active':'')+'" data-pick="'+h(item.slug)+'" aria-label="'+actionLabel+'：'+h(item.label)+'">'
    +'<span class="cms-item-thumb">'+(img?'<img src="'+h(img)+'" loading="lazy" alt="">':icon(kinds[state.kind].icon))+'</span>'
-   +'<span class="cms-item-copy"><strong>'+h(item.label)+'</strong><small>'+h(item.sector||item.slug)+'</small><small class="cms-item-open-label">'+actionLabel+' →</small></span>'
+   +'<span class="cms-item-copy"><strong>'+h(item.label)+'</strong><small>'+h(item.sector||item.slug)+'</small><small class="cms-item-open-label">'+h(listNextAction(item))+'</small></span>'
    +stateClasses(item.status)+'</button></div>';
  }).join(''):'<div class="cms-empty-results" role="status"><strong>'+(state.q||state.status?'没有匹配的内容':'当前还没有内容')+'</strong><p>'+(state.q||state.status?'调整关键词或筛选条件，或者直接查看全部记录。':'可以通过右上角的新建内容按钮添加第一条记录。')+'</p>'+(state.q||state.status?'<button type="button" data-clear-content-filters>清除筛选 · 查看全部</button>':'')+'</div>';
  $('#cms-count').textContent=items.length+' 条';
@@ -734,7 +746,7 @@ function renderForm(item){
  const form='<div class="cms-editor-content"><form id="cms-edit-form" class="cms-form">'
   +(item.kind==='site'?siteEditorForm(values,editable):simpleEditorForm(item.kind,values,editable))
   +(item.kind==='article'?articleStudio(values,editable):'')
-  +(editable?'<div class="cms-easy-save-note"><span class="cms-autosave-led" aria-hidden="true"></span><span id="cms-autosave-status" role="status" aria-live="polite">修改后自动保存草稿</span><button type="button" data-autosave-retry>重试保存</button></div>':'')
+  +(editable?'<div class="cms-easy-save-note"><span class="cms-autosave-led" aria-hidden="true"></span><span id="cms-autosave-status" role="status" aria-live="polite">修改后自动保存草稿</span><button type="button" data-autosave-retry hidden>重试保存</button><button type="button" data-autosave-copy hidden>复制未保存内容</button></div>':'')
   +'</form></div>';
  const schedule=item.schedule||null;
  const isPending=schedule?.status==='pending';
@@ -1978,8 +1990,8 @@ async function refreshReviewQueue(){
  }
  root.innerHTML=pending.length?pending.map(item=>
   '<article class="cms-v530-review-row"><div><span>'+h(kinds[item.kind].title)+'</span>'
-   +'<strong>'+h(item.label||item.slug)+'</strong><small>版本 v'+h(item.revision??0)+' · '+h(item.slug)+'</small></div>'
-   +'<button type="button" data-review-open-kind="'+h(item.kind)+'" data-review-open-slug="'+h(item.slug)+'" aria-label="查看 '+h(item.label||item.slug)+' 的审核变更">查看变更</button></article>').join('')
+   +'<strong>'+h(item.label||item.slug)+'</strong><small>待审核 · v'+h(item.revision??0)+' · '+h(item.slug)+'</small></div>'
+   +'<button type="button" data-review-open-kind="'+h(item.kind)+'" data-review-open-slug="'+h(item.slug)+'" aria-label="查看 '+h(item.label||item.slug)+' 的审核变更">'+(can('review')?'查看并审核':'查看审核进度')+'</button></article>').join('')
   :'<p class="cms-v530-review-empty">'+(failures.length?'已读取的栏目暂无待审核稿，其他栏目尚未成功读取。':'目前没有待审核内容，可以继续编辑或计划发布。')+'</p>';
 }
 async function openReviewQueue(){
@@ -2156,7 +2168,24 @@ function boot(){
    if(e.target.closest('[data-v513-close-tags]')){$('#cms-tags-dialog').close();return}
    const picked=e.target.closest('[data-v515-pick]');if(picked){chooseCategory(picked.dataset.v515Pick);return}
    if(e.target.closest('[data-v515-close]')){$('#cms-categories-dialog').close();return}
-   if(e.target.closest('[data-autosave-retry]')){if(autosavePaused){message('已暂停覆盖：请备份当前内容并刷新记录。',false);return}await persistDraft(false);return}
+   if(e.target.closest('[data-autosave-retry]')){if(autosavePaused){message('请先备份当前内容，再重新打开最新版本。',false);return}await persistDraft(false);return}
+   if(e.target.closest('[data-autosave-copy]')){
+     if(!state.selected||!autosavePaused)return;
+     let backup='';
+     try{
+       const payload=takeFields();
+       backup=JSON.stringify({kind:state.selected.kind,slug:state.selected.slug,payload},null,2);
+     }catch(_){
+       backup=Array.from($('#cms-edit-form')?.querySelectorAll('input,textarea,select')||[])
+         .filter(el=>el.id&&el.value).map(el=>el.id+': '+el.value).join('\n');
+     }
+     if(!backup){message('无法生成备份，请手动复制当前表单内容。',false);return}
+     try{
+       await navigator.clipboard.writeText(backup);
+       message('当前编辑内容已复制。请粘贴到本地文档备份，再重新打开最新记录。');
+     }catch(_){message('浏览器不允许写入剪贴板，请手动复制表单内容后再刷新。',false)}
+     return;
+   }
    const tag=e.target.closest('[data-v512-tag]');if(tag){const field=$('#v51-tags');if(!field)return;const existing=linesFrom('#v51-tags');if(!existing.includes(tag.dataset.v512Tag)){field.value=[...existing,tag.dataset.v512Tag].join(String.fromCharCode(10));markDraftDirty();refreshArticlePreview()}return}
    const diffButton=e.target.closest('[data-review-diff]');
    if(diffButton){await openReviewDiff(Number(diffButton.dataset.reviewDiff||0));return}
@@ -2220,8 +2249,8 @@ function boot(){
    if(e.target.closest('[data-dialog-close]')){$('#cms-create-dialog').close();return}
  });
  document.addEventListener('input',e=>{if(e.target.closest('[data-gallery-label]')){syncGalleryLabels();return}if(e.target.closest('#cms-edit-form')){markDraftDirty();syncSiteTitle();refreshArticlePreview();refreshSeoSnippet();refreshContentPreview()}});
- $('#cms-search').addEventListener('input',e=>{state.q=e.target.value;drawItems()});
- $('#cms-status').addEventListener('change',e=>{state.status=e.target.value;markWorkspace(state.status==='review'?'review':'content');drawItems()});
+ $('#cms-search').addEventListener('input',e=>{state.q=e.target.value;state.selectedSlugs.clear();drawItems()});
+ $('#cms-status').addEventListener('change',e=>{state.status=e.target.value;state.selectedSlugs.clear();markWorkspace(state.status==='review'?'review':'content');drawItems()});
  $('#cms-refresh').addEventListener('click',async()=>{
   if(state.dirty&&!confirm('当前草稿还有未保存的修改。确认重新读取服务器内容吗？'))return;
   try{await loadKind(true);message('内容列表已刷新')}catch(e){message(e.message,false)}

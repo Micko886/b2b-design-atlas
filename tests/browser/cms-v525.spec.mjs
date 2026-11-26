@@ -901,3 +901,55 @@ test('V54.6 editor sees the latest review reason, escaped and responsive',async(
  await expect(page.locator('#cms-editor-pane-history')).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });
+
+test('V54.7 list next action respects status and current role',async({page})=>{
+ const {records}=await mockCms(page,'reviewer');
+ records.site.status='review';records.site.source='cms';records.site.revision=3;
+ await page.goto(origin+'/admin/content?kind=site');
+ await expect(page.locator('.cms-item-open-label')).toHaveText('核对修改 · 审核发布 →');
+ await page.locator('#cms-review-shortcut').click();
+ await expect(page.locator('[data-review-open-kind="site"]')).toHaveText('查看并审核');
+ await page.locator('[data-v530-close="review"]').click();
+ records.site.status='published';
+ await page.reload();
+ await expect(page.locator('.cms-item-open-label')).toHaveText('查看发布记录 →');
+});
+
+test('V54.7 filters discard hidden bulk selections before any action',async({page})=>{
+ const {records}=await mockCms(page);
+ records.site.status='draft';records.site.source='cms';records.site.revision=2;
+ await page.goto(origin+'/admin/content?kind=site');
+ await page.locator('[data-bulk-select="demo-site"]').check();
+ await expect(page.locator('#cms-selected-count')).toContainText('1 项已选择');
+ await page.locator('#cms-status').selectOption('review');
+ await expect(page.locator('#cms-selected-count')).toBeHidden();
+ await expect(page.locator('#cms-bulk-run')).toBeHidden();
+ await page.locator('#cms-status').selectOption('');
+ await expect(page.locator('[data-bulk-select="demo-site"]')).not.toBeChecked();
+ await page.locator('[data-bulk-select="demo-site"]').check();
+ await page.locator('#cms-search').fill('something else');
+ await expect(page.locator('#cms-selected-count')).toBeHidden();
+ await page.locator('#cms-search').fill('demo');
+ await expect(page.locator('[data-bulk-select="demo-site"]')).not.toBeChecked();
+});
+
+test('V54.7 a draft revision conflict offers copy backup, not unsafe retry',async({page})=>{
+ const {records}=await mockCms(page);
+ records.site.status='draft';records.site.source='cms';records.site.revision=2;
+ await page.addInitScript(()=>{
+   Object.defineProperty(navigator,'clipboard',{configurable:true,value:{
+     writeText:async text=>{window.__savedBackup=String(text)}
+   }});
+ });
+ await page.route('**/api/admin/content/site/demo-site',async route=>{
+   if(route.request().method()==='PUT')return route.fulfill({status:409,contentType:'application/json',body:JSON.stringify({detail:'版本已被他人更新'})});
+   return route.fallback();
+ });
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await page.locator('#field-name').fill('Unpublished local change');
+ await expect(page.locator('#cms-autosave-status')).toContainText('版本冲突',{timeout:10000});
+ await expect(page.locator('[data-autosave-copy]')).toBeVisible();
+ await expect(page.locator('[data-autosave-retry]')).toBeHidden();
+ await page.locator('[data-autosave-copy]').click();
+ await expect.poll(()=>page.evaluate(()=>window.__savedBackup||'')).toContain('Unpublished local change');
+});

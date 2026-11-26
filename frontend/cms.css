@@ -1111,3 +1111,16 @@ body[data-cms-mode="admin"] #cms-media-status{font-size:12px;line-height:1.65}
  .cms-v546-rejection-note button{width:100%}
  .cms-v546-result-actions,.cms-v546-result-actions a{width:100%}
 }
+
+/* V54.7 · Contextual next step, clear error actions, filter-safe selection. */
+.cms-item-copy .cms-item-open-label{line-height:1.5;overflow-wrap:anywhere}
+.cms-easy-save-note [hidden]{display:none!important}
+.cms-easy-save-note [data-autosave-copy]:not([hidden]){display:inline-flex!important;align-items:center;min-height:30px}
+.cms-easy-save-note [data-autosave-retry]:not([hidden]){display:inline-flex!important;align-items:center;min-height:30px}
+.cms-easy-save-note:has(#cms-autosave-status[data-state="error"]){border-color:var(--line-strong)}
+.cms-v530-review-row button{font-weight:760;white-space:nowrap}
+@media(max-width:600px){
+ .cms-easy-save-note:has(#cms-autosave-status[data-state="error"]){flex-wrap:wrap;align-items:flex-start}
+ .cms-easy-save-note [data-autosave-copy]:not([hidden]),.cms-easy-save-note [data-autosave-retry]:not([hidden]){width:100%;justify-content:center}
+ .cms-v530-review-row button{white-space:normal}
+}
