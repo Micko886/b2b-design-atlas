@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
+      - uses: actions/checkout@v4
       - name: Compare deployed commit with GitHub main
         env:
           EXPECTED_SHA: ${{ github.sha }}
