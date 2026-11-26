@@ -831,9 +831,11 @@ test('V54.2 review modal and its action remain inside a narrow dark viewport',as
  const {records}=await mockCms(page);
  records.site.status='review';records.site.source='cms';records.site.revision=2;
  await page.setViewportSize({width:320,height:740});
- await page.goto(origin+'/admin/content?workspace=review');
- await expect(page.locator('#cms-review-dialog')).toHaveJSProperty('open',true);
+ await page.goto(origin+'/admin/content?kind=site');
  await page.locator('[data-set-theme="dark"]').click();
+ await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
+ await page.locator('#cms-review-shortcut').click();
+ await expect(page.locator('#cms-review-dialog')).toHaveJSProperty('open',true);
  const result=await page.evaluate(()=>{
   const modal=document.querySelector('#cms-review-dialog').getBoundingClientRect();
   const action=document.querySelector('[data-review-open-kind="site"]').getBoundingClientRect();
