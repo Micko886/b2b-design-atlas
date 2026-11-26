@@ -1047,7 +1047,7 @@ async function changeKind(kind,push=true){
  if(push)history.pushState({},'',listUrl());
  closeMobile();
  try{await loadKind();return true}catch(e){message(e.message,false);$('#cms-items').innerHTML='<div class="cms-error">'+h(e.message)+'</div>';return false}
-
+}
 // V51 · Structured editorial studio, taxonomy, media and bulk workflow.
 function linesFrom(selector){
  const input=$(selector);return input?input.value.split('\n').map(x=>x.trim()).filter(Boolean):[];
