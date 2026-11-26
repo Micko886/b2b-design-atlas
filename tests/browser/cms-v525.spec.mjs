@@ -120,7 +120,7 @@ async function mockCms(page,role='owner',forcedErrors={}){
   }
   else if(p==='/api/admin/content'&&method==='GET'){
    const kind=url.searchParams.get('kind');
-   result={items:Object.values(records).filter(x=>x.kind===kind).map(x=>({kind,slug:x.slug,label:x.payload.name||x.payload.title,status:x.status,source:x.source,revision:x.revision,sector:x.payload.sector||x.payload.category||x.payload.family||''}))};
+   result={items:Object.values(records).filter(x=>x.kind===kind).map(x=>({kind,slug:x.slug,label:x.payload.name||x.payload.title,status:x.status,source:x.source,revision:x.revision,updated_at:x.updated_at||'',sector:x.payload.sector||x.payload.category||x.payload.family||''}))};
   }
   else if(p==='/api/admin/content/bulk'&&method==='POST'){
    const target=(body.items||[]).map(item=>Object.values(records).find(x=>x.kind===body.kind&&x.slug===item.slug));
@@ -1308,10 +1308,10 @@ test('V55.3 select all caps each batch at twenty and clear selection is explicit
   records['extra-'+i]={kind:'site',slug,status:'draft',source:'cms',revision:1,payload:{id:slug,name:'Draft '+i,sector:'Industrial'}};
  }
  await page.goto(origin+'/admin/content?kind=site');
- await expect(page.locator('[data-bulk-select]')).toHaveCount(25);
+ await expect(page.locator('[data-bulk-select]')).toHaveCount(24);
  await page.locator('#cms-select-all').check();
  await expect(page.locator('#cms-selected-count')).toContainText('20 / 20');
- await expect(page.locator('#cms-bulk-help')).toContainText('25 条符合条件');
+ await expect(page.locator('#cms-bulk-help')).toContainText('本页 24 条符合条件');
  await expect(page.locator('[data-bulk-select]:checked')).toHaveCount(20);
  await expect(page.locator('[data-bulk-select]:not(:checked):not(:disabled)')).toHaveCount(0);
  await page.locator('#cms-bulk-clear').click();
@@ -1329,4 +1329,94 @@ test('V55.3 batch toolbar stays usable on a 320px screen',async({page})=>{
  await page.locator('[data-bulk-select="demo-site"]').check();
  await expect(page.locator('#cms-bulk-run')).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
+});
+
+
+test('V55.4 pager renders 24 rows per page and clears selection when navigating',async({page})=>{
+ const {records}=await mockCms(page);
+ records.site.status='draft';records.site.source='cms';records.site.revision=2;
+ for(let i=1;i<=52;i++){
+  const slug='page-'+String(i).padStart(2,'0');
+  records['page-'+i]={kind:'site',slug,status:'draft',source:'cms',revision:1,payload:{id:slug,name:'Page '+String(i).padStart(2,'0'),sector:'Manufacturing'}};
+ }
+ await page.goto(origin+'/admin/content?kind=site');
+ await expect(page.locator('[data-pick]')).toHaveCount(24);
+ await expect(page.locator('#cms-page-info')).toContainText('第 1 / 3 页');
+ await expect(page.locator('#cms-browser-footer')).toContainText('显示 1–24 条，共 53 条');
+ await page.locator('[data-bulk-select]').first().check();
+ await expect(page.locator('#cms-selected-count')).toContainText('1 / 20');
+ await page.locator('#cms-page-next').click();
+ await expect(page.locator('#cms-selected-count')).toBeHidden();
+ await expect(page.locator('[data-pick]')).toHaveCount(24);
+ await expect(page.locator('#cms-page-info')).toContainText('第 2 / 3 页');
+ await expect(page.locator('#cms-browser-footer')).toContainText('显示 25–48 条');
+ await page.locator('#cms-page-next').click();
+ await expect(page.locator('[data-pick]')).toHaveCount(5);
+ await expect(page.locator('#cms-page-next')).toBeDisabled();
+ await expect(page.locator('#cms-browser-footer')).toContainText('显示 49–53 条');
+ await page.locator('#cms-page-prev').click();
+ await expect(page.locator('#cms-page-info')).toContainText('第 2 / 3 页');
+});
+
+test('V55.4 sorting, status filters and search reset page to first results',async({page})=>{
+ const {records}=await mockCms(page);
+ records.site.status='draft';records.site.source='cms';records.site.revision=2;
+ records.site.payload.name='Zulu Demo';records.site.updated_at='2026-11-25T10:00:00Z';
+ for(let i=1;i<=29;i++){
+  const slug='sorted-'+String(i).padStart(2,'0');
+  records['sort-'+i]={kind:'site',slug,status:i===29?'review':'draft',source:'cms',revision:2,
+   updated_at:i===28?'2026-11-26T10:00:00Z':'2026-10-01T00:00:00Z',
+   payload:{id:slug,name:'Design '+String(i).padStart(2,'0'),sector:'Industrial'}};
+ }
+ await page.goto(origin+'/admin/content?kind=site');
+ await expect(page.locator('[data-pick]').first()).toHaveAttribute('data-pick','sorted-28');
+ await page.locator('#cms-page-next').click();
+ await page.locator('#cms-sort').selectOption('name');
+ await expect(page.locator('#cms-page-info')).toContainText('第 1 / 2 页');
+ await expect(page.locator('[data-pick]').first()).toHaveAttribute('data-pick','sorted-01');
+ await page.locator('#cms-page-next').click();
+ await page.locator('#cms-status').selectOption('review');
+ await expect(page.locator('#cms-list-pager')).toBeHidden();
+ await expect(page.locator('[data-pick]')).toHaveCount(1);
+ await expect(page.locator('[data-pick="sorted-29"]')).toBeVisible();
+ await page.locator('#cms-status').selectOption('');
+ await page.locator('#cms-page-next').click();
+ await page.locator('#cms-search').fill('sorted-03');
+ await expect(page.locator('[data-pick]')).toHaveCount(1);
+ await expect(page.locator('#cms-list-pager')).toBeHidden();
+ await expect(page.locator('#cms-browser-footer')).toContainText('总计 30 条');
+});
+
+test('V55.4 select all stays on its own page and never includes hidden records',async({page})=>{
+ const {records}=await mockCms(page);
+ records.site.status='draft';records.site.source='cms';records.site.revision=2;
+ for(let i=1;i<=28;i++){
+  const slug='batch-'+String(i).padStart(2,'0');
+  records['batch-'+i]={kind:'site',slug,status:'draft',source:'cms',revision:1,payload:{id:slug,name:'Batch '+String(i).padStart(2,'0')}};
+ }
+ await page.goto(origin+'/admin/content?kind=site');
+ await expect(page.locator('#cms-bulk-help')).toContainText('本页 24 条符合条件');
+ await page.locator('#cms-select-all').check();
+ await expect(page.locator('[data-bulk-select]:checked')).toHaveCount(20);
+ await page.locator('#cms-page-next').click();
+ await expect(page.locator('#cms-selected-count')).toBeHidden();
+ await expect(page.locator('#cms-bulk-help')).toContainText('本页 5 条符合条件');
+ await page.locator('#cms-select-all').check();
+ await expect(page.locator('[data-bulk-select]:checked')).toHaveCount(5);
+ await expect(page.locator('#cms-selected-count')).toContainText('5 / 20');
+});
+
+test('V55.4 mobile sorting and paging do not overflow at 320px',async({page})=>{
+ const {records}=await mockCms(page);
+ for(let i=1;i<=25;i++){
+  const slug='mobile-'+String(i).padStart(2,'0');
+  records['mobile-'+i]={kind:'site',slug,status:'source',source:'repository',revision:0,payload:{id:slug,name:'Mobile '+i}};
+ }
+ await page.setViewportSize({width:320,height:760});
+ await page.goto(origin+'/admin/content?kind=site');
+ await expect(page.locator('#cms-list-pager')).toBeVisible();
+ await page.locator('#cms-sort').selectOption('name');
+ await page.locator('#cms-page-next').click();
+ await expect(page.locator('#cms-page-info')).toContainText('第 2 / 2 页');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });

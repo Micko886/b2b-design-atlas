@@ -1243,3 +1243,19 @@ body.cms-editor-active .cms-edit-quick-actions{display:flex;align-items:center;g
  .cms-v553-bulk-controls>#cms-bulk-run{grid-column:1/-1;margin:0;width:100%}
  .cms-v553-bulk-controls>#cms-bulk-clear{grid-column:1/-1;width:100%}
 }
+
+/* V55.4 · Accessible paged list; sorting and bulk operations are page-scoped. */
+.cms-search-row #cms-sort{min-height:42px;width:113px;max-width:132px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);color:var(--muted-strong);padding:0 8px;font-size:11px}
+.cms-v554-pager{margin:0 18px 13px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px}
+.cms-v554-pager[hidden]{display:none!important}
+.cms-v554-pager button{min-height:38px;padding:8px 14px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);color:var(--ink-strong);font-size:11px;font-weight:740;cursor:pointer}
+.cms-v554-pager button:disabled{opacity:.42;cursor:not-allowed}
+.cms-v554-pager button:hover:not(:disabled){border-color:var(--blue);color:var(--blue)}
+.cms-v554-pager span{font-size:11px;font-weight:740;color:var(--muted-strong);font-variant-numeric:tabular-nums;text-align:center}
+.cms-v554-pager :is(button,span):focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+@media(max-width:600px){
+ .cms-search-row #cms-status,.cms-search-row #cms-sort{flex:1 1 calc(50% - 6px);max-width:none;width:auto;min-width:0}
+ .cms-v554-pager{margin:0 10px 12px;padding:10px;gap:6px}
+ .cms-v554-pager button{padding:8px;flex:1 1 0}
+ .cms-v554-pager span{flex:0 0 auto;min-width:70px}
+}

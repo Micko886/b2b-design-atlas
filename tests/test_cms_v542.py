@@ -25,18 +25,28 @@ class Cms542(unittest.TestCase):
         self.assertIn('max-height:calc(100dvh - 24px)',self.css)
 
     def test_assets(self):
-        self.assertIn('/assets/cms.js?v=5530',self.html)
-        self.assertIn('/assets/cms.css?v=5530',self.html)
+        self.assertIn('/assets/cms.js?v=5540',self.html)
+        self.assertIn('/assets/cms.css?v=5540',self.html)
 
     def test_bulk_selection_is_action_and_role_aware(self):
         self.assertIn("const bulkActionRules=",self.js)
         self.assertIn("function bulkEligibility(",self.js)
-        self.assertIn("visibleEligible=listFiltered().filter(x=>bulkEligibility(x).ok)",self.js)
+        self.assertIn("visibleEligible=listPage(listFiltered()).filter(x=>bulkEligibility(x).ok)",self.js)
         self.assertIn("items.some(x=>!bulkEligibility(x,action).ok)",self.js)
         self.assertIn("state.selectedSlugs.size>=20",self.js)
         self.assertIn('id="cms-bulk-clear"',self.html)
         self.assertIn('id="cms-bulk-help"',self.html)
-        self.assertIn('选择当前符合条件的内容（最多 20 条）',self.html)
+        self.assertIn('选择本页符合条件的内容（最多 20 条）',self.html)
+
+    def test_list_pager_and_sorting_contracts(self):
+        self.assertIn("page:1,pageSize:24,sort:'recent'",self.js)
+        self.assertIn("function listPage(filtered=listFiltered())",self.js)
+        self.assertIn("state.page=page;state.selectedSlugs.clear();",self.js)
+        self.assertIn("listPage(listFiltered()).filter(item=>bulkEligibility(item).ok)",self.js)
+        self.assertIn('id="cms-list-pager"',self.html)
+        self.assertIn('id="cms-sort"',self.html)
+        self.assertIn('id="cms-page-prev"',self.html)
+        self.assertIn('id="cms-page-next"',self.html)
 
 if __name__=='__main__':
     unittest.main()
