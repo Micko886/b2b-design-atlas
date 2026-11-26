@@ -25,8 +25,8 @@ class Cms541Contracts(unittest.TestCase):
         self.assertIn('<h3>基本信息</h3>',self.js)
 
     def test_versioned_assets(self):
-        self.assertIn('/assets/cms.js?v=5410',self.html)
-        self.assertIn('/assets/cms.css?v=5410',self.html)
+        self.assertIn('/assets/cms.js?v=5420',self.html)
+        self.assertIn('/assets/cms.css?v=5420',self.html)
 
 if __name__=='__main__':
     unittest.main()

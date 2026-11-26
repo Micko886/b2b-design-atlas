@@ -779,3 +779,69 @@ test('V54.1 all four editors have a single consistent basic-info heading',async(
   await expect(page.locator('.cms-easy-heading h2')).toBeVisible();
  }
 });
+
+test('V54.2 content cards use consistent non-cropping thumbnails and no mobile overflow',async({page})=>{
+ await mockCms(page);
+ await page.setViewportSize({width:320,height:740});
+ await page.goto(origin+'/admin/content?kind=site');
+ const thumb=page.locator('.cms-v51-row .cms-item-thumb img').first();
+ await expect(thumb).toBeVisible();
+ expect(await thumb.evaluate(el=>getComputedStyle(el).objectFit)).toBe('contain');
+ const measurements=await page.evaluate(()=>{
+  const card=document.querySelector('.cms-v51-row'),thumb=document.querySelector('.cms-item-thumb');
+  const outer=card.getBoundingClientRect(),inner=thumb.getBoundingClientRect();
+  return {cardWidth:outer.width,thumbWidth:inner.width,docWidth:document.documentElement.scrollWidth,screen:innerWidth};
+ });
+ expect(measurements.cardWidth).toBeGreaterThan(measurements.thumbWidth);
+ expect(measurements.docWidth).toBeLessThanOrEqual(measurements.screen+1);
+});
+
+test('V54.2 missing screenshot degrades to a neutral icon instead of broken image',async({page})=>{
+ await mockCms(page);
+ await page.route('**/screenshots/sites/demo-site.webp',route=>route.fulfill({status:404,contentType:'text/plain',body:'not found'}));
+ await page.goto(origin+'/admin/content?kind=site');
+ await expect(page.locator('.cms-item-thumb.cms-thumb-missing')).toHaveCount(1);
+ await expect(page.locator('.cms-item-thumb.cms-thumb-missing svg')).toBeVisible();
+ await expect(page.locator('.cms-item-thumb img')).toHaveCount(0);
+});
+
+test('V54.2 image preview stays contained in light and dark mobile themes',async({page})=>{
+ await mockCms(page);
+ await page.setViewportSize({width:320,height:740});
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ const img=page.locator('#cms-site-image');
+ await expect(img).toBeVisible();
+ expect(await img.evaluate(el=>getComputedStyle(el).objectFit)).toBe('contain');
+ const light=await page.locator('.cms-easy-shot').evaluate(el=>getComputedStyle(el).backgroundColor);
+ await page.locator('[data-set-theme="dark"]').click();
+ await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
+ const dark=await page.locator('.cms-easy-shot').evaluate(el=>getComputedStyle(el).backgroundColor);
+ expect(dark).not.toBe(light);
+ const layout=await page.evaluate(()=>{
+  const parent=document.querySelector('.cms-easy-shot').getBoundingClientRect();
+  const child=document.querySelector('#cms-site-image').getBoundingClientRect();
+  return {parentLeft:parent.left,parentRight:parent.right,childLeft:child.left,childRight:child.right,documentWidth:document.documentElement.scrollWidth,screen:innerWidth};
+ });
+ expect(layout.childLeft).toBeGreaterThanOrEqual(layout.parentLeft-1);
+ expect(layout.childRight).toBeLessThanOrEqual(layout.parentRight+1);
+ expect(layout.documentWidth).toBeLessThanOrEqual(layout.screen+1);
+});
+
+test('V54.2 review modal and its action remain inside a narrow dark viewport',async({page})=>{
+ const {records}=await mockCms(page);
+ records.site.status='review';records.site.source='cms';records.site.revision=2;
+ await page.setViewportSize({width:320,height:740});
+ await page.goto(origin+'/admin/content?workspace=review');
+ await expect(page.locator('#cms-review-dialog')).toHaveJSProperty('open',true);
+ await page.locator('[data-set-theme="dark"]').click();
+ const result=await page.evaluate(()=>{
+  const modal=document.querySelector('#cms-review-dialog').getBoundingClientRect();
+  const action=document.querySelector('[data-review-open-kind="site"]').getBoundingClientRect();
+  return {left:modal.left,right:modal.right,actionLeft:action.left,actionRight:action.right,viewport:innerWidth,docWidth:document.documentElement.scrollWidth};
+ });
+ expect(result.left).toBeGreaterThanOrEqual(0);
+ expect(result.right).toBeLessThanOrEqual(result.viewport+1);
+ expect(result.actionLeft).toBeGreaterThanOrEqual(result.left-1);
+ expect(result.actionRight).toBeLessThanOrEqual(result.right+1);
+ expect(result.docWidth).toBeLessThanOrEqual(result.viewport+1);
+});

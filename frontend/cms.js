@@ -2035,6 +2035,15 @@ async function revokeTeamRole(){
 }
 function boot(){
  setTheme(theme());
+ // A missing screenshot should show a neutral icon, never a broken-image glyph.
+ $('#cms-items').addEventListener('error',event=>{
+   const img=event.target;
+   if(!img.matches?.('.cms-item-thumb img'))return;
+   const thumb=img.closest('.cms-item-thumb');
+   if(!thumb||!thumb.contains(img))return;
+   thumb.classList.add('cms-thumb-missing');
+   thumb.innerHTML=icon(kinds[state.kind].icon);
+ },true);
  // Start every privileged action hidden until /api/admin/team/me succeeds.
  for(const id of ['cms-new','cms-export','cms-media-open','cms-categories-open',
                   'cms-tags-open','cms-review-shortcut','cms-schedules-open',
