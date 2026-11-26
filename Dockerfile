@@ -63,6 +63,7 @@ COPY tests/test_cms_v530.py /srv/atlas/tests/test_cms_v530.py
 COPY tests/test_cms_v531.py /srv/atlas/tests/test_cms_v531.py
 COPY tests/test_cms_v532.py /srv/atlas/tests/test_cms_v532.py
 COPY tests/test_release_identity.py /srv/atlas/tests/test_release_identity.py
+COPY tests/test_auth_workflow_v544.py /srv/atlas/tests/test_auth_workflow_v544.py
 COPY tests/browser/cms-v525.spec.mjs /srv/atlas/tests/browser/cms-v525.spec.mjs
 RUN bash -n /srv/atlas/scripts/backup-postgres.sh /srv/atlas/scripts/verify-postgres-backup.sh \
  && python -m unittest discover -s /srv/atlas/tests -p "test_cms_visibility.py" -v \
@@ -86,6 +87,7 @@ RUN bash -n /srv/atlas/scripts/backup-postgres.sh /srv/atlas/scripts/verify-post
  && python -m unittest discover -s /srv/atlas/tests -p "test_cms_v530.py" -v \
  && python -m unittest discover -s /srv/atlas/tests -p "test_cms_v531.py" -v \
  && python -m unittest discover -s /srv/atlas/tests -p "test_cms_v532.py" -v \
- && python -m unittest discover -s /srv/atlas/tests -p "test_release_identity.py" -v
+ && python -m unittest discover -s /srv/atlas/tests -p "test_release_identity.py" -v \
+ && python -m unittest discover -s /srv/atlas/tests -p "test_auth_workflow_v544.py" -v
 EXPOSE 8000
 CMD ["python","run.py"]
