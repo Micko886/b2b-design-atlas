@@ -588,23 +588,23 @@ test('V53.8 search and status filters offer a single reset action',async({page})
  await expect(page.locator('[data-pick="demo-site"]')).toBeVisible();
 });
 
-test('V53.8 stage-specific editor toolbar links to review and history',async({page})=>{
+test('V54.8 review and history use one tab strip, without duplicate toolbar buttons',async({page})=>{
  const {records}=await mockCms(page);
  records.site.status='review';
  await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
  await expect(page.locator('[data-editor-submit]')).toBeHidden();
  await expect(page.locator('[data-editor-submit]')).toBeDisabled();
- await expect(page.locator('[data-editor-state-link="review"]')).toBeVisible();
+ await expect(page.locator('[data-editor-state-link]')).toHaveCount(0);
+ await expect(page.locator('.cms-edit-quick-actions [data-editor-save]')).toHaveCount(1);
+ await expect(page.locator('[data-editor-tab="review"]')).toHaveText('审核 · 待处理');
  await page.locator('[data-editor-tab="content"]').click();
- await page.locator('[data-editor-state-link="review"]').click();
- await expect(page.locator('[data-editor-tab="review"]')).toHaveAttribute('aria-selected','true');
+ await page.locator('[data-editor-tab="review"]').click();
  await expect(page.locator('[data-editor-pane="review"]')).toBeVisible();
  records.site.status='published';
  await page.reload();
- await expect(page.locator('[data-editor-state-link="history"]')).toBeVisible();
  await expect(page.locator('[data-editor-submit]')).toBeHidden();
- await page.locator('[data-editor-state-link="history"]').click();
- await expect(page.locator('[data-editor-tab="history"]')).toHaveAttribute('aria-selected','true');
+ await expect(page.locator('[data-editor-state-link]')).toHaveCount(0);
+ await page.locator('[data-editor-tab="history"]').click();
  await expect(page.locator('[data-editor-pane="history"]')).toBeVisible();
 });
 
@@ -612,13 +612,14 @@ test('V53.8 saving a reviewed item exposes submit action for its new draft',asyn
  const {records}=await mockCms(page);
  records.site.status='review';
  await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
- await expect(page.locator('[data-editor-state-link="review"]')).toBeVisible();
+ await expect(page.locator('[data-editor-state-link]')).toHaveCount(0);
+ await expect(page.locator('[data-editor-tab="review"]')).toBeVisible();
  await page.locator('[data-editor-tab="content"]').click();
  await page.locator('#field-name').fill('Updated after review');
  await expect(page.locator('#cms-autosave-status')).toContainText('草稿已保存',{timeout:9000});
  await expect(page.locator('[data-editor-submit]')).toBeVisible();
  await expect(page.locator('[data-editor-submit]')).toBeEnabled();
- await expect(page.locator('[data-editor-state-link]')).toBeHidden();
+ await expect(page.locator('[data-editor-state-link]')).toHaveCount(0);
 });
 
 test('V53.9 history explains safe restore and compares a previous revision',async({page})=>{
@@ -952,4 +953,51 @@ test('V54.7 a draft revision conflict offers copy backup, not unsafe retry',asyn
  await expect(page.locator('[data-autosave-retry]')).toBeHidden();
  await page.locator('[data-autosave-copy]').click();
  await expect.poll(()=>page.evaluate(()=>window.__savedBackup||'')).toContain('Unpublished local change');
+});
+
+test('V54.8 drafts without published snapshots never show a broken public link',async({page})=>{
+ const {records}=await mockCms(page);
+ records.site.source='cms';records.site.status='draft';records.site.revision=2;
+ records.site.published=null;
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await expect(page.locator('.cms-easy-public-link')).toHaveCount(0);
+ await expect(page.locator('.cms-easy-heading')).toContainText('草稿不会自动公开');
+ records.site.status='published';
+ await page.reload();
+ await expect(page.locator('.cms-easy-public-link')).toHaveAttribute('href','/websites/demo-site');
+});
+
+test('V54.8 editor reduces duplicated controls without hiding advanced fields',async({page})=>{
+ await mockCms(page);
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await expect(page.locator('[data-editor-save]')).toHaveCount(1);
+ await expect(page.locator('[data-editor-submit]')).toHaveCount(1);
+ await expect(page.locator('[data-editor-state-link]')).toHaveCount(0);
+ await expect(page.locator('.cms-easy-header h2')).toHaveCount(1);
+ await expect(page.locator('[data-editor-tab]')).toHaveCount(4);
+ await expect(page.locator('[data-editor-tab="preview"]')).toHaveText('预览');
+ await expect(page.locator('[data-editor-tab="history"]')).toHaveText('历史');
+ const settings=page.locator('.cms-easy-advanced').filter({has:page.locator('summary', {hasText:'更多设置'})});
+ await expect(settings).not.toHaveAttribute('open','');
+ await settings.locator('summary').click();
+ await expect(settings).toHaveAttribute('open','');
+});
+
+test('V54.8 narrow dark-mode editor has no horizontal document overflow',async({page})=>{
+ await mockCms(page);
+ await page.setViewportSize({width:320,height:740});
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await page.locator('[data-set-theme="dark"]').click();
+ await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
+ await expect(page.locator('[data-editor-save]')).toBeVisible();
+ await expect(page.locator('.cms-easy-shot')).toBeVisible();
+ await page.locator('[data-editor-tab="preview"]').click();
+ await expect(page.locator('[data-editor-pane="preview"]')).toBeVisible();
+ const result=await page.evaluate(()=>({
+   viewport:innerWidth,documentWidth:document.documentElement.scrollWidth,
+   scrollableTabs:document.querySelector('.atlas-v521-editor-tabs').scrollWidth,
+   tabsWidth:document.querySelector('.atlas-v521-editor-tabs').clientWidth
+ }));
+ expect(result.documentWidth).toBeLessThanOrEqual(result.viewport+1);
+ expect(result.tabsWidth).toBeGreaterThan(0);
 });

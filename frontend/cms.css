@@ -1124,3 +1124,25 @@ body[data-cms-mode="admin"] #cms-media-status{font-size:12px;line-height:1.65}
  .cms-easy-save-note [data-autosave-copy]:not([hidden]),.cms-easy-save-note [data-autosave-retry]:not([hidden]){width:100%;justify-content:center}
  .cms-v530-review-row button{white-space:normal}
 }
+
+/* V54.8 · One obvious action row, shorter tabs, and readable mobile / dark UI. */
+body.cms-editor-active .cms-edit-topbar{gap:12px}
+body.cms-editor-active .cms-edit-quick-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cms-easy-mode .cms-easy-header-side{max-width:100%;min-width:0;flex-wrap:wrap;justify-content:flex-end}
+.cms-easy-mode .atlas-v521-editor-tabs{scrollbar-width:thin}
+.cms-easy-mode .atlas-v521-editor-tabs>button{white-space:nowrap}
+.cms-easy-mode .atlas-v521-editor-tabs>button[aria-selected="true"]{color:var(--ink-strong)}
+.cms-easy-mode .cms-easy-public-link{overflow-wrap:anywhere}
+@media(max-width:720px){
+ body.cms-editor-active .cms-edit-topbar{display:flex;align-items:center;flex-wrap:wrap}
+ body.cms-editor-active .cms-edit-quick-actions{margin-left:auto;min-width:0}
+ body.cms-editor-active .cms-edit-quick-actions button{min-height:40px}
+ .cms-easy-mode .atlas-v521-editor-tabs{gap:12px;max-width:100%;min-width:0}
+ .cms-easy-mode .atlas-v521-editor-tabs>button{min-height:44px;padding-inline:5px}
+}
+@media(max-width:375px){
+ body.cms-editor-active .cms-edit-topbar{padding:10px;gap:8px}
+ body.cms-editor-active .cms-edit-quick-actions button{font-size:11px;padding:8px}
+ .cms-easy-mode .cms-easy-header-side{justify-content:flex-start}
+ .cms-easy-mode .cms-easy-header{gap:10px}
+}

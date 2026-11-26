@@ -724,20 +724,20 @@ function renderForm(item){
  const isPreview=mode==='preview',values=item.payload||{},editable=can('edit');
  const specs=fieldSpecs[item.kind];
  const s=item.status;
- const stageTab=s==='review'?'review':s==='published'||s==='archived'?'history':'';
- const stageLabel=s==='review'?'查看审核':s==='published'?'查看发布记录':'查看历史记录';
+ // Editing actions live here; review, preview and history stay in the tab strip.
+ // Avoid duplicate stage-navigation buttons above the same tabs, especially on mobile.
  const quickActions=editable?'<div class="cms-edit-quick-actions"><button type="button" data-editor-save>保存草稿</button>'
    +'<button type="button" data-editor-submit '+(s==='draft'?'':s==='source'?'disabled title="先保存草稿，才能提交审核"':'hidden disabled')+'>提交审核</button>'
-   +(stageTab?'<button type="button" data-editor-state-link="'+stageTab+'">'+stageLabel+'</button>':'')
-   +'</div>'
-   :can('review')&&s==='review'?'<div class="cms-edit-quick-actions"><button type="button" data-editor-state-link="review">查看审核</button></div>':'';
+   +'</div>':'';
  const topbar='<div class="cms-edit-topbar"><button type="button" class="cms-edit-back" data-close-editor>← 返回列表</button><span class="cms-edit-context">'+h(kinds[item.kind].title)+' / '+h(item.slug)+'</span>'+quickActions+'</div>';
  const content='<div class="cms-editor-title"><div><div class="section-eyebrow">EDIT / '+kinds[item.kind].label.toUpperCase()+'</div><h2>'+h(values.name||values.title||item.slug)+'</h2><p>URL 标识：'+h(item.slug)+' · '+h(item.source==='cms'?'CMS 内容记录':'原始内容资料')+'</p></div>'
   +'<a target="_blank" rel="noopener" href="'+h(kinds[item.kind].url+item.slug)+'">'+icon('arrow-up-right')+' 查看前台</a></div>';
  const statusHint={source:'填写内容并保存草稿，审核通过后才会更新前台。',draft:'草稿不会自动公开，确认内容后可以提交审核。',review:'这份内容正在等待审核；修改后保存会生成新草稿。',published:'当前版本已发布；修改内容会生成新的待审草稿。',archived:'内容已归档，需要重新走审核流程才能公开。'}[s]||'查看和管理当前内容。';
- const siteHeader='<div class="cms-easy-header"><div class="cms-easy-heading"><span class="cms-easy-kicker">'+h(kinds[item.kind].title)+' / 编辑</span><h2>'+h(values.name||values.title||item.slug)+'</h2><p>'+h(statusHint)+'</p></div>'
-  +'<div class="cms-easy-header-side">'+stateClasses(s)
-  +'<a class="cms-easy-public-link" target="_blank" rel="noopener" href="'+h(kinds[item.kind].url+item.slug)+'">查看前台 ↗</a></div></div>';
+ // A new draft may have no public page. Do not offer a misleading broken link.
+ const hasPublicPage=s==='source'||s==='public'||s==='published'||(s!=='archived'&&Boolean(item.published));
+ const publicLink=hasPublicPage?'<a class="cms-easy-public-link" target="_blank" rel="noopener" href="'+h(kinds[item.kind].url+item.slug)+'">查看前台 ↗</a>':'';
+ const siteHeader='<div class="cms-easy-header"><div class="cms-easy-heading"><span class="cms-easy-kicker">'+h(kinds[item.kind].title)+'</span><h2>'+h(values.name||values.title||item.slug)+'</h2><p>'+h(statusHint)+'</p></div>'
+  +'<div class="cms-easy-header-side">'+stateClasses(s)+publicLink+'</div></div>';
  const statuses=['draft','review','published'];
  const index=s==='source'||s==='public'?-1:statuses.indexOf(s);
  const steps='<div class="cms-steps">'+['内容准备','保存草稿','提交审核','正式发布'].map((title,i)=>'<span class="cms-step '+(i===index+1?'current':i<index+1?'passed':'')+'"><span>'+String(i+1).padStart(2,'0')+'</span>'+title+'</span>'+(i<3?'<span class="cms-step-line"></span>':'')).join('')+'</div>';
@@ -789,11 +789,11 @@ const history=item.history||[];
  +'</section>');
  const root=$('#cms-editor-body');
  const tabs='<div class="atlas-v521-editor-tabs" role="tablist" aria-label="内容工作台">'
-  +'<button type="button" data-editor-tab="content" role="tab">编辑内容</button>'
-  +'<button type="button" data-editor-tab="preview" role="tab">发布前预览</button>'
-  +(item.kind==='article'?'<button type="button" data-editor-tab="seo" role="tab">SEO 与质量</button>':'')
-  +'<button type="button" data-editor-tab="review" role="tab">'+(s==='review'?'待审核 · 发布':item.kind==='site'?'审核发布':'审核与发布')+'</button>'
-  +'<button type="button" data-editor-tab="history" role="tab">版本记录</button></div>';
+  +'<button type="button" data-editor-tab="content" role="tab">编辑</button>'
+  +'<button type="button" data-editor-tab="preview" role="tab">预览</button>'
+  +(item.kind==='article'?'<button type="button" data-editor-tab="seo" role="tab">SEO · 选填</button>':'')
+  +'<button type="button" data-editor-tab="review" role="tab">审核'+(s==='review'?' · 待处理':'')+'</button>'
+  +'<button type="button" data-editor-tab="history" role="tab">历史</button></div>';
  const seoPanel=item.kind==='article'?seoStudio(values):'';
  root.classList.toggle('cms-easy-mode',true);
  root.innerHTML=topbar+siteHeader+rejectionNote+tabs
@@ -802,7 +802,7 @@ const history=item.history||[];
   +'<div class="cms-private-preview-pane" data-editor-pane="preview" hidden><div class="cms-preview-heading"><div><h3>发布前预览</h3><p>模拟前台视觉效果，显示当前草稿和未保存修改；预览本身不会发布内容。</p></div><span id="cms-private-preview-state">仅当前浏览器可见</span></div><p id="cms-private-preview-error" role="alert" hidden></p><div id="cms-private-preview"></div></div>'
   +(item.kind==='article'?'<div data-editor-pane="seo" hidden>'+seoPanel+'</div>':'')
   +'<div data-editor-pane="review" hidden>'+reviewBrief(item)+reviewActions
-  +(can('review')?'':'<p class="atlas-v521-readonly-tip">本账户没有审核发布权限。如需审核，请联系最高管理员。</p>')+'</div>'
+  +(can('review')?'':s==='review'?'<p class="atlas-v521-readonly-tip">已提交审核，审核员处理后会在这里更新状态。</p>':'')+'</div>'
   +'<div data-editor-pane="history" hidden>'+timeline+'</div>';
  root.hidden=false;
  setStudioMode(true);
