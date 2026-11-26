@@ -6,9 +6,14 @@ ROOT=Path(__file__).resolve().parents[1]
 class Cms542(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.js=(ROOT/'frontend/cms.js').read_text(encoding='utf-8')
-        cls.css=(ROOT/'frontend/cms.css').read_text(encoding='utf-8')
-        cls.html=(ROOT/'frontend/cms.html').read_text(encoding='utf-8')
+        # Repository tests read frontend/, while the deploy image places these files
+        # under static/assets and static/ respectively.
+        is_source=(ROOT/'frontend/cms.js').is_file()
+        asset_dir=ROOT/'frontend' if is_source else ROOT/'static/assets'
+        html_path=ROOT/'frontend/cms.html' if is_source else ROOT/'static/cms.html'
+        cls.js=(asset_dir/'cms.js').read_text(encoding='utf-8')
+        cls.css=(asset_dir/'cms.css').read_text(encoding='utf-8')
+        cls.html=html_path.read_text(encoding='utf-8')
 
     def test_missing_cover_is_safe(self):
         self.assertIn("thumb.classList.add('cms-thumb-missing')",self.js)
