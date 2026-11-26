@@ -568,6 +568,7 @@ test('V53.8 stage-specific editor toolbar links to review and history',async({pa
  records.site.status='review';
  await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
  await expect(page.locator('[data-editor-submit]')).toBeHidden();
+ await expect(page.locator('[data-editor-submit]')).toBeDisabled();
  await expect(page.locator('[data-editor-state-link="review"]')).toBeVisible();
  await page.locator('[data-editor-tab="content"]').click();
  await page.locator('[data-editor-state-link="review"]').click();

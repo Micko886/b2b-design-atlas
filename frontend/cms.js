@@ -681,7 +681,7 @@ function renderForm(item){
  const stageTab=s==='review'?'review':s==='published'||s==='archived'?'history':'';
  const stageLabel=s==='review'?'查看审核':s==='published'?'查看发布记录':'查看历史记录';
  const quickActions=editable?'<div class="cms-edit-quick-actions"><button type="button" data-editor-save>保存草稿</button>'
-   +'<button type="button" data-editor-submit '+(s==='draft'?'':s==='source'?'disabled title="先保存草稿，才能提交审核"':'hidden')+'>提交审核</button>'
+   +'<button type="button" data-editor-submit '+(s==='draft'?'':s==='source'?'disabled title="先保存草稿，才能提交审核"':'hidden disabled')+'>提交审核</button>'
    +(stageTab?'<button type="button" data-editor-state-link="'+stageTab+'">'+stageLabel+'</button>':'')
    +'</div>'
    :can('review')&&s==='review'?'<div class="cms-edit-quick-actions"><button type="button" data-editor-state-link="review">查看审核</button></div>':'';
