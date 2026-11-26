@@ -56,7 +56,8 @@ class PreviewAndReviewSafetyV528(unittest.TestCase):
             with self.subTest(expected=expected):
                 self.assertIn(expected,self.js)
         self.assertIn(".cms-transition-feedback:not([hidden])",self.css)
-        self.assertIn("role=\"alert\" aria-live=\"assertive\"",self.js)
+        self.assertIn("panel.setAttribute('role','alert')",self.js)
+        self.assertIn("panel.setAttribute('aria-live','assertive')",self.js)
 
     def test_success_is_not_reported_before_record_refresh(self):
         segment=self.js[self.js.index("async function transition(action){"):
