@@ -91,6 +91,8 @@ function applyDraftResult(target,res,payload){
  if(status){status.dataset.status='draft';status.textContent=statusText.draft}
  syncBusyButtonState($('#cms-edit-form [data-transition="submit"]'),false);
  syncBusyButtonState($('[data-editor-submit]'),false);
+ const submitButton=$('[data-editor-submit]');if(submitButton)submitButton.hidden=false;
+ const previousStageLink=$('[data-editor-state-link]');if(previousStageLink)previousStageLink.hidden=true;
  syncBusyButtonState($('#cms-edit-form [data-transition="publish"]'),true);
  syncBusyButtonState($('#cms-edit-form [data-transition="archive"]'),true);
  const row=state.items.find(x=>x.slug===target.slug);
@@ -273,7 +275,7 @@ function drawItems(){
    +'<span class="cms-item-thumb">'+(img?'<img src="'+h(img)+'" loading="lazy" alt="">':icon(kinds[state.kind].icon))+'</span>'
    +'<span class="cms-item-copy"><strong>'+h(item.label)+'</strong><small>'+h(item.sector||item.slug)+'</small><small class="cms-item-open-label">'+actionLabel+' →</small></span>'
    +stateClasses(item.status)+'</button></div>';
- }).join(''):'<div class="cms-loading">没有符合条件的内容。可清除筛选或创建新内容。</div>';
+ }).join(''):'<div class="cms-empty-results" role="status"><strong>'+(state.q||state.status?'没有匹配的内容':'当前还没有内容')+'</strong><p>'+(state.q||state.status?'调整关键词或筛选条件，或者直接查看全部记录。':'可以通过右上角的新建内容按钮添加第一条记录。')+'</p>'+(state.q||state.status?'<button type="button" data-clear-content-filters>清除筛选 · 查看全部</button>':'')+'</div>';
  $('#cms-count').textContent=items.length+' ITEMS';
  $('#cms-browser-footer').textContent=items.length+' / '+state.items.length+' 条记录';
   // Bulk actions are progressive enhancement: never discard a loaded content list if toolbar rendering fails.
@@ -675,11 +677,19 @@ async function runSeoAudit(){
 function renderForm(item){
  const isPreview=mode==='preview',values=item.payload||{},editable=can('edit');
  const specs=fieldSpecs[item.kind];
- const topbar='<div class="cms-edit-topbar"><button type="button" class="cms-edit-back" data-close-editor>← 返回列表</button><span class="cms-edit-context">'+h(kinds[item.kind].title)+' / '+h(item.slug)+'</span>'+(editable?'<div class="cms-edit-quick-actions"><button type="button" data-editor-save>保存草稿</button><button type="button" data-editor-submit '+(item.status==='draft'?'':'disabled title="先保存草稿，才能提交审核"')+'>提交审核</button></div>':'')+'</div>';
+ const s=item.status;
+ const stageTab=s==='review'?'review':s==='published'||s==='archived'?'history':'';
+ const stageLabel=s==='review'?'查看审核':s==='published'?'查看发布记录':'查看历史记录';
+ const quickActions=editable?'<div class="cms-edit-quick-actions"><button type="button" data-editor-save>保存草稿</button>'
+   +'<button type="button" data-editor-submit '+(s==='draft'?'':s==='source'?'disabled title="先保存草稿，才能提交审核"':'hidden')+'>提交审核</button>'
+   +(stageTab?'<button type="button" data-editor-state-link="'+stageTab+'">'+stageLabel+'</button>':'')
+   +'</div>'
+   :can('review')&&s==='review'?'<div class="cms-edit-quick-actions"><button type="button" data-editor-state-link="review">查看审核</button></div>':'';
+ const topbar='<div class="cms-edit-topbar"><button type="button" class="cms-edit-back" data-close-editor>← 返回列表</button><span class="cms-edit-context">'+h(kinds[item.kind].title)+' / '+h(item.slug)+'</span>'+quickActions+'</div>';
  const content='<div class="cms-editor-title"><div><div class="section-eyebrow">EDIT / '+kinds[item.kind].label.toUpperCase()+'</div><h2>'+h(values.name||values.title||item.slug)+'</h2><p>URL 标识：'+h(item.slug)+' · '+h(item.source==='cms'?'CMS 内容记录':'原始内容资料')+'</p></div>'
   +'<a target="_blank" rel="noopener" href="'+h(kinds[item.kind].url+item.slug)+'">'+icon('arrow-up-right')+' 查看前台</a></div>';
- const s=item.status;
- const siteHeader='<div class="cms-easy-header"><div class="cms-easy-heading"><span class="cms-easy-kicker">'+h(kinds[item.kind].title)+' / 编辑</span><h2>'+h(values.name||values.title||item.slug)+'</h2><p>编辑并保存草稿，审核通过后才会更新前台。</p></div>'
+ const statusHint={source:'填写内容并保存草稿，审核通过后才会更新前台。',draft:'草稿不会自动公开，确认内容后可以提交审核。',review:'这份内容正在等待审核；修改后保存会生成新草稿。',published:'当前版本已发布；修改内容会生成新的待审草稿。',archived:'内容已归档，需要重新走审核流程才能公开。'}[s]||'查看和管理当前内容。';
+ const siteHeader='<div class="cms-easy-header"><div class="cms-easy-heading"><span class="cms-easy-kicker">'+h(kinds[item.kind].title)+' / 编辑</span><h2>'+h(values.name||values.title||item.slug)+'</h2><p>'+h(statusHint)+'</p></div>'
   +'<div class="cms-easy-header-side">'+stateClasses(s)
   +'<a class="cms-easy-public-link" target="_blank" rel="noopener" href="'+h(kinds[item.kind].url+item.slug)+'">查看前台 ↗</a></div></div>';
  const statuses=['draft','review','published'];
@@ -720,7 +730,7 @@ const history=item.history||[];
   +'<button type="button" data-editor-tab="content" role="tab">编辑内容</button>'
   +'<button type="button" data-editor-tab="preview" role="tab">发布前预览</button>'
   +(item.kind==='article'?'<button type="button" data-editor-tab="seo" role="tab">SEO 与质量</button>':'')
-  +'<button type="button" data-editor-tab="review" role="tab">'+(item.kind==='site'?'审核发布':'审核与发布')+'</button>'
+  +'<button type="button" data-editor-tab="review" role="tab">'+(s==='review'?'待审核 · 发布':item.kind==='site'?'审核发布':'审核与发布')+'</button>'
   +'<button type="button" data-editor-tab="history" role="tab">版本记录</button></div>';
  const seoPanel=item.kind==='article'?seoStudio(values):'';
  root.classList.toggle('cms-easy-mode',true);
@@ -1971,6 +1981,10 @@ function boot(){
  setNotice(mode==='admin'?'管理员工作区：编辑先保存草稿，审核通过后才会进入公开目录。':'只读预览：这里展示公开网站资料，不会提供编辑或发布权限。');
  if(mode==='preview')$('#cms-state').innerHTML='<span class="status-led"></span> PUBLIC PREVIEW';
  document.addEventListener('click',async e=>{
+   if(e.target.closest('[data-clear-content-filters]')){
+     state.q='';state.status='';$('#cms-search').value='';$('#cms-status').value='';
+     markWorkspace('content');drawItems();$('#cms-search').focus();return;
+   }
    if(e.target.closest('[data-schedule-save]')){await saveSchedule();return}
    if(e.target.closest('[data-schedule-cancel]')){await cancelSchedule();return}
    const queueEntry=e.target.closest('[data-v514-schedule-open]');
@@ -1998,6 +2012,16 @@ function boot(){
    if(galleryCover){const photo=galleryValue()[Number(galleryCover.dataset.galleryCover)],input=$('#field-screenshot_url');if(photo&&input){input.value=photo.url;syncSiteImage();markDraftDirty();message('已设为案例封面。')}return}
    const mediaPicker=e.target.closest('[data-editor-pick-media]');
    if(mediaPicker){state.mediaTarget=null;state.mediaField=mediaPicker.dataset.editorPickMedia;await openMedia();return}
+   const stageLink=e.target.closest('[data-editor-state-link]');
+   if(stageLink){
+     const tab=stageLink.dataset.editorStateLink;
+     setEditorTab(tab);
+     const focusTab=$('#cms-editor-body [data-editor-tab="'+tab+'"]');
+     if(focusTab)focusTab.focus({preventScroll:true});
+     const pane=$('#cms-editor-body [data-editor-pane="'+tab+'"]');
+     if(pane)pane.scrollIntoView({block:'start'});
+     return;
+   }
    const tab=e.target.closest('[data-editor-tab]');
    if(tab){setEditorTab(tab.dataset.editorTab);return}
    const tabLink=e.target.closest('[data-editor-tab-link]');

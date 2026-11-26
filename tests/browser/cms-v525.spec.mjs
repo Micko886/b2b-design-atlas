@@ -545,3 +545,52 @@ test('V53.7 review schedule stays optional and expands on demand',async({page})=
  await expect(page.locator('#cms-schedule-local')).toBeVisible();
  await expect(page.locator('[data-transition="publish"]')).toBeVisible();
 });
+
+test('V53.8 search and status filters offer a single reset action',async({page})=>{
+ await mockCms(page);
+ await page.goto(origin+'/admin/content?kind=site');
+ await expect(page.locator('[data-pick="demo-site"]')).toBeVisible();
+ await page.locator('#cms-search').fill('no-such-reference');
+ await expect(page.locator('[data-pick]')).toHaveCount(0);
+ await expect(page.locator('[data-clear-content-filters]')).toBeVisible();
+ await page.locator('[data-clear-content-filters]').click();
+ await expect(page.locator('#cms-search')).toHaveValue('');
+ await expect(page.locator('[data-pick="demo-site"]')).toBeVisible();
+ await page.locator('#cms-status').selectOption('review');
+ await expect(page.locator('[data-clear-content-filters]')).toBeVisible();
+ await page.locator('[data-clear-content-filters]').click();
+ await expect(page.locator('#cms-status')).toHaveValue('');
+ await expect(page.locator('[data-pick="demo-site"]')).toBeVisible();
+});
+
+test('V53.8 stage-specific editor toolbar links to review and history',async({page})=>{
+ const {records}=await mockCms(page);
+ records.site.status='review';
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await expect(page.locator('[data-editor-submit]')).toBeHidden();
+ await expect(page.locator('[data-editor-state-link="review"]')).toBeVisible();
+ await page.locator('[data-editor-tab="content"]').click();
+ await page.locator('[data-editor-state-link="review"]').click();
+ await expect(page.locator('[data-editor-tab="review"]')).toHaveAttribute('aria-selected','true');
+ await expect(page.locator('[data-editor-pane="review"]')).toBeVisible();
+ records.site.status='published';
+ await page.reload();
+ await expect(page.locator('[data-editor-state-link="history"]')).toBeVisible();
+ await expect(page.locator('[data-editor-submit]')).toBeHidden();
+ await page.locator('[data-editor-state-link="history"]').click();
+ await expect(page.locator('[data-editor-tab="history"]')).toHaveAttribute('aria-selected','true');
+ await expect(page.locator('[data-editor-pane="history"]')).toBeVisible();
+});
+
+test('V53.8 saving a reviewed item exposes submit action for its new draft',async({page})=>{
+ const {records}=await mockCms(page);
+ records.site.status='review';
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await expect(page.locator('[data-editor-state-link="review"]')).toBeVisible();
+ await page.locator('[data-editor-tab="content"]').click();
+ await page.locator('#field-name').fill('Updated after review');
+ await expect(page.locator('#cms-autosave-status')).toContainText('草稿已保存',{timeout:9000});
+ await expect(page.locator('[data-editor-submit]')).toBeVisible();
+ await expect(page.locator('[data-editor-submit]')).toBeEnabled();
+ await expect(page.locator('[data-editor-state-link]')).toBeHidden();
+});
