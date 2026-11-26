@@ -70,7 +70,7 @@ class V530WorkspaceTests(unittest.TestCase):
 
     def test_content_editor_and_mobile_responsiveness_preserved(self):
         self.assertIn("function setStudioMode(editing)",self.js)
-        self.assertIn("root.innerHTML=topbar+siteHeader+tabs",self.js)
+        self.assertIn("root.innerHTML=topbar+siteHeader+rejectionNote+tabs",self.js)
         self.assertIn("@media(max-width:600px)",self.css)
         self.assertIn(".cms-v530-review-row",self.css)
         self.assertIn(".cms-v530-settings-tools",self.css)

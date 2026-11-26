@@ -16,7 +16,7 @@ class UnifiedEditorUI(unittest.TestCase):
     def test_four_content_types_use_the_same_editor_shell(self):
         for needle in (
             "root.classList.toggle('cms-easy-mode',true)",
-            "root.innerHTML=topbar+siteHeader+tabs",
+            "root.innerHTML=topbar+siteHeader+rejectionNote+tabs",
             "item.kind==='site'?siteEditorForm(values,editable):simpleEditorForm(item.kind,values,editable)",
             "cms-easy-save-note",
             "data-close-editor",
