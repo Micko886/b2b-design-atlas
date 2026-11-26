@@ -20,8 +20,8 @@ class Cms542(unittest.TestCase):
         self.assertIn('max-height:calc(100dvh - 24px)',self.css)
 
     def test_assets(self):
-        self.assertIn('/assets/cms.js?v=5490',self.html)
-        self.assertIn('/assets/cms.css?v=5490',self.html)
+        self.assertIn('/assets/cms.js?v=5510',self.html)
+        self.assertIn('/assets/cms.css?v=5510',self.html)
 
 if __name__=='__main__':
     unittest.main()

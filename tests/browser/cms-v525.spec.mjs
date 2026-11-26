@@ -109,6 +109,15 @@ async function mockCms(page,role='owner',forcedErrors={}){
     result={ok:true,status:'draft',revision:record.revision};
    }
   }
+  else if(p==='/api/admin/content'&&method==='POST'){
+   const {kind,slug,payload}=body;
+   if(records[kind]?.slug===slug){status=409;result={detail:'已存在相同的 URL 标识。'}}
+   else if(!records[kind]){status=422;result={detail:'Invalid content type'}}
+   else{
+    records[kind]={kind,slug,status:'draft',source:'cms',revision:1,payload,history:[{revision:1,action:'create',created_at:'2026-11-26T12:00:00'}]};
+    result={ok:true,revision:1,status:'draft'};
+   }
+  }
   else if(p==='/api/admin/content'&&method==='GET'){
    const kind=url.searchParams.get('kind'),x=records[kind];
    result={items:x?[{kind,slug:x.slug,label:x.payload.name||x.payload.title,status:x.status,source:x.source,revision:x.revision,sector:x.payload.sector||x.payload.category||x.payload.family||''}]:[]};
@@ -1080,4 +1089,82 @@ test('V55.0 gallery chooser remains simple and batch-upload works',async({page})
  ]);
  await expect(page.locator('#cms-gallery-count')).toContainText('2 张');
  await expect(page.locator('[data-gallery-index]')).toHaveCount(2);
+});
+
+test('V55.1 beginner creates English site without touching URL identifier',async({page})=>{
+ const {records}=await mockCms(page);
+ await page.goto(origin+'/admin/content?kind=site');
+ await page.locator('#cms-new').click();
+ await expect(page.locator('#cms-create-dialog')).toHaveJSProperty('open',true);
+ await expect(page.locator('#cms-create-advanced')).not.toHaveAttribute('open','');
+ await expect(page.locator('#cms-create-slug')).toBeHidden();
+ await page.locator('#cms-create-fields [name="name"]').fill('Modern Robotics');
+ await page.locator('#cms-create-fields [name="url"]').fill('https://robotics.example');
+ await page.locator('#cms-create-fields [name="sector"]').fill('Robotics');
+ await page.locator('#cms-create-fields [name="summary"]').fill('Useful visual language');
+ const auto=await page.locator('#cms-create-slug').inputValue();
+ expect(auto).toMatch(/^modern-robotics-[a-z0-9]{6}$/);
+ await page.locator('#cms-create-form button[type="submit"]').click();
+ await expect(page.locator('#cms-create-dialog')).not.toHaveJSProperty('open',true);
+ await expect(page.locator('#cms-editor-body')).toBeVisible();
+ expect(records.site.slug).toBe(auto);
+ expect(records.site.payload.name).toBe('Modern Robotics');
+ expect(records.site.status).toBe('draft');
+});
+
+test('V55.1 Chinese title gets safe URL and advanced override stays stable',async({page})=>{
+ const {records}=await mockCms(page);
+ await page.goto(origin+'/admin/content?kind=site');
+ await page.locator('#cms-new').click();
+ await page.locator('#cms-create-fields [name="name"]').fill('智能制造设计');
+ await expect(page.locator('#cms-create-slug')).toHaveValue(/^site-\d{8}-[a-z0-9]{6}$/);
+ await page.locator('#cms-create-advanced summary').click();
+ await page.locator('#cms-create-slug').fill('custom-industrial-guide');
+ await page.locator('#cms-create-fields [name="name"]').fill('智能制造案例');
+ await expect(page.locator('#cms-create-slug')).toHaveValue('custom-industrial-guide');
+ await page.locator('#cms-create-slug-auto').click();
+ await expect(page.locator('#cms-create-slug')).toHaveValue(/^site-\d{8}-[a-z0-9]{6}$/);
+ await page.locator('#cms-create-slug').fill('custom-industrial-guide');
+ await page.locator('#cms-create-fields [name="url"]').fill('https://factory.example');
+ await page.locator('#cms-create-fields [name="sector"]').fill('工业制造');
+ await page.locator('#cms-create-fields [name="summary"]').fill('案例描述');
+ await page.locator('#cms-create-form button[type="submit"]').click();
+ await expect(page.locator('#cms-editor-body')).toBeVisible();
+ expect(records.site.slug).toBe('custom-industrial-guide');
+});
+
+test('V55.1 article author defaults and modules choose an actual site',async({page})=>{
+ const {records}=await mockCms(page);
+ await page.goto(origin+'/admin/content?kind=article');
+ await page.locator('#cms-new').click();
+ await expect(page.locator('#cms-create-kind')).toHaveValue('article');
+ await page.locator('#cms-create-fields [name="name"]').fill('设计研究');
+ await page.locator('#cms-create-fields [name="sector"]').selectOption('research');
+ await page.locator('#cms-create-fields [name="summary"]').fill('观察与实践');
+ await page.locator('#cms-create-form button[type="submit"]').click();
+ await expect(page.locator('#cms-editor-body')).toBeVisible();
+ expect(records.article.payload.author).toBe('B2B Atlas 编辑部');
+ await page.locator('[data-close-editor]').click();
+ await page.locator('[data-kind-link="module"]').click();
+ await page.locator('#cms-new').click();
+ await expect(page.locator('#cms-create-fields [name="site_id"]')).toHaveJSProperty('tagName','SELECT');
+ await expect(page.locator('#cms-create-fields [name="site_id"] option')).toContainText(['请选择已公开的网站','Atlas Demo · demo-site']);
+});
+
+test('V55.1 duplicate URL leaves dialog editable and shows clear error',async({page})=>{
+ await mockCms(page);
+ await page.goto(origin+'/admin/content?kind=site');
+ await page.locator('#cms-new').click();
+ await page.locator('#cms-create-fields [name="name"]').fill('Existing item');
+ await page.locator('#cms-create-fields [name="url"]').fill('https://existing.example');
+ await page.locator('#cms-create-fields [name="sector"]').fill('Industrial');
+ await page.locator('#cms-create-fields [name="summary"]').fill('A collision example');
+ await page.locator('#cms-create-advanced summary').click();
+ await page.locator('#cms-create-slug').fill('demo-site');
+ await page.locator('#cms-create-form button[type="submit"]').click();
+ await expect(page.locator('#cms-create-dialog')).toHaveJSProperty('open',true);
+ await expect(page.locator('#cms-create-error')).toContainText('网址标识已被使用');
+ await page.locator('#cms-create-slug').fill('brand-new-item');
+ await page.locator('#cms-create-form button[type="submit"]').click();
+ await expect(page.locator('#cms-create-dialog')).not.toHaveJSProperty('open',true);
 });

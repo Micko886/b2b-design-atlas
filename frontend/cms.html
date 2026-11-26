@@ -6,8 +6,8 @@
 <meta name="theme-color" content="#f5f7fb">
 <title>内容管理 · B2B Atlas Control Room</title>
 <link rel="stylesheet" href="/assets/admin.css?v=5300">
-<link rel="stylesheet" href="/assets/cms.css?v=5500">
-<script defer src="/assets/cms.js?v=5500"></script>
+<link rel="stylesheet" href="/assets/cms.css?v=5510">
+<script defer src="/assets/cms.js?v=5510"></script>
 </head>
 <body data-cms-mode="__CMS_MODE__">
 <svg xmlns="http://www.w3.org/2000/svg" class="icon-sprite" aria-hidden="true">
@@ -33,7 +33,7 @@
 </svg>
 <div class="dashboard-layout cms-layout atlas-v521-layout">
  <aside class="sidebar" id="cms-sidebar">
-  <div class="sidebar-brand"><div class="brand-symbol" aria-hidden="true"><span></span><span></span><span></span><span></span></div><div class="brand-wordmark"><strong>B2B Atlas</strong><small>CONTROL ROOM</small></div><span class="brand-version">V55.0</span></div>
+  <div class="sidebar-brand"><div class="brand-symbol" aria-hidden="true"><span></span><span></span><span></span><span></span></div><div class="brand-wordmark"><strong>B2B Atlas</strong><small>CONTROL ROOM</small></div><span class="brand-version">V55.1</span></div>
   <div class="workspace-chip"><span class="workspace-chip-icon">A</span><span><strong>Atlas Workspace</strong><small>Content Studio</small></span></div>
   <nav class="side-nav atlas-v521-nav atlas-v530-nav" aria-label="后台主导航">
    <span class="nav-group-label">工作区 <span>WORKSPACE</span></span>
@@ -108,7 +108,21 @@
  <p class="cms-v530-settings-foot">所有设置仍由服务器验证角色权限；这里不会向未授权账号开放管理操作。</p>
  <div class="cms-dialog-actions"><button type="button" class="cms-btn-primary" data-v530-close="settings">完成</button></div>
 </dialog>
-<dialog id="cms-create-dialog" class="cms-dialog"><form id="cms-create-form" method="dialog"><div class="cms-dialog-head"><div><span class="section-eyebrow">NEW CONTENT</span><h2>创建一条内容</h2></div><button type="button" data-dialog-close aria-label="关闭">×</button></div><label>资源类型<select id="cms-create-kind" name="kind"><option value="site">Website · 网站</option><option value="module">Section · 页面模块</option><option value="pattern">Pattern · 设计模式</option><option value="article">Insight · 研究文章</option></select></label><label>URL 标识（英文小写）<input id="cms-create-slug" name="slug" required minlength="2" maxlength="111" pattern="[a-z0-9][a-z0-9-]*" placeholder="例如 new-industrial-website"></label><p>创建后 URL 标识不可更改。请使用简短、稳定的英文名称。</p><div class="cms-dialog-actions"><button type="button" class="cms-btn-secondary" data-dialog-close>取消</button><button type="submit" class="cms-btn-primary">创建草稿 ↗</button></div></form></dialog>
+<dialog id="cms-create-dialog" class="cms-dialog cms-v551-create-dialog" aria-label="创建内容草稿">
+ <form id="cms-create-form" method="dialog">
+  <div class="cms-dialog-head"><div><span class="section-eyebrow">CONTENT / NEW DRAFT</span><h2>新建内容</h2><p>填写基本信息即可创建草稿。编辑和审核完成后，内容才会公开。</p></div><button type="button" data-dialog-close aria-label="关闭">×</button></div>
+  <label>内容类型<select id="cms-create-kind" name="kind"><option value="site">网站案例</option><option value="module">页面模块</option><option value="pattern">设计模式</option><option value="article">研究文章</option></select></label>
+  <div id="cms-create-fields" class="cms-create-fields"></div>
+  <details id="cms-create-advanced" class="cms-v551-advanced">
+   <summary>高级选项 · 自定义网址标识 <small>通常无需设置</small></summary>
+   <label>网址标识（英文小写、数字或短横线）<input id="cms-create-slug" name="slug" required minlength="2" maxlength="111" pattern="[a-z0-9][a-z0-9-]*" autocomplete="off"></label>
+   <p>网址标识：<code id="cms-create-slug-preview"></code>。创建后不可修改。</p>
+   <button type="button" id="cms-create-slug-auto">恢复自动生成</button>
+  </details>
+  <p id="cms-create-error" class="cms-v551-create-error" role="alert" hidden></p>
+  <div class="cms-dialog-actions"><button type="button" class="cms-btn-secondary" data-dialog-close>取消</button><button type="submit" class="cms-btn-primary">创建草稿并继续编辑</button></div>
+ </form>
+</dialog>
 <dialog id="cms-media-dialog" class="cms-dialog cms-v51-media-dialog cms-v532-media-dialog" aria-label="媒体资源与 SEO 工作台"><div class="cms-dialog-head"><div><span class="section-eyebrow">MEDIA / CONTENT STUDIO</span><h2 id="cms-media-dialog-title">媒体资源与 SEO</h2><p id="cms-media-dialog-description">查找图片、维护可复用的 ALT 与图注、查看引用关系。删除引用中的图片会被服务器阻止。</p></div><button type="button" data-media-close aria-label="关闭媒体资源库">×</button></div><p id="cms-media-picker-intro" class="cms-v550-picker-hint" hidden>选择已有图片，或者上传一张新图，自动填入当前内容。图片保存为草稿后才会生效。</p><div class="cms-v51-media-actions"><button type="button" id="cms-media-select" class="cms-btn-primary">选择图片上传</button><input type="file" id="cms-media-file" accept="image/jpeg,image/png,image/webp" multiple class="cms-upload-input" aria-label="选择要上传的图片"><span id="cms-media-status" role="status" aria-live="polite">请选择图片，单张上传最大 1.5MB（较大原图自动优化）。</span></div><button type="button" id="cms-media-drop" class="cms-v513-dropzone" aria-label="拖放文件或点击选择图片">
   <svg class="icon" aria-hidden="true"><use href="#i-download"></use></svg>
   <strong>拖拽图片到这里上传</strong><span>或点击选择图片 · JPG / PNG / WebP · 自动优化超过 1.5MB 的文件</span>

@@ -50,6 +50,7 @@ test('V54.5 browser login, CMS access and editor/reviewer release',async({browse
   await editor.page.goto('/admin/content?kind=site');
   await expect(editor.page.locator('#cms-new')).toBeVisible();
   await editor.page.locator('#cms-new').click();
+  await editor.page.locator('#cms-create-advanced summary').click();
   await editor.page.locator('#cms-create-slug').fill(slug);
   const f=editor.page.locator('#cms-create-fields');
   await f.locator('[name=name]').fill('QA browser study');

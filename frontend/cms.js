@@ -994,38 +994,87 @@ function createDefault(kind,slug,fields){
  if(kind==='pattern')return {...v,title:fields.name,family:fields.sector,question:fields.summary,principle:fields.principle,modules:[]};
  return {...v,title:fields.name,subtitle:fields.summary,category:fields.sector,author:fields.author||'B2B Atlas 编辑部',sections:[{title:'正文',blocks:[{type:'paragraph',text:''}]}],tags:[],takeaways:[],featured:false,reading_minutes:3};
 }
+// V55.1 · Beginner creation: server still validates stable ASCII slugs, UI generates them.
+let createSlugAuto=true,createSlugSuffix='';
+function newCreateSuffix(){
+ return Math.random().toString(36).slice(2,8).padEnd(6,'0');
+}
+function suggestedCreateSlug(title,kind){
+ const ascii=String(title||'').normalize('NFKD').toLowerCase()
+  .replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-')
+  .replace(/^-+|-+$/g,'').slice(0,76).replace(/-+$/,'');
+ const day=new Date().toISOString().slice(0,10).replace(/-/g,'');
+ return (ascii||kind+'-'+day)+'-'+createSlugSuffix;
+}
+function syncCreateSlug(){
+ const input=$('#cms-create-slug');if(!input)return;
+ const title=$('#cms-create-fields [name="name"]')?.value||'';
+ if(createSlugAuto)input.value=suggestedCreateSlug(title,$('#cms-create-kind').value);
+ const preview=$('#cms-create-slug-preview');if(preview)preview.textContent=input.value;
+}
+function createFormError(text){
+ const target=$('#cms-create-error');if(!target)return;
+ target.hidden=!text;target.textContent=text||'';
+}
 function updateCreateFields(){
- const kind=$('#cms-create-kind').value;
- const target=$('#cms-create-fields');
+ const kind=$('#cms-create-kind').value,target=$('#cms-create-fields');
  if(!target)return;
- const f=[
+ const fields=[
   ['name',kind==='site'?'网站名称':kind==='module'?'模块标题':kind==='pattern'?'设计模式名称':'文章标题',true],
-  ['sector',kind==='site'?'行业':kind==='module'?'模块分类':kind==='pattern'?'模式类别':'文章分类',true],
-  ['summary',kind==='site'?'网站简介':kind==='module'?'模块设计方法':kind==='pattern'?'设计问题':'文章摘要',true]
+  ['sector',kind==='site'?'所属行业':kind==='module'?'模块分类':kind==='pattern'?'模式类别':'文章分类',true],
+  ['summary',kind==='site'?'案例简介':kind==='module'?'设计方法':kind==='pattern'?'要解决的问题':'文章摘要',true]
  ];
- if(kind==='site')f.splice(1,0,['url','官方网站 URL',true]);
- if(kind==='module')f.splice(1,0,['site_id','关联网站 ID',true]);
- if(kind==='pattern')f.push(['principle','核心原则',true]);
- if(kind==='article')f.push(['author','作者',true]);
- target.innerHTML=f.map(([id,label,required])=>{
-   if(kind==='article'&&id==='sector')return '<label>'+h(label)+'<select name="sector" required>'
-     +'<option value="">选择文章分类</option>'
-     +state.categoryRecords.map(cat=>'<option value="'+h(cat.id)+'">'+h(cat.name)+' · '+h(cat.id)+'</option>').join('')
-     +'</select></label>';
-   return '<label>'+h(label)+'<input name="'+id+'" '+(id==='url'?'type="url"':'type="text"')+' required maxlength="1800" placeholder="'+h(label)+'"></label>';
+ if(kind==='site')fields.splice(1,0,['url','官方网站 URL',true]);
+ if(kind==='module')fields.splice(1,0,['site_id','所属网站',true]);
+ if(kind==='pattern')fields.push(['principle','核心设计原则',true]);
+ // An optional author uses createDefault's editorial byline.
+ if(kind==='article')fields.push(['author','作者',false]);
+ target.innerHTML=fields.map(([id,label,required])=>{
+  if(id==='site_id'&&state.siteChoices.length){
+   return '<label>'+h(label)+'<select name="site_id" required><option value="">请选择已公开的网站</option>'
+    +state.siteChoices.map(site=>'<option value="'+h(site.id)+'">'+h(site.name)+' · '+h(site.id)+'</option>').join('')+'</select></label>';
+  }
+  if(kind==='article'&&id==='sector'){
+   const cats=state.categoryRecords.length?state.categoryRecords.map(x=>({id:x.id,name:x.name}))
+    :(state.taxonomy.article||[]).map(id=>({id,name:id}));
+   return '<label>'+h(label)+'<select name="sector" required><option value="">请选择文章分类</option>'
+    +cats.map(cat=>'<option value="'+h(cat.id)+'">'+h(cat.name)+'</option>').join('')+'</select>'
+    +(cats.length?'':'<small>请先在系统设置中添加文章分类。</small>')+'</label>';
+  }
+  if(id==='summary'||id==='principle')
+   return '<label>'+h(label)+'<textarea name="'+id+'" rows="3" '+(required?'required ':'')+'maxlength="1800" placeholder="'+h(label)+'"></textarea></label>';
+  const hint=id==='url'?'https://example.com':id==='name'?'输入内容标题':id==='site_id'?'网站英文标识':'';
+  return '<label>'+h(label)+(required?'':' <small>选填</small>')+'<input name="'+id+'" '+(id==='url'?'type="url"':'type="text"')+(required?' required':'')+' maxlength="1800" placeholder="'+h(hint||label)+'"></label>';
  }).join('');
+ createFormError('');
+ syncCreateSlug();
 }
 async function createNew(e){
  e.preventDefault();if(mode!=='admin')return;
- const form=$('#cms-create-form');if(!form.reportValidity())return;
- const fd=new FormData(form),kind=fd.get('kind'),slug=String(fd.get('slug')||'').trim();
- if(!/^[a-z0-9][a-z0-9-]{0,110}$/.test(slug)){message('URL 标识只能使用英文小写、数字及短横线',false);return}
+ const form=$('#cms-create-form');
+ if(form.dataset.submitting==='true'||!form.reportValidity())return;
+ const fd=new FormData(form),kind=String(fd.get('kind')||''),slug=String(fd.get('slug')||'').trim();
+ if(!/^[a-z0-9][a-z0-9-]{1,110}$/.test(slug)){
+  createFormError('网址标识只能包含英文小写、数字和短横线。');
+  $('#cms-create-advanced').open=true;$('#cms-create-slug').focus();return
+ }
  const fields=Object.fromEntries(fd.entries()),payload=createDefault(kind,slug,fields);
+ const button=form.querySelector('button[type="submit"]');
+ form.dataset.submitting='true';button.disabled=true;button.textContent='正在创建草稿…';createFormError('');
  try{
-   await api('/api/admin/content',{method:'POST',body:JSON.stringify({kind,slug,payload})});
-   $('#cms-create-dialog').close();form.reset();state.kind=kind;state.selected=null;state.q='';state.status='';$('#cms-search').value='';$('#cms-status').value='';
-   history.replaceState({},'',listUrl());await loadKind();await selectItem(slug,true);message('新建草稿成功。请完善内容，再提交审核。');
- }catch(err){message(err.message,false)}
+  await api('/api/admin/content',{method:'POST',body:JSON.stringify({kind,slug,payload})});
+  $('#cms-create-dialog').close();form.reset();state.kind=kind;state.selected=null;state.q='';state.status='';
+  $('#cms-search').value='';$('#cms-status').value='';
+  history.replaceState({},'',listUrl());await loadKind();
+  if(!await selectItem(slug,true))throw Error('草稿已创建，但编辑器尚未成功载入，请刷新内容列表。');
+  message('草稿已创建，可以继续编辑图片和正文。');
+ }catch(err){
+  const detail=err.status===409?'网址标识已被使用。请展开高级选项更换标识，再次创建。':err.message;
+  createFormError(detail);message(detail,false);
+  if(err.status===409)$('#cms-create-advanced').open=true;
+ }finally{
+  form.dataset.submitting='false';button.disabled=false;button.textContent='创建草稿并继续编辑';
+ }
 }
 async function exportCms(){
  if(mode==='preview'){message('请登录已授权的管理员账号后导出 CMS 内容。',false);return}
@@ -2289,10 +2338,31 @@ function boot(){
  $('#cms-logout').addEventListener('click',logoutCms);
  $('#cms-export').addEventListener('click',exportCms);
  $('#cms-new').addEventListener('click',async()=>{
-   if(mode==='admin'&&state.kind==='article')try{await loadCmsTaxonomy()}catch(err){message(err.message,false)}
-   updateCreateFields();$('#cms-create-dialog').showModal()
+   if(state.busy||state.dirty){message('请先保存当前草稿，或返回列表后再新建内容。',false);return}
+   if(state.kind==='article')try{await loadCmsTaxonomy()}catch(err){message(err.message,false)}
+   if(state.kind==='module')await loadSiteChoices();
+   const form=$('#cms-create-form');form.reset();
+   $('#cms-create-kind').value=state.kind;$('#cms-create-advanced').open=false;
+   createSlugAuto=true;createSlugSuffix=newCreateSuffix();updateCreateFields();
+   $('#cms-create-dialog').showModal();
+   $('#cms-create-fields [name="name"]')?.focus({preventScroll:true});
  });
- $('#cms-create-kind').addEventListener('change',updateCreateFields);
+ $('#cms-create-kind').addEventListener('change',async()=>{
+  const kind=$('#cms-create-kind').value;
+  if(kind==='module')await loadSiteChoices();
+  if(kind==='article')try{await loadCmsTaxonomy()}catch(err){message(err.message,false)}
+  if($('#cms-create-kind').value===kind)updateCreateFields();
+ });
+ $('#cms-create-fields').addEventListener('input',e=>{
+  if(e.target.name==='name')syncCreateSlug();
+  createFormError('');
+ });
+ $('#cms-create-slug').addEventListener('input',()=>{
+  createSlugAuto=false;syncCreateSlug();createFormError('');
+ });
+ $('#cms-create-slug-auto').addEventListener('click',()=>{
+  createSlugAuto=true;syncCreateSlug();$('#cms-create-slug').focus();
+ });
  $('#cms-diff-baseline').addEventListener('change',e=>openReviewDiff(Number(e.target.value)));
  $('#cms-tags-open').addEventListener('click',openTagManager);
  $('#cms-tag-add').addEventListener('click',()=>chooseTag());
@@ -2387,8 +2457,6 @@ function boot(){
  $('#cms-bulk-run').addEventListener('click',runBulk);
  $('#cms-select-all').addEventListener('change',e=>{for(const item of listFiltered()){if(item.status==='source')continue;if(e.target.checked)state.selectedSlugs.add(item.slug);else state.selectedSlugs.delete(item.slug)}drawItems()});
 
- const dlg=$('#cms-create-dialog');const fields=document.createElement('div');fields.id='cms-create-fields';fields.className='cms-create-fields';
- dlg.querySelector('#cms-create-slug').closest('label').insertAdjacentElement('afterend',fields);
  $('#cms-create-form').addEventListener('submit',createNew);
  $('#cms-menu').addEventListener('click',()=>{const open=!document.body.classList.contains('sidebar-open');document.body.classList.toggle('sidebar-open',open);$('#cms-backdrop').hidden=!open;$('#cms-menu').setAttribute('aria-expanded',String(open))});
  $('#cms-backdrop').addEventListener('click',closeMobile);
