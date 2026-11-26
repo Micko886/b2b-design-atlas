@@ -1,0 +1,54 @@
+name: Preview Deployment Verification
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: preview-deploy-verify-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify-deployment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Compare deployed commit with GitHub main
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+          PREVIEW_URL: https://b2b-design-atlas-preview.onrender.com
+        run: |
+          python - <<'PY'
+          import json,os,time,urllib.request
+          url=os.environ["PREVIEW_URL"]+"/api/atlas-build"
+          expected=os.environ["EXPECTED_SHA"].lower()
+          last="no response"
+          # The free service may wake slowly; also allow Docker build + health check.
+          for attempt in range(20):
+              try:
+                  request=urllib.request.Request(url,headers={
+                      "Accept":"application/json",
+                      "Cache-Control":"no-cache",
+                      "User-Agent":"B2B-Atlas-Preview-CI/1.0"
+                  })
+                  with urllib.request.urlopen(request,timeout=25) as response:
+                      info=json.load(response)
+                  observed=str(info.get("commit") or "").lower()
+                  version=info.get("cms_version","unknown")
+                  if observed==expected:
+                      print(f"Verified Render preview: {expected[:12]}, CMS {version}")
+                      break
+                  last=f"deployed={observed or 'unavailable'}, expected={expected}, CMS={version}"
+              except Exception as exc:
+                  last=f"{type(exc).__name__}: {exc}"
+              print(f"Attempt {attempt+1}/20: {last}")
+              if attempt<19:time.sleep(15)
+          else:
+              print("::error::Preview is not on this GitHub commit. "+last)
+              print("::error::Check Render Git Deployment Credentials and repository access.")
+              raise SystemExit(1)
+          PY

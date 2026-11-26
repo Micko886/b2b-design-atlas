@@ -158,7 +158,25 @@ def html_page(mode, template="admin.html"):
     }
     return HTMLResponse(doc, headers=headers)
 
+def release_identity():
+    """Public release metadata only: never include accounts, secrets or env values."""
+    source=(STATIC/"cms.html").read_text(encoding="utf-8")
+    version=re.search(r'class="brand-version">([A-Za-z0-9.]+)',source)
+    commit=os.getenv("RENDER_GIT_COMMIT","").strip().lower()
+    return {
+        "cms_version":version.group(1) if version else "unknown",
+        "commit":commit if re.fullmatch(r"[0-9a-f]{40}",commit) else None,
+    }
+
+
 def register_admin_routes(app: FastAPI):
+    @app.get("/api/atlas-build",include_in_schema=False)
+    def atlas_build(response: Response):
+        """Read-only deploy fingerprint, safe for public CI status checks."""
+        response.headers["Cache-Control"]="no-store, max-age=0"
+        response.headers["X-Robots-Tag"]="noindex"
+        return release_identity()
+
     @app.get("/admin/preview", include_in_schema=False)
     def preview_page(request: Request):
         """Retired public-lookalike admin page: route through real login gate."""
