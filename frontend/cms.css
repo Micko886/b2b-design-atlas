@@ -1192,3 +1192,29 @@ body.cms-editor-active .cms-edit-quick-actions{display:flex;align-items:center;g
  .cms-v551-create-dialog .cms-dialog-actions{align-items:stretch;flex-direction:column-reverse}
  .cms-v551-create-dialog .cms-dialog-actions button{width:100%;min-height:43px}
 }
+
+/* V55.2 · Article writing first, metadata and specialist blocks only when needed. */
+.cms-v552-studio .cms-v51-studio-head{margin-bottom:14px}
+.cms-v552-studio .cms-v51-chapter-head{margin-top:18px;border-top:0;padding-top:0}
+.cms-v552-studio .cms-v51-chapter-head>button{min-height:40px;border-color:var(--blue);color:var(--blue);font-weight:760}
+.cms-v552-add-row{display:grid;gap:10px}
+.cms-v552-quick-add{display:flex;flex-wrap:wrap;gap:8px}
+.cms-v552-quick-add button{flex:0 1 auto;min-height:40px;background:var(--surface);border:1px solid var(--line-strong);color:var(--ink-strong);border-radius:9px;font-size:12px;font-weight:750;padding:9px 14px}
+.cms-v552-quick-add button:first-child{border-color:var(--blue);color:var(--blue)}
+.cms-v552-quick-add button:hover{border-color:var(--blue);color:var(--blue)}
+.cms-v552-more-blocks,.cms-v552-optional-content,.cms-v552-article-tools{min-width:0;border-top:1px solid var(--line);padding-top:12px}
+.cms-v552-more-blocks summary,.cms-v552-optional-content>summary,.cms-v552-article-tools>summary{cursor:pointer;font-size:12px;color:var(--ink-strong);font-weight:720;line-height:1.5}
+.cms-v552-more-blocks>div{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 0 0}
+.cms-v552-optional-content,.cms-v552-article-tools{margin-top:19px;padding:16px;border:1px solid var(--line);border-radius:11px;background:var(--surface)}
+.cms-v552-optional-content>summary small,.cms-v552-article-tools>summary small{font-weight:450;font-size:11px;color:var(--muted)}
+.cms-v552-optional-content .cms-v51-taxonomy{margin:17px 0 11px}
+.cms-v552-optional-content .cms-v512-suggestions{margin-bottom:6px}
+.cms-v552-article-tools .cms-v531-undo-note{margin-top:14px!important}
+.cms-v552-article-tools #cms-v512-preview{margin-top:18px}
+.cms-v552-studio :is(.cms-v552-quick-add button,.cms-v552-more-blocks summary,.cms-v552-optional-content summary,.cms-v552-article-tools summary):focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+@media(max-width:500px){
+ .cms-v552-quick-add{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .cms-v552-quick-add button{width:100%;padding:9px}
+ .cms-v552-studio .cms-v51-chapter-head{flex-wrap:wrap}
+ .cms-v552-optional-content,.cms-v552-article-tools{padding:13px 11px}
+}

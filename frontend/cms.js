@@ -1149,9 +1149,16 @@ function articleSection(section={},index=0,editable=true){
   +(editable?'<button type="button" class="cms-block-convert" data-block-convert>转换为专业块编辑器 ↗</button>':'')+'</div>';
  const editor='<div data-blocks-mode '+(!usesBlocks?'hidden':'')+'>'
   +'<div class="cms-editor-block-list" data-block-list>'+((section.blocks||[]).map((b,i)=>articleBlock(b,i,editable)).join(''))+'</div>'
-  +(editable?'<div class="cms-block-add-row"><select data-block-add-type aria-label="添加内容块的类型">'
-      +Object.entries(articleBlockTypes).map(([key,label])=>'<option value="'+key+'">'+label+'</option>').join('')+'</select>'
-      +'<button type="button" data-block-add>＋ 添加内容块</button><small>拖动卡片排序，支持上移和下移</small></div>':'')+'</div>';
+  +(editable?'<div class="cms-block-add-row cms-v552-add-row" aria-label="插入正文内容">'
+      +'<div class="cms-v552-quick-add"><button type="button" data-block-quick="paragraph">＋ 正文</button>'
+      +'<button type="button" data-block-quick="image">＋ 图片</button>'
+      +'<button type="button" data-block-quick="heading">＋ 小标题</button>'
+      +'<button type="button" data-block-quick="list">＋ 列表</button></div>'
+      +'<details class="cms-v552-more-blocks"><summary>更多内容类型</summary><div>'
+      +'<select data-block-add-type aria-label="添加更多内容块类型">'
+      +Object.entries(articleBlockTypes).filter(([key])=>!['paragraph','image','heading','list'].includes(key)).map(([key,label])=>'<option value="'+key+'">'+label+'</option>').join('')+'</select>'
+      +'<button type="button" data-block-add>添加内容块</button></div></details>'
+      +'<small>系统自动保存草稿。右上角箭头可以调整内容顺序。</small></div>':'')+'</div>';
  return '<div class="cms-v51-section cms-v517-section" data-v51-section>'+head+legacy+editor+'</div>';
 }
 function reindexBlocks(list){
@@ -1321,21 +1328,23 @@ function focusArticleHealth(button){
 function articleStudio(v,editable){
  const disabled=editable?'':' disabled';
  const categorySuggestions=(state.taxonomy.article||[]).map(x=>'<option value="'+h(x)+'"></option>').join('');
- return '<section class="cms-v51-studio"><div class="cms-v51-studio-head"><div><span class="section-eyebrow">文章正文</span><h3>逐章编辑正文</h3><p>可以添加章节、段落和图片；预览不会公开尚未发布的内容。</p></div></div>'
+ return '<section class="cms-v51-studio cms-v552-studio"><div class="cms-v51-studio-head"><div><span class="section-eyebrow">文章正文</span><h3>编写文章正文</h3><p>先写章节，再添加正文或图片；标题、图片和段落可随时调整顺序。</p></div></div>'
  +'<div class="cms-v531-editor-bar"><div><strong>文章结构</strong><span id="cms-article-stat">正在计算章节和字数…</span></div>'
- +'<div class="cms-v531-undo-actions">'+(editable?'<button type="button" data-article-undo disabled title="撤销章节或内容块的增删、移动、转换">↶ 撤销结构修改</button><button type="button" data-article-redo disabled title="重做上一次结构修改">↷ 重做</button>':'')+'</div></div>'
- +'<p class="cms-v531-undo-note">仅记录最近 20 次结构操作的章节快照（含当时的文字）；正文输入可使用浏览器的 Ctrl/⌘+Z。撤销后会自动保存草稿。</p>'
+ +'<div class="cms-v531-undo-actions">'+(editable?'<button type="button" data-article-undo disabled title="撤销章节或内容块的增删、移动、转换">↶ 撤销操作</button><button type="button" data-article-redo disabled title="重做上一次结构修改">↷ 重做</button>':'')+'</div></div>'
+ +'<div class="cms-v51-chapter-head"><strong>正文与章节</strong>'+(editable?'<button type="button" data-v51-add>＋ 新建章节</button>':'')+'</div>'
+ +'<div id="cms-v51-sections">'+(v.sections||[]).map((s,i)=>articleSection(s,i,editable)).join('')+'</div>'
+ +'<details class="cms-v552-optional-content"><summary>文章标签与核心观点 <small>选填 · 不影响正文编辑</small></summary>'
  +'<div class="cms-v51-taxonomy"><label>文章标签 <small>每行一个关键词</small><textarea id="v51-tags" rows="3"'+disabled+'>'+h((v.tags||[]).join('\n'))+'</textarea></label>'
  +'<label>核心观点 <small>每行一条摘要</small><textarea id="v51-takeaways" rows="3"'+disabled+'>'+h((v.takeaways||[]).join('\n'))+'</textarea></label></div>'
  +'<div class="cms-v512-suggestions"><span>常用标签</span>'+(state.tagSuggestions.length?state.tagSuggestions.slice(0,12).map(tag=>'<button type="button" data-v512-tag="'+h(tag)+'"'+(editable?'':' disabled')+'>'+h(tag)+'</button>').join(''):'<small>暂无常用标签</small>')+'</div>'
- +'<datalist id="v51-categories">'+categorySuggestions+'</datalist>'
- +'<div class="cms-v51-chapter-head"><strong>文章章节</strong>'+(editable?'<button type="button" data-v51-add>＋ 添加章节</button>':'')+'</div>'
- +'<div id="cms-v51-sections">'+(v.sections||[]).map((s,i)=>articleSection(s,i,editable)).join('')+'</div>'
- +'<div class="cms-v531-media-health"><div class="cms-v531-health-head"><div><strong>图片 SEO 自检</strong><p>检查缺图、替代文字 ALT 和图注。点击问题会定位到相应内容块。</p></div><span id="cms-article-health-status" role="status">等待检查…</span></div><div id="cms-article-health-list"></div></div>'
- +'<p class="cms-v51-guidance">每章可以包含正文、要点与高亮提示。上传媒体后可设为文章封面；完整 SEO 检查可在顶部「SEO 与质量」运行。</p>'
- +'<div class="cms-v512-preview-actions"><button type="button" data-v512-preview aria-expanded="false">预览当前文章（无需保存）</button><small>仅在本页渲染，不会公开未保存的内容</small></div>'
+ +'<datalist id="v51-categories">'+categorySuggestions+'</datalist></details>'
+ +'<div class="cms-v531-media-health"><div class="cms-v531-health-head"><div><strong>发布前图片检查</strong><p>添加图片后，这里会提醒补全图片描述；点击提示即可定位。</p></div><span id="cms-article-health-status" role="status">等待检查…</span></div><div id="cms-article-health-list"></div></div>'
+ +'<details class="cms-v552-article-tools"><summary>写作帮助与文章预览 <small>选填</small></summary>'
+ +'<p class="cms-v531-undo-note">撤销操作仅记录最近 20 次章节和内容块结构修改；正文文字可用 Ctrl/⌘+Z 撤销。</p>'
+ +'<p class="cms-v51-guidance">正文、列表、重点提示和图片可以组合使用。完整的 SEO 检查可在顶部「SEO」页完成。</p>'
+ +'<div class="cms-v512-preview-actions"><button type="button" data-v512-preview aria-expanded="false">预览当前文章（无需保存）</button><small>只在当前浏览器展示，不会公开</small></div>'
  +'<section id="cms-v512-preview" class="cms-v512-preview" hidden><div class="cms-v512-preview-heading"><strong>文章排版预览</strong><span>PRIVATE · UNSAVED</span></div>'
- +'<p id="cms-v512-preview-error" hidden role="alert"></p><div id="cms-v512-preview-content"></div></section></section>';
+ +'<p id="cms-v512-preview-error" hidden role="alert"></p><div id="cms-v512-preview-content"></div></section></details></section>';
 }
 // V51.2: Private, unsaved preview. All user content is HTML-escaped.
 // Limited inline emphasis syntax. Always escape text BEFORE applying tags.
@@ -2272,11 +2281,22 @@ function boot(){
     if(e.target.closest('[data-v518-close-diff]')){$('#cms-diff-dialog').close();return}
     const convert=e.target.closest('[data-block-convert]');
    if(convert){if(captureArticleStructure())convertLegacyChapter(convert.closest('[data-v51-section]'));return}
-   const addBlock=e.target.closest('[data-block-add]');
-   if(addBlock){if(!captureArticleStructure())return;const mode=addBlock.closest('[data-blocks-mode]'),list=mode.querySelector('[data-block-list]');
-     const type=mode.querySelector('[data-block-add-type]').value;
+   const quickBlock=e.target.closest('[data-block-quick]'),addBlock=e.target.closest('[data-block-add]');
+   if(quickBlock||addBlock){
+     const mode=(quickBlock||addBlock).closest('[data-blocks-mode]');
+     const type=quickBlock?quickBlock.dataset.blockQuick:mode?.querySelector('[data-block-add-type]')?.value;
+     if(!mode||!articleBlockTypes[type]||!captureArticleStructure())return;
+     const list=mode.querySelector('[data-block-list]');
      list.insertAdjacentHTML('beforeend',articleBlock({type},list.children.length,true));
-     reindexBlocks(list);markDraftDirty();refreshArticlePreview();return}
+     reindexBlocks(list);markDraftDirty();refreshArticlePreview();refreshArticleHealth();
+     const inserted=list.lastElementChild;
+     if(type==='image'){
+       const pick=inserted.querySelector('[data-block-pick-image]');if(pick)pick.click();
+     }else{
+       const input=inserted.querySelector('[data-block-text]');if(input){input.focus();input.scrollIntoView({block:'nearest'});}
+     }
+     return;
+   }
    const removeBlock=e.target.closest('[data-block-remove]');
    if(removeBlock){const el=removeBlock.closest('[data-cms-block]'),list=el.parentElement;
      if(list.children.length<=1){message('每章至少保留一个内容块',false);return}

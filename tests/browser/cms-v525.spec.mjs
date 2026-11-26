@@ -1168,3 +1168,67 @@ test('V55.1 duplicate URL leaves dialog editable and shows clear error',async({p
  await page.locator('#cms-create-form button[type="submit"]').click();
  await expect(page.locator('#cms-create-dialog')).not.toHaveJSProperty('open',true);
 });
+
+test('V55.2 article quick insert focuses a new paragraph and preserves content',async({page})=>{
+ const {records}=await mockCms(page);
+ records.article.payload.sections=[{title:'Buyer research',blocks:[{type:'paragraph',text:'Starting paragraph'}]}];
+ await page.goto(origin+'/admin/content?kind=article&edit=demo-article');
+ await expect(page.locator('[data-block-quick="paragraph"]')).toBeVisible();
+ await expect(page.locator('[data-block-quick="image"]')).toBeVisible();
+ await expect(page.locator('.cms-v552-optional-content')).not.toHaveAttribute('open','');
+ await page.locator('[data-block-quick="paragraph"]').click();
+ await expect(page.locator('[data-cms-block]')).toHaveCount(2);
+ const paragraph=page.locator('[data-cms-block]').last().locator('[data-block-text]');
+ await expect(paragraph).toBeFocused();
+ await paragraph.fill('A buyer-friendly landing page helps conversion.');
+ await expect(page.locator('#cms-autosave-status')).toContainText('草稿已保存',{timeout:10000});
+ expect(records.article.payload.sections[0].blocks.at(-1).text).toBe('A buyer-friendly landing page helps conversion.');
+ await expect(page.locator('[data-article-undo]')).toBeEnabled();
+});
+
+test('V55.2 one-click article image opens the focused picker and preserves draft',async({page})=>{
+ const {records}=await mockCms(page);
+ records.article.payload.sections=[{title:'Screenshots',blocks:[{type:'paragraph',text:'Study'}]}];
+ await page.goto(origin+'/admin/content?kind=article&edit=demo-article');
+ await page.locator('[data-block-quick="image"]').click();
+ await expect(page.locator('[data-cms-block]')).toHaveCount(2);
+ await expect(page.locator('#cms-media-dialog')).toHaveJSProperty('open',true);
+ await expect(page.locator('#cms-media-dialog-title')).toHaveText('插入文章图片');
+ await page.locator('#cms-media-file').setInputFiles({name:'article-study.png',mimeType:'image/png',buffer:png});
+ await expect(page.locator('#cms-media-dialog')).not.toHaveJSProperty('open',true);
+ const image=page.locator('[data-cms-block]').last();
+ await expect(image).toHaveAttribute('data-block-type','image');
+ await expect(image.locator('[data-block-image]')).toHaveValue(/^\/api\/media\//);
+ await expect(page.locator('#cms-article-health-status')).toContainText('需要处理');
+ await image.locator('[data-block-alt]').fill('Product screenshot for industrial buyers');
+ await expect(page.locator('#cms-autosave-status')).toContainText('草稿已保存',{timeout:10000});
+ expect(records.article.payload.sections[0].blocks.at(-1).alt).toBe('Product screenshot for industrial buyers');
+});
+
+test('V55.2 optional article metadata and advanced blocks stay available',async({page})=>{
+ const {records}=await mockCms(page);
+ records.article.payload.sections=[{title:'Research',blocks:[{type:'paragraph',text:'B2B'}]}];
+ await page.goto(origin+'/admin/content?kind=article&edit=demo-article');
+ await expect(page.locator('#v51-tags')).toBeHidden();
+ await page.locator('.cms-v552-optional-content summary').click();
+ await expect(page.locator('#v51-tags')).toBeVisible();
+ await page.locator('#v51-tags').fill('design\nindustrial');
+ await expect(page.locator('.cms-v552-more-blocks')).not.toHaveAttribute('open','');
+ await page.locator('.cms-v552-more-blocks summary').click();
+ await page.locator('[data-block-add-type]').selectOption('quote');
+ await page.locator('[data-block-add]').click();
+ await expect(page.locator('[data-cms-block]').last()).toHaveAttribute('data-block-type','quote');
+ await page.locator('[data-cms-block]').last().locator('[data-block-text]').fill('Evidence matters');
+ await expect(page.locator('#cms-autosave-status')).toContainText('草稿已保存',{timeout:10000});
+ expect(records.article.payload.tags).toEqual(['design','industrial']);
+ expect(records.article.payload.sections[0].blocks.at(-1).text).toBe('Evidence matters');
+});
+
+test('V55.2 simplified article controls fit narrow mobile and reviewer stays read only',async({page})=>{
+ await mockCms(page,'reviewer');
+ await page.setViewportSize({width:320,height:760});
+ await page.goto(origin+'/admin/content?kind=article&edit=demo-article');
+ await expect(page.locator('[data-block-quick]')).toHaveCount(0);
+ await expect(page.locator('.cms-v552-studio')).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
+});
