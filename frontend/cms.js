@@ -755,6 +755,9 @@ function renderForm(item){
     :'<p>当前内容状态为 '+h(statusText[s]||s)+'，无法直接执行发布审核。</p>')
    +'</section>':'';
 const history=item.history||[];
+ const latestRejection=s==='draft'?history.find(v=>v.action==='reject'&&typeof v.reason==='string'&&v.reason.trim()):null;
+ const rejectionNote=latestRejection?
+   '<aside class="cms-v546-rejection-note" role="note"><div><strong>审核已退回 · 需要修改</strong><p>'+h(latestRejection.reason)+'</p><small>按意见修改后保存草稿，再重新提交审核。公开版本不会因此改变。</small></div><button type="button" data-editor-tab-link="history">查看审核记录</button></aside>':'';
  const historyActions={create:'创建草稿',save:'保存草稿',submit:'提交审核',publish:'正式发布',archive:'归档下线',restore:'从历史恢复',reject:'审核退回'};
  const timeline=isPreview?'':('<section class="cms-timeline"><div class="cms-history-heading"><div><h3>版本记录</h3><p>查看过去的修改，或把旧版本复制为新草稿。恢复不会改变正在公开的内容。</p></div><span>共 '+history.length+' 条记录</span></div>'
  +(history.length?history.slice(0,15).map(v=>{
@@ -781,8 +784,8 @@ const history=item.history||[];
   +'<button type="button" data-editor-tab="history" role="tab">版本记录</button></div>';
  const seoPanel=item.kind==='article'?seoStudio(values):'';
  root.classList.toggle('cms-easy-mode',true);
- root.innerHTML=topbar+siteHeader+tabs
-  +'<div id="cms-transition-feedback" class="cms-transition-feedback" role="alert" aria-live="assertive" hidden></div>'
+ root.innerHTML=topbar+siteHeader+rejectionNote+tabs
+  +'<div id="cms-transition-feedback" class="cms-transition-feedback" role="status" aria-live="polite" hidden></div>'
   +'<div data-editor-pane="content">'+form+'</div>'
   +'<div class="cms-private-preview-pane" data-editor-pane="preview" hidden><div class="cms-preview-heading"><div><h3>发布前预览</h3><p>模拟前台视觉效果，显示当前草稿和未保存修改；预览本身不会发布内容。</p></div><span id="cms-private-preview-state">仅当前浏览器可见</span></div><p id="cms-private-preview-error" role="alert" hidden></p><div id="cms-private-preview"></div></div>'
   +(item.kind==='article'?'<div data-editor-pane="seo" hidden>'+seoPanel+'</div>':'')
@@ -882,10 +885,46 @@ function transitionErrorInfo(error,action,applied=false){
 function showTransitionFeedback(error,action,applied=false){
  const panel=$('#cms-transition-feedback');if(!panel)return;
  const info=transitionErrorInfo(error,action,applied);
+ const needsReason=error.status===422&&action==='reject'&&!applied;
+ panel.dataset.state='error';
+ panel.setAttribute('role','alert');
+ panel.setAttribute('aria-live','assertive');
  panel.hidden=false;
  panel.innerHTML='<div><strong>'+h(info.title)+'</strong><p>'+h(error.message||'服务器没有返回详细原因')+'</p><small>'+h(info.detail)+'</small></div>'
-  +'<button type="button" data-review-reload>重新读取服务器状态</button>';
+  +(needsReason?'':'<button type="button" data-review-reload>重新读取服务器状态</button>');
  panel.scrollIntoView({block:'nearest',behavior:'smooth'});
+ if(needsReason){
+   const input=$('#cms-review-reason');
+   if(input){
+     input.setAttribute('aria-invalid','true');
+     input.setAttribute('aria-describedby','cms-transition-feedback');
+     input.focus({preventScroll:true});
+     input.scrollIntoView({block:'nearest'});
+     input.addEventListener('input',()=>{
+       input.removeAttribute('aria-invalid');
+       input.removeAttribute('aria-describedby');
+       clearTransitionFeedback();
+     },{once:true});
+   }
+ }
+}
+function showTransitionSuccess(action,item){
+ const panel=$('#cms-transition-feedback');if(!panel||!item)return;
+ const summaries={
+   submit:['已提交审核','草稿进入待审核状态。审核员确认后才会更新前台。','review','查看审核状态'],
+   reject:['已退回修改','审核意见已记录。编辑员可在基本信息上方查看原因，修改后重新提交。','content','查看修改意见'],
+   publish:['审核通过，已正式发布','当前审核版本已进入公开目录。后续修改仍需重新审核。','history','查看发布记录'],
+   archive:['内容已归档','内容已从公开目录撤下；历史记录和草稿仍可查看。','history','查看历史记录']
+ };
+ const info=summaries[action];if(!info)return;
+ panel.hidden=false;
+ panel.dataset.state='success';
+ panel.setAttribute('role','status');
+ panel.setAttribute('aria-live','polite');
+ panel.innerHTML='<div><strong>'+h(info[0])+'</strong><p>'+h(info[1])+'</p></div>'
+  +'<div class="cms-v546-result-actions"><button type="button" data-editor-tab-link="'+h(info[2])+'">'+h(info[3])+'</button>'
+  +(action==='publish'?'<a target="_blank" rel="noopener" href="'+h(kinds[item.kind].url+item.slug)+'">查看前台 ↗</a>':'')+'</div>';
+ panel.scrollIntoView({block:'nearest'});
 }
 async function transition(action){
  if(mode!=='admin'||state.busy||!state.selected)return;
@@ -895,6 +934,8 @@ async function transition(action){
  if(action==='reject'){
    reason=$('#cms-review-reason')?.value?.trim()||'';
    if(reason.trim().length<4){const error=Object.assign(new Error('退回原因至少 4 个字符，请填写具体修改意见。'),{status:422});showTransitionFeedback(error,action);message(error.message,false);return}
+   $('#cms-review-reason')?.removeAttribute('aria-invalid');
+   $('#cms-review-reason')?.removeAttribute('aria-describedby');
  }
  if(action==='archive'&&!confirm('确定归档「'+(item.payload.name||item.payload.title||item.slug)+'」？该页面将从前台列表移除。'))return;
  clearTransitionFeedback();
@@ -905,6 +946,7 @@ async function transition(action){
     method:'POST',body:JSON.stringify({expected_revision:item.revision,...(action==='reject'?{reason}:{})})});
    applied=true;
    state.dirty=false;await loadKind(false);await selectItem(item.slug);
+   showTransitionSuccess(action,state.selected);
    message({submit:'已提交审核',publish:'内容已发布到前台',archive:'已归档下线',reject:'已退回草稿并记录审核意见'}[action]||'操作完成');
  }catch(e){showTransitionFeedback(e,action,applied);message(applied?'操作可能已完成，请重新读取服务器状态':e.message,false)}
  finally{btnDisable(false)}

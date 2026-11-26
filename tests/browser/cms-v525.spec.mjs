@@ -850,3 +850,54 @@ test('V54.2 review modal and its action remain inside a narrow dark viewport',as
  expect(result.actionRight).toBeLessThanOrEqual(result.right+1);
  expect(result.docWidth).toBeLessThanOrEqual(result.viewport+1);
 });
+
+test('V54.6 submit and publish show persistent next steps in the editor',async({page})=>{
+ const {records}=await mockCms(page);
+ records.site.status='draft';records.site.source='cms';records.site.revision=2;
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await page.locator('[data-editor-submit]').click();
+ await expect(page.locator('#cms-transition-feedback')).toContainText('已提交审核');
+ await expect(page.locator('#cms-transition-feedback')).toHaveAttribute('data-state','success');
+ await expect(page.locator('#cms-transition-feedback')).toHaveAttribute('role','status');
+ await page.locator('#cms-transition-feedback [data-editor-tab-link="review"]').click();
+ await expect(page.locator('#cms-editor-pane-review')).toBeVisible();
+ await page.locator('[data-transition="publish"]').click();
+ await expect(page.locator('#cms-transition-feedback')).toContainText('审核通过，已正式发布');
+ await expect(page.locator('#cms-transition-feedback a')).toHaveAttribute('href','/websites/demo-site');
+ expect(records.site.status).toBe('published');
+});
+
+test('V54.6 rejection validation focuses reason, not misleading reload',async({page})=>{
+ const {records}=await mockCms(page);
+ records.site.status='review';records.site.source='cms';records.site.revision=3;
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await page.locator('[data-transition="reject"]').click();
+ await expect(page.locator('#cms-review-reason')).toBeFocused();
+ await expect(page.locator('#cms-review-reason')).toHaveAttribute('aria-invalid','true');
+ await expect(page.locator('#cms-transition-feedback')).toHaveAttribute('role','alert');
+ await expect(page.locator('[data-review-reload]')).toHaveCount(0);
+ await page.locator('#cms-review-reason').fill('请补充目标用户信息');
+ await expect(page.locator('#cms-review-reason')).not.toHaveAttribute('aria-invalid','true');
+ await expect(page.locator('#cms-transition-feedback')).toBeHidden();
+ await page.locator('[data-transition="reject"]').click();
+ await expect(page.locator('#cms-transition-feedback')).toContainText('已退回修改');
+ expect(records.site.status).toBe('draft');
+});
+
+test('V54.6 editor sees the latest review reason, escaped and responsive',async({page})=>{
+ const {records}=await mockCms(page,'editor');
+ records.site.status='draft';records.site.source='cms';records.site.revision=5;
+ records.site.history=[
+  {revision:5,action:'save',created_at:'2026-11-25T10:02:00'},
+  {revision:4,action:'reject',reason:'请补充证据 <img src=x onerror=alert(1)>',created_at:'2026-11-25T10:01:00'}
+ ];
+ await page.setViewportSize({width:320,height:720});
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ const note=page.locator('.cms-v546-rejection-note');
+ await expect(note).toBeVisible();
+ await expect(note).toContainText('请补充证据 <img src=x onerror=alert(1)>');
+ await expect(note.locator('img')).toHaveCount(0);
+ await note.locator('[data-editor-tab-link="history"]').click();
+ await expect(page.locator('#cms-editor-pane-history')).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});

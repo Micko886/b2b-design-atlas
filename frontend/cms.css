@@ -1085,3 +1085,29 @@ body[data-cms-mode="admin"] #cms-media-status{font-size:12px;line-height:1.65}
  }
  #cms-review-dialog .cms-v530-review-row>button{width:100%}
 }
+
+/* V54.6 · Editorial feedback stays next to the content it applies to. */
+.cms-easy-mode .cms-v546-rejection-note{
+ margin:12px 28px 16px;padding:16px 18px;border:1px solid var(--line-strong);
+ background:var(--surface-2);border-radius:12px;display:flex;
+ align-items:center;justify-content:space-between;gap:16px;
+}
+.cms-v546-rejection-note>div{min-width:0}
+.cms-v546-rejection-note strong{display:block;font-size:13px;line-height:1.5;color:var(--ink-strong)}
+.cms-v546-rejection-note p{margin:6px 0;color:var(--ink);font-size:12px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere}
+.cms-v546-rejection-note small{font-size:11px;line-height:1.6;color:var(--muted-strong)}
+.cms-v546-rejection-note button{flex:none;min-height:38px;padding:8px 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-strong);font:inherit;font-size:11px;font-weight:750;cursor:pointer}
+.cms-v546-rejection-note button:hover{border-color:var(--blue);color:var(--blue)}
+.cms-transition-feedback[data-state="success"]:not([hidden]){
+ border-color:var(--line-strong);background:var(--surface-2);
+}
+.cms-v546-result-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.cms-v546-result-actions a{min-height:38px;padding:8px 12px;box-sizing:border-box;border:1px solid var(--line-strong);background:var(--surface);color:var(--blue);border-radius:8px;text-decoration:none;font-size:11px;font-weight:750;display:inline-flex;align-items:center}
+.cms-v546-result-actions a:hover{border-color:var(--blue)}
+.cms-v514-reason textarea[aria-invalid="true"]{border-color:#c56b36;box-shadow:0 0 0 3px rgba(197,107,54,.13)}
+.cms-v546-rejection-note button:focus-visible,.cms-v546-result-actions :is(button,a):focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+@media(max-width:600px){
+ .cms-easy-mode .cms-v546-rejection-note{margin:10px 14px;flex-direction:column;align-items:stretch;padding:13px}
+ .cms-v546-rejection-note button{width:100%}
+ .cms-v546-result-actions,.cms-v546-result-actions a{width:100%}
+}
