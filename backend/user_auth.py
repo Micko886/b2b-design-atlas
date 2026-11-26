@@ -155,7 +155,13 @@ def origin(request):
     site=request.headers.get("origin")
     if site:
         parsed=urlparse(site)
-        if parsed.scheme!="https" or parsed.netloc.lower()!=request.headers.get("host","").lower():
+        host=request.headers.get("host","").lower()
+        # Browser E2E uses a disposable SQLite instance on loopback only.
+        # Never accept plain HTTP origins on Render or with PostgreSQL configured.
+        local_demo=(SQLITE_DEMO and not PG_URL and parsed.scheme=="http"
+                    and parsed.hostname in ("localhost","127.0.0.1")
+                    and parsed.netloc.lower()==host)
+        if parsed.netloc.lower()!=host or (parsed.scheme!="https" and not local_demo):
             error(403,"请求来源不合法。")
 def check_csrf(request,session):
     value=request.headers.get("x-csrf-token","")

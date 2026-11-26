@@ -98,6 +98,23 @@ class AuthenticatedWorkflowTests(unittest.TestCase):
         return {"id":slug,"name":"QA Reference","url":"https://example.org",
                 "sector":"Industrial","summary":summary,"screenshot_url":""}
 
+    def test_loopback_http_is_only_allowed_for_disposable_sqlite(self):
+        local=self.request("POST",origin="http://localhost:8765")
+        local.scope["headers"]=[(b"host",b"localhost:8765"),
+                                (b"origin",b"http://localhost:8765")]
+        user_auth.origin(local)
+        with patch.object(user_auth,"SQLITE_DEMO",False):
+            with self.assertRaises(HTTPException) as denied:
+                user_auth.origin(local)
+            self.assertEqual(denied.exception.status_code,403)
+        with patch.object(user_auth,"PG_URL","postgresql://example.invalid/test"):
+            with self.assertRaises(HTTPException) as denied:
+                user_auth.origin(local)
+            self.assertEqual(denied.exception.status_code,403)
+        with self.assertRaises(HTTPException) as denied:
+            user_auth.origin(self.request("POST",origin="http://attacker.example"))
+        self.assertEqual(denied.exception.status_code,403)
+
     def test_session_cookie_login_logout_and_csrf_guards(self):
         owner=self.register("owner")
         self.owners.add(owner["id"])
