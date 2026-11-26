@@ -616,19 +616,24 @@ function reviewBrief(item){
  +'<button type="button" class="cms-review-preview-link" data-editor-tab-link="preview">预览待审核稿</button>'
  +'<button type="button" class="cms-review-diff-btn" data-review-diff>打开逐段版本对比 ↗</button></div>';
 }
+let activeDiffRequest=0;
 async function openReviewDiff(revision=0){
  if(!can('view')||!state.selected)return;
+ const requestId=++activeDiffRequest;
  const item=state.selected,dialog=$('#cms-diff-dialog');
  if(!dialog.open)dialog.showModal();
  $('#cms-diff-results').innerHTML='<p class="cms-loading">正在读取版本快照…</p>';
  $('#cms-diff-summary').textContent='读取中…';
  try{
    const result=await api('/api/admin/content/'+item.kind+'/'+item.slug+'/diff?revision='+Number(revision||0));
+   if(requestId!==activeDiffRequest||!dialog.open)return;
    const select=$('#cms-diff-baseline');
    select.innerHTML='<option value="0">当前公开版本</option>'
     +(result.revisions||[]).map(row=>'<option value="'+row.revision+'">历史 v'+row.revision+' · '+h(row.action)+'</option>').join('');
    select.value=String(revision||0);
    $('#cms-diff-left-title').textContent=result.baseline_label;
+   const rightTitle=$('#cms-diff-right-title');
+   if(rightTitle)rightTitle.textContent=({review:'待审核稿',published:'当前已发布稿',archived:'当前归档稿'}[item.status]||'当前草稿')+' · v'+result.current_revision;
    const summary=result.summary||{};
    $('#cms-diff-summary').textContent='变化字段 '+result.changed_fields.length+' 项 · 新增 / 修改 '+(summary.added||0)+' 行 · 移除 / 修改 '+(summary.removed||0)+' 行';
    const changes=result.chunks||[];
@@ -639,7 +644,8 @@ async function openReviewDiff(revision=0){
         +'<pre>'+h(chunk.before?.[i]||'')+'</pre><pre>'+h(chunk.after?.[i]||'')+'</pre></div>').join('');
      return rows+(chunk.collapsed?'<div class="cms-diff-collapsed">… 已折叠 '+chunk.collapsed+' 行未变化正文</div>':'');
    }).join(''):'<p class="cms-loading">暂无正文差异。</p>';
- }catch(e){$('#cms-diff-results').innerHTML='<div class="cms-error">'+h(e.message)+'</div>'}
+ }catch(e){if(requestId===activeDiffRequest&&dialog.open)
+   $('#cms-diff-results').innerHTML='<div class="cms-error">'+h(e.message)+'</div>'}
 }
 // V51.19 · Content SEO preflight (editor unsaved preview, reviewer saved snapshot).
 function seoStudio(v){
@@ -721,10 +727,23 @@ function renderForm(item){
     :'<p>当前内容状态为 '+h(statusText[s]||s)+'，无法直接执行发布审核。</p>')
    +'</section>':'';
 const history=item.history||[];
- const timeline=isPreview?'':('<div class="cms-timeline"><h3>版本与操作记录</h3>'+
- (history.length?history.slice(0,15).map(v=>'<div class="cms-timeline-row"><span class="cms-timeline-dot"></span><div class="cms-timeline-content"><b>v'+v.revision+' · '+h({create:'创建草稿',save:'保存草稿',submit:'提交审核',publish:'正式发布',archive:'归档下线',restore:'恢复旧稿',reject:'审核退回'}[v.action]||v.action)+'</b><span>'+h(v.created_at?.replace('T',' ').slice(0,19)||'')+'</span>'
- +(v.reason?'<em class="cms-review-reason">退回意见：'+h(v.reason)+'</em>':'')+'</div>'+(editable?'<button type="button" data-restore="'+v.revision+'">恢复草稿</button>':'')+'</div>').join(''):'<p style="color:var(--muted);font-size:11px">原始内容尚无 CMS 修改记录。首次保存后开始记录版本。</p>')
- +'</div>');
+ const historyActions={create:'创建草稿',save:'保存草稿',submit:'提交审核',publish:'正式发布',archive:'归档下线',restore:'从历史恢复',reject:'审核退回'};
+ const timeline=isPreview?'':('<section class="cms-timeline"><div class="cms-history-heading"><div><h3>版本记录</h3><p>查看过去的修改，或把旧版本复制为新草稿。恢复不会改变正在公开的内容。</p></div><span>共 '+history.length+' 条记录</span></div>'
+ +(history.length?history.slice(0,15).map(v=>{
+   const current=v.revision===item.revision;
+   return '<div class="cms-timeline-row'+(current?' is-current':'')+'" data-history-revision="'+h(v.revision)+'">'
+    +'<span class="cms-timeline-dot" aria-hidden="true"></span>'
+    +'<div class="cms-timeline-content"><b>v'+h(v.revision)+' · '+h(historyActions[v.action]||v.action)+'</b>'
+    +'<span>'+h(v.created_at?.replace('T',' ').slice(0,19)||'')+'</span>'
+    +(v.reason?'<em class="cms-review-reason">退回意见：'+h(v.reason)+'</em>':'')+'</div>'
+    +'<div class="cms-history-row-actions">'
+    +(current?'<span class="cms-history-current">当前版本</span>'
+      :'<button type="button" data-review-diff="'+h(v.revision)+'">对比当前</button>'
+        +(editable?'<button type="button" class="cms-history-restore" data-restore="'+h(v.revision)+'">恢复为新草稿</button>':''))
+    +'</div></div>';
+ }).join(''):'<p class="cms-history-empty">这条内容还没有历史记录，首次保存后会自动开始记录。</p>')
+ +(history.length>15?'<p class="cms-history-footnote">此处仅显示最近 15 条记录。</p>':'')
+ +'</section>');
  const root=$('#cms-editor-body');
  const tabs='<div class="atlas-v521-editor-tabs" role="tablist" aria-label="内容工作台">'
   +'<button type="button" data-editor-tab="content" role="tab">编辑内容</button>'
@@ -863,15 +882,20 @@ async function transition(action){
  finally{btnDisable(false)}
 }
 async function restoreRevision(revision){
- if(mode!=='admin'||!state.selected||state.busy)return;
+ if(mode!=='admin'||!can('edit')||!state.selected||state.busy)return;
+ const targetRevision=Number(revision);
+ if(!Number.isSafeInteger(targetRevision)||targetRevision<1||targetRevision>=state.selected.revision
+    ||!state.selected.history?.some(v=>v.revision===targetRevision)){
+   message('请选择历史记录中的有效旧版本进行恢复。',false);return;
+ }
  if(state.dirty||autosavePaused){message('请先保存当前编辑，或解决版本冲突后再恢复历史。',false);return}
- if(!confirm('将 v'+revision+' 的内容恢复为一份新草稿？当前已发布的前台内容不会改变。'))return;
+ if(!confirm('将历史 v'+targetRevision+' 复制为新的草稿？当前 v'+state.selected.revision+' 的公开内容不会被覆盖，恢复后仍需提交审核。'))return;
  const target=state.selected;btnDisable(true);
  try{
    await api('/api/admin/content/'+target.kind+'/'+target.slug+'/restore',{
-    method:'POST',body:JSON.stringify({expected_revision:target.revision,revision})});
+    method:'POST',body:JSON.stringify({expected_revision:target.revision,revision:targetRevision})});
    state.dirty=false;await loadKind(false);await selectItem(target.slug);message('已从历史版本生成新草稿');
- }catch(e){message(e.message,false)}
+ }catch(e){message(e.status===409?'版本已经变化，请刷新记录后再恢复历史。':e.message,false)}
  finally{btnDisable(false)}
 }
 function createDefault(kind,slug,fields){
@@ -2043,7 +2067,8 @@ function boot(){
    if(e.target.closest('[data-v515-close]')){$('#cms-categories-dialog').close();return}
    if(e.target.closest('[data-autosave-retry]')){if(autosavePaused){message('已暂停覆盖：请备份当前内容并刷新记录。',false);return}await persistDraft(false);return}
    const tag=e.target.closest('[data-v512-tag]');if(tag){const field=$('#v51-tags');if(!field)return;const existing=linesFrom('#v51-tags');if(!existing.includes(tag.dataset.v512Tag)){field.value=[...existing,tag.dataset.v512Tag].join(String.fromCharCode(10));markDraftDirty();refreshArticlePreview()}return}
-   if(e.target.closest('[data-review-diff]')){await openReviewDiff();return}
+   const diffButton=e.target.closest('[data-review-diff]');
+   if(diffButton){await openReviewDiff(Number(diffButton.dataset.reviewDiff||0));return}
     if(e.target.closest('[data-v518-close-diff]')){$('#cms-diff-dialog').close();return}
     const convert=e.target.closest('[data-block-convert]');
    if(convert){if(captureArticleStructure())convertLegacyChapter(convert.closest('[data-v51-section]'));return}

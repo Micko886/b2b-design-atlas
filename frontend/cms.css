@@ -933,3 +933,22 @@ body[data-cms-mode="admin"] #cms-media-status{font-size:12px;line-height:1.65}
 .cms-empty-results button:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
 .cms-edit-quick-actions [hidden]{display:none!important}
 @media(max-width:480px){.cms-empty-results{padding:26px 15px}body.cms-editor-active .cms-edit-quick-actions button{white-space:normal}}
+
+/* V53.9 · A legible, non-destructive revision history with clear actions. */
+.cms-history-heading{display:flex;align-items:start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.cms-history-heading h3{font-size:16px;margin:0 0 6px;color:var(--ink-strong)}
+.cms-history-heading p,.cms-history-footnote,.cms-history-empty{margin:0;font-size:12px;line-height:1.65;color:var(--muted-strong)}
+.cms-history-heading>span{font-size:11px;color:var(--muted);white-space:nowrap}
+.cms-timeline-row{align-items:center;gap:12px;padding:14px 0;margin:0;border-top:1px solid var(--line)}
+.cms-timeline-row.is-current{background:var(--surface-2);border-radius:9px;padding:14px 12px;border-top:0}
+.cms-timeline-content{min-width:0;flex:1;font-size:12px}
+.cms-timeline-content b{font-size:12px;line-height:1.55}
+.cms-timeline-content span{font-size:11px;line-height:1.6}
+.cms-history-row-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}
+.cms-timeline-row .cms-history-row-actions button{border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;font-size:11px;color:var(--ink-strong);background:var(--surface);cursor:pointer;white-space:nowrap}
+.cms-timeline-row .cms-history-row-actions button.cms-history-restore{color:var(--blue);border-color:var(--blue)}
+.cms-timeline-row .cms-history-row-actions button:hover{background:var(--surface-2)}
+.cms-timeline-row .cms-history-row-actions button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.cms-history-current{font-size:11px;white-space:nowrap;color:var(--muted-strong);font-weight:750}
+.cms-history-footnote{margin-top:16px}
+@media(max-width:630px){.cms-timeline-row{align-items:flex-start;flex-wrap:wrap}.cms-timeline-row .cms-history-row-actions{width:100%;justify-content:flex-start;padding-left:20px}}

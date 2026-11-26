@@ -6,8 +6,8 @@
 <meta name="theme-color" content="#f5f7fb">
 <title>内容管理 · B2B Atlas Control Room</title>
 <link rel="stylesheet" href="/assets/admin.css?v=5300">
-<link rel="stylesheet" href="/assets/cms.css?v=5380">
-<script defer src="/assets/cms.js?v=5380"></script>
+<link rel="stylesheet" href="/assets/cms.css?v=5390">
+<script defer src="/assets/cms.js?v=5390"></script>
 </head>
 <body data-cms-mode="__CMS_MODE__">
 <svg xmlns="http://www.w3.org/2000/svg" class="icon-sprite" aria-hidden="true">
@@ -33,7 +33,7 @@
 </svg>
 <div class="dashboard-layout cms-layout atlas-v521-layout">
  <aside class="sidebar" id="cms-sidebar">
-  <div class="sidebar-brand"><div class="brand-symbol" aria-hidden="true"><span></span><span></span><span></span><span></span></div><div class="brand-wordmark"><strong>B2B Atlas</strong><small>CONTROL ROOM</small></div><span class="brand-version">V53.8</span></div>
+  <div class="sidebar-brand"><div class="brand-symbol" aria-hidden="true"><span></span><span></span><span></span><span></span></div><div class="brand-wordmark"><strong>B2B Atlas</strong><small>CONTROL ROOM</small></div><span class="brand-version">V53.9</span></div>
   <div class="workspace-chip"><span class="workspace-chip-icon">A</span><span><strong>Atlas Workspace</strong><small>Content Studio</small></span></div>
   <nav class="side-nav atlas-v521-nav atlas-v530-nav" aria-label="后台主导航">
    <span class="nav-group-label">工作区 <span>WORKSPACE</span></span>
@@ -232,13 +232,13 @@
 </dialog>
 <dialog id="cms-diff-dialog" class="cms-dialog cms-v518-diff-dialog" aria-label="审核内容版本对比">
   <div class="cms-dialog-head"><div><span class="section-eyebrow">EDITORIAL DIFF · VERSION REVIEW</span>
-    <h2>版本正文逐段对比</h2><p>左侧是当前公开版或历史快照，右侧是待审核稿。标记具体新增、删除和修改。</p></div>
+    <h2>比较内容版本</h2><p>左侧选择公开版本或历史版本，右侧展示当前编辑版本。只读比较，不会保存或发布。</p></div>
     <button type="button" data-v518-close-diff aria-label="关闭版本对比">×</button></div>
   <div class="cms-diff-toolbar">
     <label>对比基线 <select id="cms-diff-baseline"><option value="0">当前公开版本</option></select></label>
     <span id="cms-diff-summary">正在计算差异…</span>
   </div>
-  <div class="cms-diff-columns-head"><strong id="cms-diff-left-title">公开版本</strong><strong>当前待审核稿</strong></div>
+  <div class="cms-diff-columns-head"><strong id="cms-diff-left-title">公开版本</strong><strong id="cms-diff-right-title">当前编辑稿</strong></div>
   <div id="cms-diff-results" class="cms-diff-results" aria-live="polite"><p class="cms-loading">正在读取版本对比…</p></div>
   <div class="cms-dialog-actions"><button type="button" class="cms-btn-secondary" data-v518-close-diff>完成</button></div>
 </dialog>

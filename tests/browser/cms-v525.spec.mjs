@@ -84,6 +84,31 @@ async function mockCms(page,role='owner',forcedErrors={}){
    else if(item.usage_count){status=409;result={detail:'Image is used'}}
    else{uploads.splice(uploads.indexOf(item),1);result={ok:true}}
   }
+  else if(method==='GET'&&/^\/api\/admin\/content\/(site|module|pattern|article)\/[^/]+\/diff$/.test(p)){
+   const match=p.match(/^\/api\/admin\/content\/(site|module|pattern|article)\/([^/]+)\/diff$/);
+   const record=records[match[1]],revision=Number(url.searchParams.get('revision')||0);
+   if(!record||record.slug!==match[2]){status=404;result={detail:'Content not found'}}
+   else if(revision&&!(record.history||[]).some(x=>x.revision===revision)){
+    status=404;result={detail:'No such revision'};
+   }else{
+    result={current_revision:record.revision,baseline_revision:revision||'published',
+     baseline_label:revision?'历史 v'+revision:'当前公开版本',
+     revisions:record.history||[],changed_fields:['summary'],summary:{added:1,removed:1},
+     chunks:[{tag:'replace',before:['历史内容 v'+revision],after:[record.payload.summary||''],collapsed:0}]};
+   }
+  }
+  else if(method==='POST'&&/^\/api\/admin\/content\/(site|module|pattern|article)\/[^/]+\/restore$/.test(p)){
+   const match=p.match(/^\/api\/admin\/content\/(site|module|pattern|article)\/([^/]+)\/restore$/);
+   const record=records[match[1]];
+   if(!record||record.slug!==match[2]){status=404;result={detail:'Content not found'}}
+   else if(body.expected_revision!==record.revision){status=409;result={detail:'Stale revision'}}
+   else if(!(record.history||[]).some(x=>x.revision===body.revision)){status=404;result={detail:'History not found'}}
+   else{
+    record.status='draft';record.source='cms';record.revision++;
+    record.history=[{revision:record.revision,action:'restore',created_at:'2026-11-26T12:00:00'},...(record.history||[])];
+    result={ok:true,status:'draft',revision:record.revision};
+   }
+  }
   else if(p==='/api/admin/content'&&method==='GET'){
    const kind=url.searchParams.get('kind'),x=records[kind];
    result={items:x?[{kind,slug:x.slug,label:x.payload.name||x.payload.title,status:x.status,source:x.source,revision:x.revision,sector:x.payload.sector||x.payload.category||x.payload.family||''}]:[]};
@@ -594,4 +619,62 @@ test('V53.8 saving a reviewed item exposes submit action for its new draft',asyn
  await expect(page.locator('[data-editor-submit]')).toBeVisible();
  await expect(page.locator('[data-editor-submit]')).toBeEnabled();
  await expect(page.locator('[data-editor-state-link]')).toBeHidden();
+});
+
+test('V53.9 history explains safe restore and compares a previous revision',async({page})=>{
+ const {records}=await mockCms(page);
+ records.site.source='cms';records.site.status='published';records.site.revision=4;
+ records.site.history=[
+  {revision:4,action:'publish',created_at:'2026-11-25T11:00:00'},
+  {revision:3,action:'submit',created_at:'2026-11-25T10:00:00'},
+  {revision:2,action:'save',created_at:'2026-11-25T09:00:00'}
+ ];
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await page.locator('[data-editor-tab="history"]').click();
+ await expect(page.locator('.cms-history-heading')).toContainText('不会改变正在公开的内容');
+ await expect(page.locator('[data-history-revision="4"] .cms-history-current')).toHaveText('当前版本');
+ await expect(page.locator('[data-restore="4"]')).toHaveCount(0);
+ await page.locator('[data-review-diff="2"]').click();
+ await expect(page.locator('#cms-diff-dialog')).toHaveJSProperty('open',true);
+ await expect(page.locator('#cms-diff-left-title')).toHaveText('历史 v2');
+ await expect(page.locator('#cms-diff-right-title')).toContainText('当前已发布稿');
+ await expect(page.locator('#cms-diff-baseline')).toHaveValue('2');
+ await page.locator('#cms-diff-baseline').selectOption('3');
+ await expect(page.locator('#cms-diff-left-title')).toHaveText('历史 v3');
+ await expect(page.locator('#cms-diff-baseline')).toHaveValue('3');
+ await page.locator('[data-v518-close-diff]').first().click();
+ expect(records.site.status).toBe('published');
+});
+
+test('V53.9 recovering a history snapshot creates draft without publishing',async({page})=>{
+ const {records}=await mockCms(page);
+ records.site.source='cms';records.site.status='published';records.site.revision=4;
+ records.site.history=[
+  {revision:4,action:'publish',created_at:'2026-11-25T11:00:00'},
+  {revision:2,action:'save',created_at:'2026-11-25T09:00:00'}
+ ];
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await page.locator('[data-editor-tab="history"]').click();
+ page.once('dialog',dialog=>{
+  expect(dialog.message()).toContain('不会被覆盖');
+  dialog.accept();
+ });
+ await page.locator('[data-restore="2"]').click();
+ await expect(page.locator('.cms-easy-header-side .cms-item-state')).toContainText('草稿');
+ expect(records.site.status).toBe('draft');
+ expect(records.site.revision).toBe(5);
+ await expect(page.locator('[data-history-revision="5"] .cms-history-current')).toHaveCount(1);
+});
+
+test('V53.9 reviewers can compare history but cannot restore it',async({page})=>{
+ const {records}=await mockCms(page,'reviewer');
+ records.site.source='cms';records.site.status='review';records.site.revision=4;
+ records.site.history=[
+  {revision:4,action:'submit',created_at:'2026-11-25T11:00:00'},
+  {revision:2,action:'save',created_at:'2026-11-25T09:00:00'}
+ ];
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await page.locator('[data-editor-tab="history"]').click();
+ await expect(page.locator('[data-restore]')).toHaveCount(0);
+ await expect(page.locator('[data-review-diff="2"]')).toBeVisible();
 });
