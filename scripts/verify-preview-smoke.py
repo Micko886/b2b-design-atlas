@@ -64,7 +64,7 @@ def main():
     build = as_json(body)
     check(status == 200, "deployment fingerprint endpoint returns 200")
     check(build.get("commit") == EXPECTED, "live deployment SHA matches tested commit")
-    check(bool(re.fullmatch(r"V[0-9]+(?:\\.[0-9]+){1,2}", str(build.get("cms_version", "")))),
+    check(bool(re.fullmatch(r"V[0-9]+(?:\.[0-9]+){1,2}", str(build.get("cms_version", "")))),
           "CMS release version is available")
     check("no-store" in headers.get("Cache-Control", ""), "deployment metadata cannot be cached")
     check("Set-Cookie" not in headers, "version endpoint never creates a session")
