@@ -52,3 +52,8 @@ jobs:
               print("::error::Check Render Git Deployment Credentials and repository access.")
               raise SystemExit(1)
           PY
+      - name: Smoke test live guest security, auth availability and CMS assets
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+          PREVIEW_URL: https://b2b-design-atlas-preview.onrender.com
+        run: python scripts/verify-preview-smoke.py

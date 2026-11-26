@@ -22,3 +22,15 @@ Render 的自动部署需要使用**已授权的 Git 提供方连接**。以公�
 ## 手动部署
 
 在 GitHub 尚未授权 Render 前，使用 Render 服务页的 Manual Deploy 或有权限的 Render API 将最新 main 提交部署。不要把 Render API Key、Deploy Hook URL 或数据库凭据提交到 GitHub。
+
+## V54.3 · 安全的线上冒烟验收
+
+代码部署后的 `Preview Deployment Verification` 不再只核对 Git 提交号，还运行 `scripts/verify-preview-smoke.py`：
+
+- 线上 SHA、版本号、缓存响应头和 /api/health；
+- 公开首页、匿名身份、注册/登录存储就绪状态；
+- /admin 与 /admin/content 的访客登录跳转和禁止缓存；
+- 内容、媒体、标签和后台总览 API 的匿名 401；
+- CMS JavaScript 和 CSS 实际加载。
+
+所有请求均为无 Cookie 的 GET，不创建用户、不上传媒体，也不触发发布。自动化不使用真实管理员账户，因此账号登录、编辑、审核、发布仍需各角色的独立在线验收。
