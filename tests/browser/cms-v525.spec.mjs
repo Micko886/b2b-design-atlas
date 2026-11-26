@@ -834,6 +834,9 @@ test('V54.2 review modal and its action remain inside a narrow dark viewport',as
  await page.goto(origin+'/admin/content?kind=site');
  await page.locator('[data-set-theme="dark"]').click();
  await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
+ await page.locator('#cms-menu').click();
+ await expect(page.locator('#cms-menu')).toHaveAttribute('aria-expanded','true');
+ await expect(page.locator('#cms-review-shortcut')).toBeVisible();
  await page.locator('#cms-review-shortcut').click();
  await expect(page.locator('#cms-review-dialog')).toHaveJSProperty('open',true);
  const result=await page.evaluate(()=>{
