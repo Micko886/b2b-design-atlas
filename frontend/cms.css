@@ -1259,3 +1259,25 @@ body.cms-editor-active .cms-edit-quick-actions{display:flex;align-items:center;g
  .cms-v554-pager button{padding:8px;flex:1 1 0}
  .cms-v554-pager span{flex:0 0 auto;min-width:70px}
 }
+
+/* V55.5 · Review directly from the list, then continue without switching tools. */
+.cms-v555-review-filter{display:inline-flex;align-items:center;min-height:35px;margin-top:12px;padding:7px 12px;border:1px solid var(--blue);border-radius:9px;color:var(--blue);background:var(--surface);font-size:11px;font-weight:770;line-height:1.4;cursor:pointer}
+.cms-v555-review-filter[hidden]{display:none!important}
+.cms-v555-review-filter:hover{background:var(--blue-soft)}
+.cms-v51-row .cms-v555-row-compare{flex:0 0 auto;align-self:center;margin:8px 9px 8px 0;min-height:37px;padding:8px 12px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);color:var(--blue);font-size:11px;font-weight:760;cursor:pointer}
+.cms-v51-row .cms-v555-row-compare:hover{border-color:var(--blue);background:var(--blue-soft)}
+.cms-v555-review-nav{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin:0 0 18px;padding:15px 16px;border:1px solid var(--line-strong);border-radius:11px;background:var(--surface-2)}
+.cms-v555-review-nav>div:first-child{display:grid;gap:4px;min-width:0}
+.cms-v555-review-nav strong{font-size:12px;color:var(--ink-strong);font-weight:780}
+.cms-v555-review-nav span{font-size:11px;color:var(--muted);line-height:1.5}
+.cms-v555-review-nav>div:last-child{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.cms-v555-review-nav button{min-height:38px;border:1px solid var(--line-strong);border-radius:8px;padding:8px 12px;background:var(--surface);color:var(--ink-strong);font-size:11px;font-weight:740;cursor:pointer}
+.cms-v555-review-nav button[data-v555-next-review]{background:var(--blue);color:#fff;border-color:var(--blue)}
+.cms-v555-review-nav button:hover{border-color:var(--blue)}
+.cms-v555-review-filter:focus-visible,.cms-v555-row-compare:focus-visible,.cms-v555-review-nav button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+@media(max-width:600px){
+ .cms-v51-row .cms-v555-row-compare{margin:6px;min-height:37px;padding:7px 9px;font-size:10px}
+ .cms-v555-review-nav{padding:13px 11px}
+ .cms-v555-review-nav>div:last-child{width:100%}
+ .cms-v555-review-nav button{flex:1 1 0;min-width:0}
+}

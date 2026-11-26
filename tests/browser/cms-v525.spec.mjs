@@ -86,7 +86,7 @@ async function mockCms(page,role='owner',forcedErrors={}){
   }
   else if(method==='GET'&&/^\/api\/admin\/content\/(site|module|pattern|article)\/[^/]+\/diff$/.test(p)){
    const match=p.match(/^\/api\/admin\/content\/(site|module|pattern|article)\/([^/]+)\/diff$/);
-   const record=records[match[1]],revision=Number(url.searchParams.get('revision')||0);
+   const record=Object.values(records).find(x=>x.kind===match[1]&&x.slug===match[2]),revision=Number(url.searchParams.get('revision')||0);
    if(!record||record.slug!==match[2]){status=404;result={detail:'Content not found'}}
    else if(revision&&!(record.history||[]).some(x=>x.revision===revision)){
     status=404;result={detail:'No such revision'};
@@ -99,7 +99,7 @@ async function mockCms(page,role='owner',forcedErrors={}){
   }
   else if(method==='POST'&&/^\/api\/admin\/content\/(site|module|pattern|article)\/[^/]+\/restore$/.test(p)){
    const match=p.match(/^\/api\/admin\/content\/(site|module|pattern|article)\/([^/]+)\/restore$/);
-   const record=records[match[1]];
+   const record=Object.values(records).find(x=>x.kind===match[1]&&x.slug===match[2]);
    if(!record||record.slug!==match[2]){status=404;result={detail:'Content not found'}}
    else if(body.expected_revision!==record.revision){status=409;result={detail:'Stale revision'}}
    else if(!(record.history||[]).some(x=>x.revision===body.revision)){status=404;result={detail:'History not found'}}
@@ -133,8 +133,8 @@ async function mockCms(page,role='owner',forcedErrors={}){
    }
   }else{
    const m=p.match(/^\/api\/admin\/content\/(site|module|pattern|article)\/([^/]+)(?:\/(submit|publish|reject|archive))?$/);
-   if(m&&records[m[1]]){
-    const x=records[m[1]];
+   const x=m?Object.values(records).find(record=>record.kind===m[1]&&record.slug===m[2]):null;
+   if(m&&x){
     if(method==='PUT'){x.payload=body.payload;x.status='draft';x.source='cms';x.revision++;result={revision:x.revision,status:x.status}}
     else if(method==='POST'){if(forcedErrors[m[3]]){status=forcedErrors[m[3]].status;result={detail:forcedErrors[m[3]].detail}}else{x.status={submit:'review',publish:'published',reject:'draft',archive:'archived'}[m[3]]||x.status;x.revision++;result={revision:x.revision,status:x.status}}}
     else result=x;
@@ -1419,4 +1419,89 @@ test('V55.4 mobile sorting and paging do not overflow at 320px',async({page})=>{
  await page.locator('#cms-page-next').click();
  await expect(page.locator('#cms-page-info')).toContainText('第 2 / 2 页');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
+
+
+test('V55.5 pending-review shortcut filters list and clears stale search',async({page})=>{
+ const {records}=await mockCms(page,'reviewer');
+ records.site.status='review';records.site.source='cms';records.site.revision=2;
+ records.reviewSecond={kind:'site',slug:'review-second',source:'cms',status:'review',revision:2,
+  payload:{id:'review-second',name:'Second Review',url:'https://example.org',sector:'Industry',summary:'New review'}};
+ await page.goto(origin+'/admin/content?kind=site');
+ await expect(page.locator('#cms-review-filter')).toBeVisible();
+ await expect(page.locator('#cms-review-filter')).toContainText('待审核 2 条');
+ await page.locator('#cms-search').fill('no-matches');
+ await expect(page.locator('[data-pick]')).toHaveCount(0);
+ await page.locator('#cms-review-filter').click();
+ await expect(page.locator('#cms-search')).toHaveValue('');
+ await expect(page.locator('#cms-status')).toHaveValue('review');
+ await expect(page.locator('[data-pick]')).toHaveCount(2);
+ await expect(page.locator('[data-review-compare]')).toHaveCount(2);
+});
+
+test('V55.5 reviewer compares directly from list and advances to the correct next record',async({page})=>{
+ const {records}=await mockCms(page,'reviewer');
+ records.site.status='review';records.site.source='cms';records.site.revision=3;
+ records.site.published=structuredClone(records.site.payload);
+ records.site.payload.summary='Changed current description';
+ records.reviewSecond={kind:'site',slug:'review-second',source:'cms',status:'review',revision:4,
+  payload:{id:'review-second',name:'Second Review',url:'https://example.org',sector:'Industry',summary:'Review another site'}};
+ await page.goto(origin+'/admin/content?kind=site');
+ await page.locator('[data-review-compare="demo-site"]').click();
+ await expect(page.locator('#cms-diff-dialog')).toHaveJSProperty('open',true);
+ await expect(page.locator('#cms-diff-right-title')).toContainText('待审核稿');
+ await expect(page.locator('[data-editor-tab="review"]')).toHaveAttribute('aria-selected','true');
+ await page.locator('[data-v518-close-diff]').first().click();
+ await expect(page.locator('.cms-v555-review-nav')).toContainText('2 条待处理');
+ await page.locator('[data-v555-next-review]').click();
+ await expect(page.locator('.cms-easy-heading h2')).toContainText('Second Review');
+ await expect(page.locator('[data-editor-tab="review"]')).toHaveAttribute('aria-selected','true');
+ await expect(page.locator('.cms-v555-review-nav')).toBeVisible();
+});
+
+test('V55.5 publishing one review offers another without leaking prior record data',async({page})=>{
+ const {records}=await mockCms(page,'reviewer');
+ records.site.status='review';records.site.source='cms';records.site.revision=3;
+ records.reviewSecond={kind:'site',slug:'review-second',source:'cms',status:'review',revision:4,
+  payload:{id:'review-second',name:'Second Review',url:'https://example.org',sector:'Industry',summary:'Review another site'}};
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await page.locator('[data-transition="publish"]').click();
+ await expect(page.locator('#cms-transition-feedback')).toContainText('已正式发布');
+ await expect(page.locator('[data-v555-next-review]')).toBeVisible();
+ expect(records.site.status).toBe('published');
+ expect(records.reviewSecond.status).toBe('review');
+ await page.locator('[data-v555-next-review]').click();
+ await expect(page.locator('.cms-easy-heading h2')).toContainText('Second Review');
+ await expect(page.locator('.cms-easy-header-side .cms-item-state')).toContainText('待审核');
+ await expect(page.locator('[data-transition="reject"]')).toBeVisible();
+ await page.locator('#cms-review-reason').fill('需要补充相关案例的证据');
+ await page.locator('[data-transition="reject"]').click();
+ await expect(page.locator('#cms-transition-feedback')).toContainText('已退回修改');
+ expect(records.reviewSecond.status).toBe('draft');
+ await page.locator('[data-v555-review-queue]').click();
+ await expect(page.locator('#cms-review-dialog')).toHaveJSProperty('open',true);
+ await expect(page.locator('#cms-review-queue-status')).toContainText('待审核 0 条');
+});
+
+test('V55.5 editor cannot use reviewer-only shortcuts or change review status',async({page})=>{
+ const {records}=await mockCms(page,'editor');
+ records.site.status='review';records.site.source='cms';records.site.revision=3;
+ await page.goto(origin+'/admin/content?kind=site');
+ await expect(page.locator('#cms-review-filter')).toBeHidden();
+ await expect(page.locator('[data-review-compare]')).toHaveCount(0);
+ await page.locator('[data-pick="demo-site"]').click();
+ await expect(page.locator('.cms-v555-review-nav')).toHaveCount(0);
+ await expect(page.locator('[data-transition="publish"]')).toHaveCount(0);
+ await expect(page.locator('[data-transition="reject"]')).toHaveCount(0);
+});
+
+test('V55.5 reviewer compare action remains usable on 320px viewport',async({page})=>{
+ const {records}=await mockCms(page,'reviewer');
+ records.site.status='review';records.site.source='cms';records.site.revision=2;
+ await page.setViewportSize({width:320,height:760});
+ await page.goto(origin+'/admin/content?kind=site');
+ await expect(page.locator('[data-review-compare="demo-site"]')).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ await page.locator('[data-review-compare="demo-site"]').click();
+ await expect(page.locator('#cms-diff-dialog')).toHaveJSProperty('open',true);
 });

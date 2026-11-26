@@ -262,7 +262,9 @@ function updateSummary(){
  const counts={source:0,draft:0,review:0,published:0,archived:0,public:0};
  for(const x of state.items)counts[x.status]=(counts[x.status]||0)+1;
  const numbers=[state.items.length,counts.source+counts.public,counts.draft,counts.review,counts.published];
- $$('.cms-metric strong').forEach((el,i)=>el.textContent=numbers[i].toLocaleString('zh-CN'));
+ $('.cms-metric strong').forEach((el,i)=>el.textContent=numbers[i].toLocaleString('zh-CN'));
+ const button=$('#cms-review-filter');
+ if(button){button.hidden=mode!=='admin'||!can('review')||!counts.review;button.textContent='待审核 '+counts.review+' 条 · 直接处理'}
 }
 function listFiltered(){
  const q=state.q.toLocaleLowerCase().trim();
@@ -360,10 +362,12 @@ function drawItems(){
    const bulkRule=bulkEligibility(item),bulkChecked=state.selectedSlugs.has(item.slug);
    const bulkSelect=mode==='admin'&&item.status!=='source'
     ?'<label class="cms-v51-select" aria-label="选择 '+h(item.label)+'"><input type="checkbox" data-bulk-select="'+h(item.slug)+'" '+(bulkChecked?'checked':'')+(!bulkRule.ok?' disabled title="'+h(bulkRule.reason)+'"':'')+'></label>':'';
+   const compare=mode==='admin'&&can('review')&&item.status==='review'
+    ?'<button type="button" class="cms-v555-row-compare" data-review-compare="'+h(item.slug)+'" aria-label="对比 '+h(item.label)+' 的待审核修改">对比修改</button>':'';
    return '<div class="cms-v51-row">'+bulkSelect+'<button type="button" class="cms-item '+(state.selected?.slug===item.slug?'active':'')+'" data-pick="'+h(item.slug)+'" aria-label="'+actionLabel+'：'+h(item.label)+'">'
    +'<span class="cms-item-thumb">'+(img?'<img src="'+h(img)+'" loading="lazy" alt="">':icon(kinds[state.kind].icon))+'</span>'
    +'<span class="cms-item-copy"><strong>'+h(item.label)+'</strong><small>'+h(item.sector||item.slug)+'</small><small class="cms-item-open-label">'+h(listNextAction(item))+'</small></span>'
-   +stateClasses(item.status)+'</button></div>';
+   +stateClasses(item.status)+'</button>'+compare+'</div>';
  }).join(''):'<div class="cms-empty-results" role="status"><strong>'+(state.q||state.status?'没有匹配的内容':'当前还没有内容')+'</strong><p>'+(state.q||state.status?'调整关键词或筛选条件，或者直接查看全部记录。':'可以通过右上角的新建内容按钮添加第一条记录。')+'</p>'+(state.q||state.status?'<button type="button" data-clear-content-filters>清除筛选 · 查看全部</button>':'')+'</div>';
  $('#cms-count').textContent=filtered.length+' 条';
  updateListPager(filtered,items);
@@ -689,6 +693,21 @@ function inlineReviewComparison(item){
   +(fields.length>shown.length?'<p>还有 '+(fields.length-shown.length)+' 项修改，请打开下方完整版本对比。</p>':'')
   +'</section>';
 }
+function nextReviewSlug(currentSlug){
+ const pending=state.items.filter(item=>item.status==='review')
+  .sort((a,b)=>String(b.updated_at||'').localeCompare(String(a.updated_at||''))||String(a.label||a.slug).localeCompare(String(b.label||b.slug),'zh-CN'));
+ if(!pending.length)return null;
+ const index=pending.findIndex(item=>item.slug===currentSlug);
+ const next=index>=0?pending[(index+1)%pending.length]:pending[0];
+ return next?.slug===currentSlug?null:next?.slug||null;
+}
+function reviewNavigation(item){
+ if(mode!=='admin'||!can('review')||item.status!=='review')return '';
+ const pending=state.items.filter(x=>x.status==='review').length,next=nextReviewSlug(item.slug);
+ return '<nav class="cms-v555-review-nav" aria-label="当前栏目审核导航"><div><strong>审核进度 · '+pending+' 条待处理</strong><span>检查差异，确认后发布或退回</span></div><div>'
+  +(next?'<button type="button" data-v555-next-review="'+h(next)+'">下一条待审核</button>':'')
+  +'<button type="button" data-v555-review-list>查看待审核列表</button></div></nav>';
+}
 function reviewBrief(item){
  if(mode!=='admin'||item.status!=='review')return '';
  const original=item.published||null,current=item.payload||{};
@@ -850,7 +869,7 @@ const history=item.history||[];
   +'<div data-editor-pane="content">'+form+'</div>'
   +'<div class="cms-private-preview-pane" data-editor-pane="preview" hidden><div class="cms-preview-heading"><div><h3>发布前预览</h3><p>模拟前台视觉效果，显示当前草稿和未保存修改；预览本身不会发布内容。</p></div><span id="cms-private-preview-state">仅当前浏览器可见</span></div><p id="cms-private-preview-error" role="alert" hidden></p><div id="cms-private-preview"></div></div>'
   +(item.kind==='article'?'<div data-editor-pane="seo" hidden>'+seoPanel+'</div>':'')
-  +'<div data-editor-pane="review" hidden>'+reviewBrief(item)+reviewActions
+  +'<div data-editor-pane="review" hidden>'+reviewNavigation(item)+reviewBrief(item)+reviewActions
   +(can('review')?'':s==='review'?'<p class="atlas-v521-readonly-tip">已提交审核，审核员处理后会在这里更新状态。</p>':'')+'</div>'
   +'<div data-editor-pane="history" hidden>'+timeline+'</div>';
  root.hidden=false;
@@ -975,6 +994,7 @@ function showTransitionFeedback(error,action,applied=false){
 }
 function showTransitionSuccess(action,item){
  const panel=$('#cms-transition-feedback');if(!panel||!item)return;
+ const next=can('review')&&['publish','reject'].includes(action)?nextReviewSlug(item.slug):null;
  const summaries={
    submit:['已提交审核','草稿进入待审核状态。审核员确认后才会更新前台。','review','查看审核状态'],
    reject:['已退回修改','审核意见已记录。编辑员可在基本信息上方查看原因，修改后重新提交。','content','查看修改意见'],
@@ -988,7 +1008,9 @@ function showTransitionSuccess(action,item){
  panel.setAttribute('aria-live','polite');
  panel.innerHTML='<div><strong>'+h(info[0])+'</strong><p>'+h(info[1])+'</p></div>'
   +'<div class="cms-v546-result-actions"><button type="button" data-editor-tab-link="'+h(info[2])+'">'+h(info[3])+'</button>'
-  +(action==='publish'?'<a target="_blank" rel="noopener" href="'+h(kinds[item.kind].url+item.slug)+'">查看前台 ↗</a>':'')+'</div>';
+  +(action==='publish'?'<a target="_blank" rel="noopener" href="'+h(kinds[item.kind].url+item.slug)+'">查看前台 ↗</a>':'')
+  +(next?'<button type="button" data-v555-next-review="'+h(next)+'">继续审核下一条 →</button>':'')
+  +(can('review')&&['publish','reject'].includes(action)?'<button type="button" data-v555-review-queue>查看全部待审核</button>':'')+'</div>';
  panel.scrollIntoView({block:'nearest'});
 }
 async function transition(action){
@@ -2310,6 +2332,32 @@ function boot(){
    const themeButton=e.target.closest('[data-set-theme]');if(themeButton){setTheme(themeButton.dataset.setTheme);return}
    if(e.target.closest('[data-editor-open-media]')){state.mediaTarget=null;state.mediaField=state.selected?.kind==='article'?'field-cover_image':state.selected?.kind==='site'||state.selected?.kind==='module'?'field-screenshot_url':null;await openMedia();return}
    const type=e.target.closest('[data-kind-link]');if(type){e.preventDefault();await changeKind(type.dataset.kindLink);return}
+   const quickCompare=e.target.closest('[data-review-compare]');
+   if(quickCompare){
+     if(!can('review')||state.busy)return;
+     const slug=quickCompare.dataset.reviewCompare;
+     if(!state.items.some(item=>item.slug===slug&&item.status==='review')){message('该记录已不在待审核列表，请刷新。',false);return}
+     if(!await selectItem(slug,true))return;
+     if(state.selected?.slug!==slug||state.selected.status!=='review')return;
+     setEditorTab('review');markWorkspace('review');
+     await openReviewDiff(0);return;
+   }
+   const reviewNext=e.target.closest('[data-v555-next-review]');
+   if(reviewNext){
+     if(!can('review')||state.busy)return;
+     const slug=reviewNext.dataset.v555NextReview;
+     if(!state.items.some(item=>item.slug===slug&&item.status==='review')){message('该内容的状态可能已变化，请刷新列表。',false);return}
+     if(!await selectItem(slug,true))return;
+     if(state.selected?.slug===slug){setEditorTab('review');markWorkspace('review')}
+     return;
+   }
+   if(e.target.closest('[data-v555-review-list]')){
+     if(!closeEditor())return;
+     state.status='review';state.q='';state.page=1;state.selectedSlugs.clear();
+     $('#cms-status').value='review';$('#cms-search').value='';
+     markWorkspace('review');drawItems();return;
+   }
+   if(e.target.closest('[data-v555-review-queue]')){await openReviewQueue();return}
    const choice=e.target.closest('[data-pick]');if(choice){if(state.busy)return;await selectItem(choice.dataset.pick,true);return}
    const action=e.target.closest('[data-transition]');if(action){await transition(action.dataset.transition);return}
    const restore=e.target.closest('[data-restore]');if(restore){await restoreRevision(Number(restore.dataset.restore));return}
@@ -2417,6 +2465,13 @@ function boot(){
    if(e.target.closest('[data-dialog-close]')){$('#cms-create-dialog').close();return}
  });
  document.addEventListener('input',e=>{if(e.target.closest('[data-gallery-label]')){syncGalleryLabels();return}if(e.target.closest('#cms-edit-form')){markDraftDirty();syncSiteTitle();refreshArticlePreview();refreshSeoSnippet();refreshContentPreview()}});
+ $('#cms-review-filter').addEventListener('click',()=>{
+  if(mode!=='admin'||!can('review'))return;
+  state.status='review';state.q='';state.page=1;state.selectedSlugs.clear();
+  $('#cms-status').value='review';$('#cms-search').value='';
+  markWorkspace('review');drawItems();
+  const heading=$('#cms-browser-title');if(heading){heading.setAttribute('tabindex','-1');heading.focus({preventScroll:true})}
+ });
  $('#cms-search').addEventListener('input',e=>{state.q=e.target.value;state.page=1;state.selectedSlugs.clear();drawItems()});
  $('#cms-status').addEventListener('change',e=>{state.status=e.target.value;state.page=1;state.selectedSlugs.clear();markWorkspace(state.status==='review'?'review':'content');drawItems()});
  $('#cms-sort').addEventListener('change',e=>{state.sort=e.target.value;state.page=1;state.selectedSlugs.clear();drawItems()});

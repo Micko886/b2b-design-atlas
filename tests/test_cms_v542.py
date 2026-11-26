@@ -25,8 +25,8 @@ class Cms542(unittest.TestCase):
         self.assertIn('max-height:calc(100dvh - 24px)',self.css)
 
     def test_assets(self):
-        self.assertIn('/assets/cms.js?v=5540',self.html)
-        self.assertIn('/assets/cms.css?v=5540',self.html)
+        self.assertIn('/assets/cms.js?v=5550',self.html)
+        self.assertIn('/assets/cms.css?v=5550',self.html)
 
     def test_bulk_selection_is_action_and_role_aware(self):
         self.assertIn("const bulkActionRules=",self.js)
@@ -47,6 +47,16 @@ class Cms542(unittest.TestCase):
         self.assertIn('id="cms-sort"',self.html)
         self.assertIn('id="cms-page-prev"',self.html)
         self.assertIn('id="cms-page-next"',self.html)
+
+    def test_review_queue_is_integrated_and_role_guarded(self):
+        self.assertIn('id="cms-review-filter"',self.html)
+        self.assertIn('data-review-compare=',self.js)
+        self.assertIn("can('review')&&item.status==='review'",self.js)
+        self.assertIn('function nextReviewSlug(currentSlug)',self.js)
+        self.assertIn('function reviewNavigation(item)',self.js)
+        self.assertIn('data-v555-next-review=',self.js)
+        self.assertIn("if(!can('review')||state.busy)return;",self.js)
+        self.assertIn('data-v555-review-queue',self.js)
 
 if __name__=='__main__':
     unittest.main()
