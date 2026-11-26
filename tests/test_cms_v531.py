@@ -44,7 +44,7 @@ class ArticleEditorV531(unittest.TestCase):
         for v in (
             "if(!captureArticleStructure())return;\n   const rect=el.getBoundingClientRect();",
             "if(convert){if(captureArticleStructure())convertLegacyChapter(",
-            "if(addBlock){if(!captureArticleStructure())return;",
+            "if(!mode||!articleBlockTypes[type]||!captureArticleStructure())return;",
             "if(target&&captureArticleStructure()){",
             "if(e.target.closest('[data-v51-add]')){if(!captureArticleStructure())return;",
             "if(!captureArticleStructure())return;\n     el.remove();",
@@ -75,7 +75,7 @@ class ArticleEditorV531(unittest.TestCase):
         self.assertIn("function refreshArticlePreview()",self.js)
         self.assertIn("async function runSeoAudit()",self.js)
         self.assertIn("api('/api/admin/seo/check'",self.js)
-        self.assertIn("仅记录最近 20 次结构操作",self.js)
+        self.assertIn("撤销操作仅记录最近 20 次章节和内容块结构修改",self.js)
 
     def test_accessibility_and_mobile_layout(self):
         self.assertIn(".cms-v531-editor-bar",self.css)
