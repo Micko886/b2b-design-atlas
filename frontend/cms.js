@@ -249,7 +249,7 @@ function btnDisable(value){
  });
 }
 function setNotice(text,error=false){const el=$('#cms-notice');el.innerHTML='<div>'+icon(error?'lock':mode==='preview'?'lock':'check')+'<span>'+h(text)+'</span></div><span>'+(error?'REQUIRES ACTION':mode==='preview'?'PUBLIC PREVIEW':'ADMIN ONLY')+'</span>';el.hidden=mode==='admin'&&!error;el.classList.toggle('cms-notice-error',error)}
-function listUrl(){const u=new URL(location.href);u.searchParams.set('kind',state.kind);return u.pathname+u.search}
+function listUrl(){return editorUrl(null)}
 function showKind(){
  $('#cms-current-kind').textContent=kinds[state.kind].label.toUpperCase();
  $('#cms-browser-title').textContent=kinds[state.kind].title;
@@ -813,10 +813,12 @@ const history=item.history||[];
  state.dirty=false;autosavePaused=false;
 }
 async function selectItem(slug,push=false){
+ if(state.busy){message('草稿正在保存，请完成后打开其他内容。',false);return false}
+ const item=state.items.find(x=>x.slug===slug);if(!item)return false;
+ if(state.dirty&&!confirm('当前修改还未保存。确定放弃这些更改吗？'))return false;
+ if(state.dirty)clearRecovery();
  if(!state.selected)contentListScrollY=window.scrollY;
- if(state.dirty&&!confirm('当前修改还未保存。确定放弃这些更改吗？'))return;
- clearTimeout(autosaveTimer);editGeneration++;
- const item=state.items.find(x=>x.slug===slug);if(!item)return;
+ clearTimeout(autosaveTimer);editGeneration++;autosavePaused=false;state.dirty=false;
  $('#cms-editor-body').hidden=true;$('#cms-empty').hidden=false;$('#cms-empty').innerHTML='<div class="cms-loading">正在读取 '+h(item.label)+'…</div>';
  try{
    const result=mode==='admin'?await api('/api/admin/content/'+state.kind+'/'+slug):
@@ -829,7 +831,8 @@ async function selectItem(slug,push=false){
    window.scrollTo({top:0,behavior:'instant'});
    const heading=$('#cms-editor-body .cms-easy-heading h2');if(heading){heading.setAttribute('tabindex','-1');heading.focus({preventScroll:true})}
    await offerDraftRecovery(result);
- }catch(e){setStudioMode(false);$('#cms-empty').innerHTML='<div class="cms-error">'+h(e.message)+'</div>';message(e.message,false)}
+   return true;
+ }catch(e){setStudioMode(false);$('#cms-empty').innerHTML='<div class="cms-error">'+h(e.message)+'</div>';message(e.message,false);return false}
 }
 // One serializer for save, undo/redo and live image SEO inspection.
 function readArticleSections(){
@@ -1030,9 +1033,11 @@ async function exportCms(){
 }
 function closeMobile(){document.body.classList.remove('sidebar-open');$('#cms-backdrop').hidden=true;$('#cms-menu').setAttribute('aria-expanded','false')}
 async function changeKind(kind,push=true){
- if(!kinds[kind])return;
- if(state.busy){message('草稿正在保存，请完成后切换内容类型。',false);return}
- if(state.dirty&&!confirm('当前修改尚未保存，确定切换？'))return;
+ if(!kinds[kind])return false;
+ if(state.busy){message('草稿正在保存，请完成后切换内容类型。',false);return false}
+ if(state.dirty&&!confirm('当前修改尚未保存，确定切换？'))return false;
+ if(state.dirty)clearRecovery();
+ clearTimeout(autosaveTimer);editGeneration++;autosavePaused=false;
  state.kind=kind;state.selected=null;state.dirty=false;state.records={};
  setStudioMode(false);state.q='';state.status='';state.selectedSlugs.clear();
  markWorkspace('content');
@@ -1041,8 +1046,8 @@ async function changeKind(kind,push=true){
  $('#cms-empty').innerHTML='<div class="cms-empty-symbol">✳</div><span class="section-eyebrow">CONTENT EDITOR</span><h2>选择一条内容，开始编辑。</h2><p>打开一条记录后，可以直接修改并保存草稿。</p>';
  if(push)history.pushState({},'',listUrl());
  closeMobile();
- try{await loadKind()}catch(e){message(e.message,false);$('#cms-items').innerHTML='<div class="cms-error">'+h(e.message)+'</div>'}
-}
+ try{await loadKind();return true}catch(e){message(e.message,false);$('#cms-items').innerHTML='<div class="cms-error">'+h(e.message)+'</div>';return false}
+
 // V51 · Structured editorial studio, taxonomy, media and bulk workflow.
 function linesFrom(selector){
  const input=$(selector);return input?input.value.split('\n').map(x=>x.trim()).filter(Boolean):[];
@@ -2119,7 +2124,7 @@ function boot(){
      const [kind,...slugParts]=queueEntry.dataset.v514ScheduleOpen.split(':');
      const slug=slugParts.join(':');
      $('#cms-schedules-dialog').close();
-     if(kind!==state.kind)await changeKind(kind);
+     if(kind!==state.kind&&!await changeKind(kind))return;
      await selectItem(slug);return
    }
    const teamEntry=e.target.closest('[data-v514-team-id]');
@@ -2363,11 +2368,22 @@ function boot(){
  $('#cms-backdrop').addEventListener('click',closeMobile);
  document.addEventListener('keydown',e=>{onEditorTabKeyDown(e);if(e.key==='Escape')closeMobile()});
  window.addEventListener('beforeunload',e=>{if(state.dirty&&mode==='admin'){e.preventDefault();e.returnValue=''}});
+ // A cancelled browser Back/Forward must not leave URL and editor out of sync.
  window.addEventListener('popstate',async()=>{
+   const previous=editorUrl(state.selected?.slug||null);
    const route=new URLSearchParams(location.search),kind=route.get('kind')||'site',slug=route.get('edit');
-   if(kind!==state.kind)await changeKind(kind,false);
-   if(slug&&state.items.some(x=>x.slug===slug)){await selectItem(slug);return}
+   if(state.busy){message('草稿正在保存，请完成后再导航。',false);history.pushState({},'',previous);return}
+   if(state.dirty){
+     if(!confirm('当前修改还未保存。确定放弃这些更改吗？')){history.pushState({},'',previous);return}
+     clearRecovery();clearTimeout(autosaveTimer);editGeneration++;state.dirty=false;autosavePaused=false;
+   }
+   if(kind!==state.kind&&!await changeKind(kind,false)){history.pushState({},'',previous);return}
+   if(slug&&state.items.some(x=>x.slug===slug)){
+     if(!await selectItem(slug))history.replaceState({},'',editorUrl(state.selected?.slug||null));
+     return;
+   }
    if(state.selected)closeEditor(false);
+   if(slug)history.replaceState({},'',editorUrl(null));
  });
  document.addEventListener('submit',e=>{if(e.target.id==='cms-edit-form')saveDraft(e)});
  (async()=>{

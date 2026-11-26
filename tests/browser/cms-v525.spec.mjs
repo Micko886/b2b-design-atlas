@@ -1001,3 +1001,35 @@ test('V54.8 narrow dark-mode editor has no horizontal document overflow',async({
  expect(result.documentWidth).toBeLessThanOrEqual(result.viewport+1);
  expect(result.tabsWidth).toBeGreaterThan(0);
 });
+
+test('V54.9 browser Back cancellation preserves the dirty editor and URL',async({page})=>{
+ const {records}=await mockCms(page);
+ await page.goto(origin+'/admin/content?kind=site');
+ await page.locator('[data-pick="demo-site"]').click();
+ await expect(page).toHaveURL(/edit=demo-site/);
+ await page.locator('#field-name').fill('Local unsaved title');
+ const rejected=page.waitForEvent('dialog').then(dialog=>dialog.dismiss());
+ await page.evaluate(()=>history.back());
+ await rejected;
+ await expect(page).toHaveURL(/edit=demo-site/);
+ await expect(page.locator('#field-name')).toHaveValue('Local unsaved title');
+ expect(records.site.payload.name).toBe('Atlas Demo');
+ const accepted=page.waitForEvent('dialog').then(dialog=>dialog.accept());
+ await page.evaluate(()=>history.back());
+ await accepted;
+ await expect(page).toHaveURL(/\\?kind=site$/);
+ await expect(page.locator('#cms-editor-body')).toBeHidden();
+ expect(await page.evaluate(()=>Object.keys(sessionStorage).filter(key=>key.startsWith('atlas-cms-working-v1:')))).toEqual([]);
+});
+
+test('V54.9 switching content types discards stale recovery and clears edit URL',async({page})=>{
+ await mockCms(page);
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await page.locator('#field-name').fill('Change to discard before switching');
+ const accepted=page.waitForEvent('dialog').then(dialog=>dialog.accept());
+ await page.locator('[data-kind-link="module"]').click();
+ await accepted;
+ await expect(page.locator('[data-pick="demo-module"]')).toBeVisible();
+ await expect(page).toHaveURL(/\\?kind=module$/);
+ expect(await page.evaluate(()=>Object.keys(sessionStorage).filter(key=>key.startsWith('atlas-cms-working-v1:')))).toEqual([]);
+});

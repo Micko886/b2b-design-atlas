@@ -28,8 +28,8 @@ class CmsShellV534Tests(unittest.TestCase):
             self.assertIn(item, self.html)
 
     def test_versioned_assets(self):
-        self.assertIn('/assets/cms.js?v=5480', self.html)
-        self.assertIn('/assets/cms.css?v=5480', self.html)
+        self.assertIn('/assets/cms.js?v=5490', self.html)
+        self.assertIn('/assets/cms.css?v=5490', self.html)
 
 
 if __name__ == "__main__":

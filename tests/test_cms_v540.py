@@ -22,8 +22,8 @@ class EditorTabContracts(unittest.TestCase):
     def test_keyboard_and_mobile_visuals(self):
         self.assertIn('.atlas-v521-editor-tabs>button:focus-visible',self.css)
         self.assertIn('scroll-snap-type:x proximity',self.css)
-        self.assertIn('/assets/cms.js?v=5480',self.html)
-        self.assertIn('/assets/cms.css?v=5480',self.html)
+        self.assertIn('/assets/cms.js?v=5490',self.html)
+        self.assertIn('/assets/cms.css?v=5490',self.html)
 
 if __name__=="__main__":
     unittest.main()
