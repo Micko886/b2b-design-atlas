@@ -23,8 +23,8 @@ class CmsV538Tests(unittest.TestCase):
         self.assertIn('submitButton.hidden=false',self.js)
 
     def test_updated_assets_and_layout(self):
-        self.assertIn('/assets/cms.js?v=5470',self.html)
-        self.assertIn('/assets/cms.css?v=5470',self.html)
+        self.assertIn('/assets/cms.js?v=5480',self.html)
+        self.assertIn('/assets/cms.css?v=5480',self.html)
         self.assertIn('.cms-empty-results',self.css)
         self.assertIn('.cms-edit-quick-actions [hidden]{display:none!important}',self.css)
 
