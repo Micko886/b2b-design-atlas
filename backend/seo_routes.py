@@ -301,6 +301,7 @@ def seo_document(full_path):
         '<meta property="og:url" content="'+safe(canonical,650)+'">'
         '<meta property="og:image" content="'+safe(image,650)+'">'
         '<meta name="twitter:card" content="summary_large_image">'
+        '<meta name="twitter:image" content="'+safe(image,650)+'">'
     )
     if record["indexed"]:
         data=seo_schema(clean,record,collection,canonical,image)
