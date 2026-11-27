@@ -59,6 +59,19 @@ class IndustryStudyTests(unittest.TestCase):
                     self.assertIn(kind,keys)
                     self.assertIn(ref_id,self.catalog[keys[kind]],f"{slug} missing {kind}:{ref_id}")
 
+    def test_editorial_covers_match_real_bundled_company_screenshots(self):
+        root=Path(__file__).resolve().parents[1]
+        for article in self.articles:
+            with self.subTest(article=article["id"]):
+                slug=article["cover_site"]
+                screenshot=root/"screenshots"/"sites"/(slug+".webp")
+                self.assertTrue(screenshot.is_file(),str(screenshot))
+                expected="/screenshots/sites/"+slug+".webp"
+                self.assertEqual(
+                    seo_routes.content_image("insights",article,self.catalog),expected,
+                    "Do not substitute a different company's screenshot."
+                )
+
     def test_public_seo_and_crawler_body_have_unique_search_metadata(self):
         descriptions=set()
         for topic,slug in TOPICS.items():
