@@ -1,0 +1,45 @@
+{
+  "source": "real Chromium browser, 1440x920 CSS viewport, DPR 2",
+  "results": [
+    {
+      "site": "vast",
+      "status": "captured",
+      "source": "https://www.vastspace.com/",
+      "captured_at": "2026-11-27T14:31:56.677573+00:00",
+      "detail": "2880x1840",
+      "card": "800x488",
+      "detail_bytes": 406164,
+      "card_bytes": 96546
+    },
+    {
+      "site": "figure-robotics",
+      "status": "captured",
+      "source": "https://www.figure.ai/",
+      "captured_at": "2026-11-27T14:32:03.520774+00:00",
+      "detail": "2880x1840",
+      "card": "800x488",
+      "detail_bytes": 122524,
+      "card_bytes": 23892
+    },
+    {
+      "site": "fictiv",
+      "status": "captured",
+      "source": "https://www.fictiv.com/",
+      "captured_at": "2026-11-27T14:32:10.783601+00:00",
+      "detail": "2880x1840",
+      "card": "800x488",
+      "detail_bytes": 196530,
+      "card_bytes": 41972
+    },
+    {
+      "site": "skydio",
+      "status": "captured",
+      "source": "https://www.skydio.com/",
+      "captured_at": "2026-11-27T14:32:18.551957+00:00",
+      "detail": "2880x1840",
+      "card": "800x488",
+      "detail_bytes": 237302,
+      "card_bytes": 62068
+    }
+  ]
+}
