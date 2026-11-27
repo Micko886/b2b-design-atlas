@@ -21,7 +21,7 @@ class MobileExperienceV60(unittest.TestCase):
         self.assertIn(".masonry{column-count:4;column-gap:18px}",self.css)
         self.assertIn(".masonry-compact{column-count:5}",self.css)
         self.assertIn(".masonry{column-count:2}.masonry-compact{column-count:3}",self.css)
-        self.assertIn(".masonry{column-count:1}.masonry-compact{column-count:2",self.css)
+        self.assertIn(".masonry{column-count:1}.masonry-compact{column-count:2;column-gap:9px}",self.css)
         self.assertIn(".masonry-compact{column-count:1}",self.css)
         self.assertIn("break-inside:avoid",self.css)
         self.assertIn('class="masonry ${state.density',self.js)
