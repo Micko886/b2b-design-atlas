@@ -258,6 +258,30 @@ function showKind(){
  $('#cms-create-kind').value=state.kind;
 }
 function stateClasses(x){return '<span class="cms-item-state" data-status="'+h(x)+'">'+h(statusText[x]||x)+'</span>'}
+function renderListContext(filtered){
+ const banner=$('#cms-v559-filter-context'),label=$('#cms-v559-filter-description');
+ if(!banner||!label)return;
+ const bits=[];
+ if(state.status)bits.push('状态：'+(statusText[state.status]||state.status));
+ if(state.q.trim())bits.push('搜索：“'+state.q.trim().slice(0,80)+'”');
+ banner.hidden=!bits.length;
+ label.textContent=bits.length?'当前筛选 · '+bits.join(' · ')+' · 找到 '+filtered.length+' 条':'';
+}
+function renderListFailure(error,slug=''){
+ const root=$('#cms-v559-load-failure');if(!root)return;
+ const status=Number(error?.status)||0,login=status===401||/会话已过期|请先登录/.test(String(error?.message||''));
+ const detail=login?'登录已失效，重新登录后可继续管理内容。'
+  :status===403?'当前账号没有权限读取这项内容，请联系管理员。'
+  :'读取失败。请检查网络后重试，刷新不会自动提交或发布内容。';
+ root.hidden=false;
+ root.innerHTML='<div><strong>'+(slug?'这条内容暂时打不开':'内容列表暂时无法读取')+'</strong>'
+  +'<p>'+h(detail)+'</p><small>'+h(error?.message||'未取得服务器响应')+'</small></div>'
+  +'<div class="cms-v559-retry-actions">'
+  +(login?'<a href="/login?next=%2Fadmin%2Fcontent">重新登录</a>'
+   :'<button type="button" data-v559-retry-load="'+h(slug)+'">重新尝试</button>')+'</div>';
+}
+function clearListFailure(){const root=$('#cms-v559-load-failure');if(root){root.hidden=true;root.innerHTML=''}}
+
 function updateSummary(){
  const counts={source:0,draft:0,review:0,published:0,archived:0,public:0};
  for(const x of state.items)counts[x.status]=(counts[x.status]||0)+1;
@@ -334,7 +358,7 @@ function closeEditor(push=true){
  clearTimeout(autosaveTimer);editGeneration++;autosavePaused=false;
  if(state.dirty)clearRecovery();state.dirty=false;state.selected=null;
  $('#cms-editor-body').hidden=true;$('#cms-empty').hidden=false;
- setStudioMode(false);drawItems();
+ setStudioMode(false);drawItems();clearListFailure();
  if(push)history.pushState({},'',editorUrl(null));
  // Restore the content list position instead of leaving users halfway down the page.
  window.scrollTo({top:contentListScrollY,behavior:'instant'});
@@ -368,8 +392,14 @@ function drawItems(){
    +'<span class="cms-item-thumb">'+(img?'<img src="'+h(img)+'" loading="lazy" alt="">':icon(kinds[state.kind].icon))+'</span>'
    +'<span class="cms-item-copy"><strong>'+h(item.label)+'</strong><small>'+h(item.sector||item.slug)+'</small><small class="cms-item-open-label">'+h(listNextAction(item))+'</small></span>'
    +stateClasses(item.status)+'</button>'+compare+'</div>';
- }).join(''):'<div class="cms-empty-results" role="status"><strong>'+(state.q||state.status?'没有匹配的内容':'当前还没有内容')+'</strong><p>'+(state.q||state.status?'调整关键词或筛选条件，或者直接查看全部记录。':'可以通过右上角的新建内容按钮添加第一条记录。')+'</p>'+(state.q||state.status?'<button type="button" data-clear-content-filters>清除筛选 · 查看全部</button>':'')+'</div>';
+ }).join(''):'<div class="cms-empty-results" role="status"><strong>'+(state.q||state.status?'没有匹配的内容':'当前还没有内容')+'</strong><p>'+(state.q||state.status?'调整关键词或筛选条件，或者直接查看全部记录。'
+   :mode==='preview'?'此栏目暂未收录公开内容，可以先查看其他栏目。'
+   :can('edit')?'这里还没有内容，点击下方按钮创建第一条草稿。'
+   :'这里还没有内容，请联系具有编辑权限的团队成员添加。')+'</p>'
+  +(state.q||state.status?'<button type="button" data-clear-content-filters>清除筛选 · 查看全部</button>'
+   :can('edit')?'<button type="button" data-v559-create-first>新建第一条内容</button>':'')+'</div>';
  $('#cms-count').textContent=filtered.length+' 条';
+ renderListContext(filtered);
  updateListPager(filtered,items);
   // Bulk actions are progressive enhancement: never discard a loaded content list if toolbar rendering fails.
   try{updateBulkToolbar()}catch(error){
@@ -381,20 +411,35 @@ async function loadKind(keep=false){
  showKind();
  $('#cms-items').innerHTML='<div class="cms-loading">正在读取内容…</div>';
  let records=[],items=[];
- if(mode==='admin'){
+ try{
+  if(mode==='admin'){
    const res=await api('/api/admin/content?kind='+state.kind);
+   if(!Array.isArray(res.items))throw Error('内容服务返回的数据格式不正确。');
    items=res.items;
- }else{
+  }else{
    const json=await api(kinds[state.kind].public);
    records=state.kind==='site'?json.sites:state.kind==='module'?json.modules:state.kind==='article'?json.articles:json;
+   if(!Array.isArray(records))throw Error('公开栏目返回的数据格式不正确。');
    for(const p of records){const slug=p.id;state.records[slug]=p;
     items.push({kind:state.kind,slug,label:p.name||p.title||slug,status:'public',source:'repository',revision:0,
      url:kinds[state.kind].url+slug,sector:p.sector||p.category||p.family||''});
    }
    items.sort((a,b)=>a.label.localeCompare(b.label,'zh'));
+  }
+ }catch(error){
+  state.items=[];state.selected=null;state.selectedSlugs.clear();
+  setStudioMode(false);updateSummary();drawItems();renderListFailure(error);
+  throw error;
  }
+ clearListFailure();
+ if($('#cms-notice')?.classList.contains('cms-notice-error'))
+  setNotice('内容已成功重新加载，可以继续安全编辑。');
  state.items=items;state.selectedSlugs.clear();updateSummary();drawItems();
- if(keep&&state.selected){const target=items.find(x=>x.slug===state.selected.slug);if(target)await selectItem(target.slug)}
+ if(keep&&state.selected){
+  const target=items.find(x=>x.slug===state.selected.slug);
+  if(target)await selectItem(target.slug);
+  else{state.selected=null;setStudioMode(false);drawItems()}
+ }
 }
 function formField(spec,values,editable){
  const [name,label,type,required]=spec,value=values[name]??((type==='json'||type==='lines')?[]:type==='bool'?false:'');
@@ -895,6 +940,7 @@ async function selectItem(slug,push=false,afterWrite=false){
    const result=mode==='admin'?await api('/api/admin/content/'+state.kind+'/'+slug):
     {kind:state.kind,slug,source:'repository',status:'public',revision:0,payload:state.records[slug],history:[]};
    state.selected=result;
+   clearListFailure();
    resetArticleStructureHistory();
    if(result.kind==='module')await loadSiteChoices();
    state.editorTab=result.status==='review'&&can('review')?'review':'content';
@@ -903,7 +949,12 @@ async function selectItem(slug,push=false,afterWrite=false){
    const heading=$('#cms-editor-body .cms-easy-heading h2');if(heading){heading.setAttribute('tabindex','-1');heading.focus({preventScroll:true})}
    await offerDraftRecovery(result);
    return true;
- }catch(e){setStudioMode(false);$('#cms-empty').innerHTML='<div class="cms-error">'+h(e.message)+'</div>';message(e.message,false);return false}
+ }catch(e){
+  state.selected=null;setStudioMode(false);drawItems();
+  renderListFailure(e,slug);
+  message('无法打开内容：'+e.message,false);
+  return false;
+ }
 }
 // One serializer for save, undo/redo and live image SEO inspection.
 function readArticleSections(){
@@ -1164,7 +1215,7 @@ async function changeKind(kind,push=true){
  if(state.dirty&&!confirm('当前修改尚未保存，确定切换？'))return false;
  if(state.dirty)clearRecovery();
  clearTimeout(autosaveTimer);editGeneration++;autosavePaused=false;
- state.kind=kind;state.selected=null;state.dirty=false;state.records={};
+ state.kind=kind;state.items=[];state.selected=null;state.dirty=false;state.records={};
  setStudioMode(false);state.q='';state.status='';state.page=1;state.selectedSlugs.clear();
  markWorkspace('content');
  $('#cms-search').value='';$('#cms-status').value='';
@@ -1172,7 +1223,7 @@ async function changeKind(kind,push=true){
  $('#cms-empty').innerHTML='<div class="cms-empty-symbol">✳</div><span class="section-eyebrow">CONTENT EDITOR</span><h2>选择一条内容，开始编辑。</h2><p>打开一条记录后，可以直接修改并保存草稿。</p>';
  if(push)history.pushState({},'',listUrl());
  closeMobile();
- try{await loadKind();return true}catch(e){message(e.message,false);$('#cms-items').innerHTML='<div class="cms-error">'+h(e.message)+'</div>';return false}
+ try{await loadKind();return true}catch(e){message(e.message,false);return false}
 }
 // V51 · Structured editorial studio, taxonomy, media and bulk workflow.
 function linesFrom(selector){
@@ -2405,6 +2456,20 @@ function boot(){
  setNotice(mode==='admin'?'管理员工作区：编辑先保存草稿，审核通过后才会进入公开目录。':'只读预览：这里展示公开网站资料，不会提供编辑或发布权限。');
  if(mode==='preview')$('#cms-state').innerHTML='<span class="status-led"></span> PUBLIC PREVIEW';
  document.addEventListener('click',async e=>{
+   if(e.target.closest('[data-v559-create-first]')){
+     if(!can('edit'))return;
+     $('#cms-new').click();return;
+   }
+   const retry=e.target.closest('[data-v559-retry-load]');
+   if(retry){
+     if(state.busy)return;
+     const slug=retry.dataset.v559RetryLoad;
+     if(slug&&state.items.some(item=>item.slug===slug)){await selectItem(slug,true);return}
+     if(slug){message('该记录当前不在列表中，请先刷新列表。',false)}
+     try{await loadKind(false);message('内容列表已恢复')}
+     catch(error){message('读取仍然失败：'+error.message,false)}
+     return;
+   }
    if(e.target.closest('[data-clear-content-filters]')){
      state.q='';state.status='';state.page=1;state.selectedSlugs.clear();$('#cms-search').value='';$('#cms-status').value='';
      markWorkspace('content');drawItems();$('#cms-search').focus();return;
@@ -2832,7 +2897,11 @@ function boot(){
      if(routeParams.get('workspace')==='media'&&can('media')){markWorkspace('media');await openMedia()}
      if(routeParams.get('workspace')==='review'&&can('view'))await openReviewQueue();
      if(routeParams.get('workspace')==='settings'&&(can('taxonomy')||can('team')||can('export')))await openSettingsHub();
-   }catch(e){console.error('[CMS] initial content load failed',e);setNotice('无法读取后台内容：'+e.message,true);$('#cms-items').innerHTML='<div class="cms-error">'+h(e.message)+'</div>'}
+   }catch(e){
+     console.error('[CMS] initial content load failed',e);
+     setNotice('无法读取后台内容：'+e.message,true);
+     renderListFailure(e);
+   }
  })();
 }
 boot();

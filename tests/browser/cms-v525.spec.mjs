@@ -160,8 +160,11 @@ async function mockCms(page,role='owner',forcedErrors={}){
    else{record.schedule.status='cancelled';result={ok:true,kind:match[1],slug:match[2],status:'cancelled'}}
   }
   else if(p==='/api/admin/content'&&method==='GET'){
-   const kind=url.searchParams.get('kind');
-   result={items:Object.values(records).filter(x=>x.kind===kind).map(x=>({kind,slug:x.slug,label:x.payload.name||x.payload.title,status:x.status,source:x.source,revision:x.revision,updated_at:x.updated_at||'',sector:x.payload.sector||x.payload.category||x.payload.family||''}))};
+   const kind=url.searchParams.get('kind'),fault=forcedErrors.list;
+   if(fault&&(!fault.kind||fault.kind===kind)){
+    status=fault.status;result={detail:fault.detail};
+    if(fault.once)delete forcedErrors.list;
+   }else result={items:Object.values(records).filter(x=>x.kind===kind).map(x=>({kind,slug:x.slug,label:x.payload.name||x.payload.title,status:x.status,source:x.source,revision:x.revision,updated_at:x.updated_at||'',sector:x.payload.sector||x.payload.category||x.payload.family||''}))};
   }
   else if(p==='/api/admin/content/bulk'&&method==='POST'){
    const target=(body.items||[]).map(item=>Object.values(records).find(x=>x.kind===body.kind&&x.slug===item.slug));
@@ -178,7 +181,10 @@ async function mockCms(page,role='owner',forcedErrors={}){
    if(m&&x){
     if(method==='PUT'){x.payload=body.payload;x.status='draft';x.source='cms';x.revision++;result={revision:x.revision,status:x.status}}
     else if(method==='POST'){if(forcedErrors[m[3]]){status=forcedErrors[m[3]].status;result={detail:forcedErrors[m[3]].detail}}else{x.status={submit:'review',publish:'published',reject:'draft',archive:'archived'}[m[3]]||x.status;x.revision++;result={revision:x.revision,status:x.status}}}
-    else result=x;
+    else if(method==='GET'&&forcedErrors.item&&(!forcedErrors.item.slug||forcedErrors.item.slug===m[2])){
+     const fault=forcedErrors.item;status=fault.status;result={detail:fault.detail};
+     if(fault.once)delete forcedErrors.item;
+    }else result=x;
    }else{status=404;result={detail:'Mock API endpoint not covered: '+method+' '+p}}
   }
   return route.fulfill({status,contentType:'application/json',body:JSON.stringify(result)});
@@ -1885,4 +1891,111 @@ test('V55.8 320px bulk ALT panel is usable without horizontal overflow',async({p
  await expect(page.locator('#cms-v558-bulk-alt-panel')).toBeVisible();
  await expect(page.locator('[data-v558-bulk-alt-id]')).toBeFocused();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
+
+
+test('V55.9 list filter summary explains search and can clear it in one click',async({page})=>{
+ const {records}=await mockCms(page,'owner');
+ records.site.status='draft';records.site.source='cms';records.site.revision=2;
+ records.another={kind:'site',slug:'another-site',status:'review',source:'cms',revision:2,
+  payload:{id:'another-site',name:'Another Industrial Site',sector:'Manufacturing'}};
+ await page.goto(origin+'/admin/content?kind=site');
+ await expect(page.locator('#cms-v559-filter-context')).toBeHidden();
+ await page.locator('#cms-status').selectOption('draft');
+ await page.locator('#cms-search').fill('unmatched-string');
+ await expect(page.locator('#cms-v559-filter-context')).toBeVisible();
+ await expect(page.locator('#cms-v559-filter-description')).toContainText('状态：草稿');
+ await expect(page.locator('#cms-v559-filter-description')).toContainText('搜索：“unmatched-string”');
+ await expect(page.locator('#cms-v559-filter-description')).toContainText('找到 0 条');
+ await expect(page.locator('.cms-empty-results')).toContainText('没有匹配的内容');
+ await page.locator('#cms-v559-filter-context [data-clear-content-filters]').click();
+ await expect(page.locator('#cms-status')).toHaveValue('');
+ await expect(page.locator('#cms-search')).toHaveValue('');
+ await expect(page.locator('#cms-v559-filter-context')).toBeHidden();
+ await expect(page.locator('[data-pick]')).toHaveCount(2);
+});
+
+test('V55.9 empty category offers a real create action to editors but not reviewers',async({page})=>{
+ const {records}=await mockCms(page,'owner');
+ delete records.site;
+ await page.goto(origin+'/admin/content?kind=site');
+ await expect(page.locator('.cms-empty-results')).toContainText('这里还没有内容');
+ await expect(page.locator('[data-v559-create-first]')).toBeVisible();
+ await page.locator('[data-v559-create-first]').click();
+ await expect(page.locator('#cms-create-dialog')).toHaveJSProperty('open',true);
+ await expect(page.locator('#cms-create-kind')).toHaveValue('site');
+});
+
+test('V55.9 readonly reviewer sees useful empty-state guidance without edit shortcut',async({page})=>{
+ const {records}=await mockCms(page,'reviewer');
+ delete records.site;
+ await page.goto(origin+'/admin/content?kind=site');
+ await expect(page.locator('.cms-empty-results')).toContainText('联系具有编辑权限');
+ await expect(page.locator('[data-v559-create-first]')).toHaveCount(0);
+ await expect(page.locator('#cms-new')).toBeHidden();
+});
+
+test('V55.9 a failed list request shows a visible retry instead of a dead error screen',async({page})=>{
+ const failures={list:{status:503,detail:'临时无法访问内容服务',once:true}};
+ await mockCms(page,'owner',failures);
+ await page.goto(origin+'/admin/content?kind=site');
+ await expect(page.locator('#cms-v559-load-failure')).toBeVisible();
+ await expect(page.locator('#cms-v559-load-failure')).toContainText('内容列表暂时无法读取');
+ await expect(page.locator('#cms-v559-load-failure')).toContainText('临时无法访问内容服务');
+ await expect(page.locator('[data-pick]')).toHaveCount(0);
+ await page.locator('[data-v559-retry-load]').click();
+ await expect(page.locator('[data-pick="demo-site"]')).toBeVisible();
+ await expect(page.locator('#cms-v559-load-failure')).toBeHidden();
+ await expect(page.locator('#cms-notice')).toBeHidden();
+});
+
+test('V55.9 failed item fetch keeps listing usable and can retry the same record',async({page})=>{
+ const failures={item:{status:503,detail:'此条内容暂时无法读取',slug:'demo-site',once:true}};
+ await mockCms(page,'owner',failures);
+ await page.goto(origin+'/admin/content?kind=site');
+ await page.locator('[data-pick="demo-site"]').click();
+ await expect(page.locator('#cms-v559-load-failure')).toBeVisible();
+ await expect(page.locator('#cms-v559-load-failure')).toContainText('这条内容暂时打不开');
+ await expect(page.locator('[data-pick="demo-site"]')).toBeVisible();
+ await expect(page.locator('.cms-split')).not.toHaveClass(/cms-editing/);
+ await page.locator('[data-v559-retry-load="demo-site"]').click();
+ await expect(page.locator('#cms-editor-body')).toBeVisible();
+ await expect(page.locator('.cms-easy-heading h2')).toContainText('Atlas Demo');
+ await expect(page.locator('#cms-v559-load-failure')).toBeHidden();
+ await expect(page).toHaveURL(/kind=site.*edit=demo-site/);
+});
+
+test('V55.9 authorization failures offer a login path rather than unsafe retry',async({page})=>{
+ const failures={list:{status:401,detail:'会话已过期',once:true}};
+ await mockCms(page,'owner',failures);
+ await page.goto(origin+'/admin/content?kind=site');
+ await expect(page.locator('#cms-v559-load-failure')).toBeVisible();
+ await expect(page.locator('#cms-v559-load-failure a')).toHaveAttribute('href','/login?next=%2Fadmin%2Fcontent');
+ await expect(page.locator('#cms-v559-load-failure [data-v559-retry-load]')).toHaveCount(0);
+});
+
+test('V55.9 switching category after a failed request never shows stale items from other category',async({page})=>{
+ const failures={};
+ await mockCms(page,'owner',failures);
+ await page.goto(origin+'/admin/content?kind=site');
+ await expect(page.locator('[data-pick="demo-site"]')).toBeVisible();
+ failures.list={status:503,detail:'页面模块暂不可用',kind:'module',once:true};
+ await page.locator('[data-kind-link="module"]').click();
+ await expect(page.locator('#cms-browser-title')).toHaveText('页面模块');
+ await expect(page.locator('#cms-v559-load-failure')).toContainText('页面模块暂不可用');
+ await expect(page.locator('[data-pick="demo-site"]')).toHaveCount(0);
+ await page.locator('[data-v559-retry-load]').click();
+ await expect(page.locator('[data-pick="demo-module"]')).toBeVisible();
+ await expect(page.locator('[data-pick="demo-site"]')).toHaveCount(0);
+});
+
+test('V55.9 active filter context fits 320px and allows clearing by touch',async({page})=>{
+ await mockCms(page,'owner');
+ await page.setViewportSize({width:320,height:760});
+ await page.goto(origin+'/admin/content?kind=site');
+ await page.locator('#cms-search').fill('very-long-keyword-that-will-never-match-any-content');
+ await expect(page.locator('#cms-v559-filter-context button')).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ await page.locator('#cms-v559-filter-context button').click();
+ await expect(page.locator('[data-pick="demo-site"]')).toBeVisible();
 });

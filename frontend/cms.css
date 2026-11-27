@@ -1347,3 +1347,21 @@ body.cms-editor-active .cms-edit-quick-actions{display:flex;align-items:center;g
  .cms-v558-audit-actions button{flex:1 1 auto}
  .cms-v558-bulk-actions button{flex:1 1 auto}
 }
+
+
+/* V55.9 · Visible list context, actionable recovery and beginner-friendly zero state. */
+.cms-v559-filter-context{display:flex;gap:9px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:0 16px 12px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--surface-2);color:var(--muted-strong);font-size:11px;line-height:1.6}
+.cms-v559-filter-context[hidden],.cms-v559-load-failure[hidden]{display:none!important}
+.cms-v559-filter-context span{min-width:0;overflow-wrap:anywhere}
+.cms-v559-filter-context button{flex:0 0 auto;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);color:var(--blue);min-height:35px;padding:7px 11px;font-size:11px;font-weight:740;cursor:pointer}
+.cms-v559-load-failure{display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap;margin:0 16px 15px;padding:15px 17px;border:1px solid var(--line-strong);border-radius:11px;background:var(--surface-2);color:var(--ink-strong)}
+.cms-v559-load-failure>div:first-child{min-width:0;display:grid;gap:6px}
+.cms-v559-load-failure strong{font-size:13px;font-weight:800}
+.cms-v559-load-failure p{margin:0;font-size:12px;line-height:1.6}
+.cms-v559-load-failure small{color:var(--muted-strong);font-size:11px;line-height:1.5;overflow-wrap:anywhere}
+.cms-v559-retry-actions button,.cms-v559-retry-actions a{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:8px 13px;border:1px solid var(--blue);border-radius:8px;background:var(--surface);color:var(--blue);font-size:11px;font-weight:780;text-decoration:none;cursor:pointer}
+.cms-v559-retry-actions button:focus-visible,.cms-v559-retry-actions a:focus-visible,.cms-v559-filter-context button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+@media(max-width:520px){
+ .cms-v559-filter-context,.cms-v559-load-failure{margin-inline:10px;padding:10px}
+ .cms-v559-retry-actions,.cms-v559-retry-actions button{width:100%}
+}

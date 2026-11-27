@@ -25,8 +25,8 @@ class Cms542(unittest.TestCase):
         self.assertIn('max-height:calc(100dvh - 24px)',self.css)
 
     def test_assets(self):
-        self.assertIn('/assets/cms.js?v=5580',self.html)
-        self.assertIn('/assets/cms.css?v=5580',self.html)
+        self.assertIn('/assets/cms.js?v=5590',self.html)
+        self.assertIn('/assets/cms.css?v=5590',self.html)
 
     def test_bulk_selection_is_action_and_role_aware(self):
         self.assertIn("const bulkActionRules=",self.js)
@@ -92,6 +92,18 @@ class Cms542(unittest.TestCase):
         self.assertIn("data-v558-open-refs",self.js)
         self.assertIn("当前引用（CMS 草稿与已发布内容）",self.js)
         self.assertIn("mediaWorkbench.seo==='missing'",self.js)
+
+    def test_beginner_list_filters_and_recoverable_load_failures(self):
+        self.assertIn('id="cms-v559-filter-context"',self.html)
+        self.assertIn('id="cms-v559-load-failure"',self.html)
+        self.assertIn("function renderListContext(filtered)",self.js)
+        self.assertIn("function renderListFailure(error,slug='')",self.js)
+        self.assertIn("function clearListFailure()",self.js)
+        self.assertIn("data-v559-retry-load",self.js)
+        self.assertIn("data-v559-create-first",self.js)
+        self.assertIn("state.items=[];state.selected=null;state.selectedSlugs.clear()",self.js)
+        self.assertIn("state.selected=null;setStudioMode(false);drawItems()",self.js)
+        self.assertIn("clearListFailure();",self.js)
 
 if __name__=='__main__':
     unittest.main()
