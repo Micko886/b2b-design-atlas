@@ -1667,6 +1667,7 @@ function renderMediaCards(){
    +(state.mediaTarget?'<button type="button" class="cms-v550-select-photo" data-v513-use-inline="'+h(item.url)+'">插入这张图片</button>'
      :state.mediaField?'<button type="button" class="cms-v550-select-photo" data-v51-use-media="'+h(item.url)+'">'+(state.mediaField==='field-gallery'?'添加这张截图':'使用这张图片')+'</button>':'')
    +'<div class="cms-v532-state"><span data-media-seo-status="'+(alt.trim()?'ready':'missing')+'">'+(alt.trim()?'已填写 ALT':'待补 ALT')+'</span><span>'+(used?'引用 '+used+' 条内容':'未引用')+'</span></div>'
+   +(!alt.trim()&&can('media')?'<button type="button" class="cms-v557-alt-edit" data-v557-edit-alt="'+h(item.id)+'">补充图片 ALT</button>':'')
    +'<details class="cms-v532-details"><summary>SEO 信息与引用关系</summary><div class="cms-v532-details-body">'
    +'<label>图片 ALT（复用建议）<input data-media-alt maxlength="240" value="'+h(alt)+'" placeholder="说明图片内容，而不是堆砌关键词"></label>'
    +'<label>图片说明或来源<textarea data-media-caption maxlength="320" rows="2" placeholder="可选：图片背景和来源">'+h(caption)+'</textarea></label>'
@@ -1678,6 +1679,13 @@ function renderMediaCards(){
    +'</article>';
  }).join(''):'<p class="cms-loading">没有匹配的媒体。可以修改筛选条件，或上传新图片。</p>';
  const total=$('#cms-media-total');if(total)total.textContent='找到 '+mediaWorkbench.total+' 张 · 本页 '+items.length+' 张';
+ const missing=items.filter(item=>!String(item.alt_text||'').trim()).length;
+ const audit=$('#cms-v557-media-audit'),auditText=$('#cms-v557-alt-count'),auditButton=$('#cms-v557-show-missing');
+ if(audit&&auditText&&auditButton){
+  audit.hidden=Boolean(state.mediaField||state.mediaTarget);
+  auditText.textContent='本页 '+missing+' 张待补 ALT'+(mediaWorkbench.seo==='missing'?' · 仅显示未填写':'');
+  auditButton.textContent=mediaWorkbench.seo==='missing'?'查看全部媒体':'只看待补 ALT';
+ }
  const page=$('#cms-media-page');if(page)page.textContent='第 '+(Math.floor(mediaWorkbench.offset/mediaWorkbench.limit)+1)+' 页';
  const prev=$('#cms-media-prev'),next=$('#cms-media-next');
  if(prev)prev.disabled=mediaWorkbench.offset===0;
@@ -2047,18 +2055,38 @@ function calendarDateKey(d){
  const pad=n=>String(n).padStart(2,'0');
  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 }
+function scheduleIssue(item,now=Date.now()){
+ if(['stale','failed'].includes(item.status))return item.status==='stale'
+  ?'排期版本失效，请重新确认内容版本后预约。'
+  :'自动发布检查失败，请核对内容和图片，再重新预约。';
+ if(item.status!=='pending')return '';
+ if(Number.isFinite(Number(item.current_revision))&&item.current_revision!=null&&Number(item.current_revision)!==Number(item.revision))
+  return '排期版本与当前内容不一致，请重新确认审核版本。';
+ const at=Date.parse(item.publish_at);
+ if(Number.isFinite(at)&&at<=now)return '计划时间已到，尚未确认发布；请刷新排期核对实际状态。';
+ return '';
+}
 function calendarVisibleRows(){
  const status=$('#cms-calendar-status')?.value||'all';
- return state.scheduleItems.filter(item=>status==='all'||(status==='attention'?['failed','stale'].includes(item.status):item.status===status));
+ return state.scheduleItems.filter(item=>status==='all'||(status==='attention'?Boolean(scheduleIssue(item)):item.status===status));
 }
 function paintScheduleSummary(){
  const root=$('#cms-v556-schedule-summary');if(!root)return;
  const counts={pending:0,published:0,failed:0,stale:0};
  state.scheduleItems.forEach(item=>{if(Object.hasOwn(counts,item.status))counts[item.status]++});
- const attention=counts.failed+counts.stale;
+ const attention=state.scheduleItems.filter(item=>scheduleIssue(item)).length;
+ const now=Date.now();
+ const nextDay=state.scheduleItems.filter(item=>item.status==='pending'&&!scheduleIssue(item)&&Date.parse(item.publish_at)>now&&Date.parse(item.publish_at)<=now+86400000).length;
  root.innerHTML='<button type="button" data-v556-schedule-filter="pending" aria-pressed="'+String($('#cms-calendar-status').value==='pending')+'"><strong>'+counts.pending+'</strong><span>待发布</span></button>'
   +'<button type="button" data-v556-schedule-filter="published" aria-pressed="'+String($('#cms-calendar-status').value==='published')+'"><strong>'+counts.published+'</strong><span>已发布</span></button>'
   +'<button type="button" data-v556-schedule-filter="attention" aria-pressed="'+String($('#cms-calendar-status').value==='attention')+'"'+(!attention?' disabled':'')+'><strong>'+attention+'</strong><span>需处理</span></button>';
+ const hint=$('#cms-v557-schedule-alert');
+ if(hint){
+  hint.hidden=!attention&&!nextDay;
+  hint.textContent=(attention?'有 '+attention+' 条排期需要核对；点击“需处理”集中查看。':'')
+   +(attention&&nextDay?' ':'')+(nextDay?'未来 24 小时内有 '+nextDay+' 条计划发布。':'')
+   +' 排期到期检查依赖服务器请求，刷新可核对最新状态。';
+ }
 }
 function calendarStart(){
  const d=calendarView==='month'
@@ -2152,13 +2180,18 @@ function paintScheduleQueue(){
  paintScheduleSummary();
  $('#cms-schedule-count').textContent=rows.length+' 条排期记录';
  const labels={pending:'等待发布',published:'按计划发布',cancelled:'已取消',stale:'版本已失效',failed:'校验失败'};
- box.innerHTML=rows.length?rows.map(item=>
-   '<div class="cms-v514-schedule-item" role="listitem"><div class="cms-v514-schedule-item-top">'
-    +'<strong>'+h(item.slug)+'</strong><span data-schedule-status="'+h(item.status)+'">'+h(labels[item.status]||item.status)+'</span></div>'
+ box.innerHTML=rows.length?rows.map(item=>{
+   const issue=scheduleIssue(item),canResolve=Boolean(issue)&&can('review');
+   const label=issue&&item.status==='pending'?'待核对':labels[item.status]||item.status;
+   return '<div class="cms-v514-schedule-item'+(issue?' cms-v557-schedule-issue':'')+'" role="listitem"><div class="cms-v514-schedule-item-top">'
+    +'<strong>'+h(item.slug)+'</strong><span data-schedule-status="'+h(item.status)+'">'+h(label)+'</span></div>'
     +'<p>'+h(kinds[item.kind]?.title||item.kind)+' · '+h(formatScheduleTime(item.publish_at))+'（本地） · v'+item.revision+'</p>'
     +(item.error?'<small>'+h(item.error)+'</small>':'')
-    +'<button type="button" data-v514-schedule-open="'+h(item.kind)+':'+h(item.slug)+'">打开内容</button></div>').join('')
-    :'<p class="cms-loading">暂无发布排期。可先提交内容审核，再预约发布时间。</p>';
+    +(issue?'<p class="cms-v557-schedule-help" role="note">'+h(issue)+'</p>':'')
+    +'<button type="button" data-v514-schedule-open="'+h(item.kind)+':'+h(item.slug)+'"'
+    +(canResolve?' data-v557-schedule-resolve="true"':'')+'>'+(canResolve?'处理此排期':'打开内容')+'</button></div>';
+ }).join('')
+    :'<p class="cms-loading">暂无符合条件的排期。可调整筛选或刷新检查发布状态。</p>';
 }
 async function refreshSchedules(){
  if(mode!=='admin'||!can('view'))return;
@@ -2327,10 +2360,22 @@ function boot(){
    const queueEntry=e.target.closest('[data-v514-schedule-open]');
    if(queueEntry){
      const [kind,...slugParts]=queueEntry.dataset.v514ScheduleOpen.split(':');
-     const slug=slugParts.join(':');
+     const slug=slugParts.join(':'),resolveIssue=queueEntry.hasAttribute('data-v557-schedule-resolve');
      $('#cms-schedules-dialog').close();
      if(kind!==state.kind&&!await changeKind(kind))return;
-     await selectItem(slug);return
+     if(!await selectItem(slug,true)||state.selected?.kind!==kind||state.selected?.slug!==slug)return;
+     if(resolveIssue&&can('review')){
+      if(state.selected.status==='review'){
+       focusReviewSchedule();
+       message('请核对当前审核版本，选择未来的发布时间并重新保存。');
+      }else{
+       setEditorTab(state.selected.status==='draft'?'content':'history');
+       message(state.selected.status==='draft'
+        ?'这条内容需要先完成修改并重新提交审核，才能预约发布。'
+        :'这条内容目前不能重新预约，请核对状态与版本历史。');
+      }
+     }
+     return;
    }
    const teamEntry=e.target.closest('[data-v514-team-id]');
    if(teamEntry){chooseTeamPerson(teamEntry.dataset.v514TeamId);return}
@@ -2625,7 +2670,20 @@ function boot(){
   updateMediaBulkSelection();
  });
  $('#cms-media-grid').addEventListener('click',async event=>{
+  const editAlt=event.target.closest('[data-v557-edit-alt]');
+  if(editAlt){
+   if(!can('media'))return;
+   const card=editAlt.closest('[data-media-id]'),details=card?.querySelector('.cms-v532-details');
+   if(details){details.open=true;details.querySelector('[data-media-alt]')?.focus()}
+   return;
+  }
   const save=event.target.closest('[data-media-meta-save]');if(save){await saveMediaSeo(save);return}
+ });
+ $('#cms-v557-show-missing').addEventListener('click',()=>{
+  if(!can('media')||state.mediaField||state.mediaTarget)return;
+  mediaWorkbench.seo=mediaWorkbench.seo==='missing'?'all':'missing';
+  $('#cms-media-seo').value=mediaWorkbench.seo;
+  resetMediaFilters();refreshMedia();
  });
  $('#cms-media-select').addEventListener('click',()=>$('#cms-media-file').click());
  $('#cms-media-file').addEventListener('change',async e=>{const files=Array.from(e.target.files||[]);e.target.value='';await uploadMedia(files)});

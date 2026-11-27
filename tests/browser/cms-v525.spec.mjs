@@ -1634,3 +1634,123 @@ test('V55.6 calendar summary and actions fit a 320px viewport',async({page})=>{
  await expect(page.locator('#cms-calendar-grid')).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });
+
+
+test('V55.7 schedule attention includes overdue and out-of-date pending records',async({page})=>{
+ const {records}=await mockCms(page,'reviewer');
+ const future=new Date(Date.now()+4*86400000).toISOString();
+ const soon=new Date(Date.now()+30*60000).toISOString();
+ const expired=new Date(Date.now()-2*3600000).toISOString();
+ records.site.status='review';records.site.revision=2;
+ records.site.schedule={status:'pending',publish_at:expired,revision:2};
+ records.module.status='review';records.module.revision=5;
+ records.module.schedule={status:'pending',publish_at:future,revision:4};
+ records.pattern.status='review';records.pattern.revision=2;
+ records.pattern.schedule={status:'pending',publish_at:soon,revision:2};
+ records.article.status='review';records.article.revision=3;
+ records.article.schedule={status:'failed',publish_at:future,revision:3,error:'引用内容无效'};
+ await page.goto(origin+'/admin/content?kind=site');
+ await page.locator('#cms-schedules-open').click();
+ await expect(page.locator('[data-v556-schedule-filter="attention"] strong')).toHaveText('3');
+ await expect(page.locator('#cms-v557-schedule-alert')).toContainText('3 条排期需要核对');
+ await expect(page.locator('#cms-v557-schedule-alert')).toContainText('未来 24 小时内有 1 条');
+ await page.locator('[data-v556-schedule-filter="attention"]').click();
+ await expect(page.locator('#cms-calendar-status')).toHaveValue('attention');
+ await expect(page.locator('.cms-v557-schedule-issue')).toHaveCount(3);
+ await expect(page.locator('#cms-schedule-items')).toContainText('计划时间已到');
+ await expect(page.locator('#cms-schedule-items')).toContainText('审核版本');
+ await expect(page.locator('#cms-schedule-items')).toContainText('自动发布检查失败');
+ await expect(page.locator('[data-v557-schedule-resolve]')).toHaveCount(3);
+});
+
+test('V55.7 reviewer resolves failed schedule by opening the exact review draft',async({page})=>{
+ const {records}=await mockCms(page,'reviewer');
+ records.site.status='review';records.site.source='cms';records.site.revision=4;
+ records.site.schedule={status:'failed',publish_at:new Date(Date.now()+86400000).toISOString(),revision:4,error:'图片缺失'};
+ await page.goto(origin+'/admin/content?kind=site');
+ await page.locator('#cms-schedules-open').click();
+ await page.locator('[data-v557-schedule-resolve]').click();
+ await expect(page.locator('#cms-schedules-dialog')).toHaveJSProperty('open',false);
+ await expect(page.locator('.cms-easy-heading h2')).toContainText('Atlas Demo');
+ await expect(page.locator('[data-editor-tab="review"]')).toHaveAttribute('aria-selected','true');
+ await expect(page.locator('.cms-review-schedule')).toHaveAttribute('open','');
+ await expect(page.locator('#cms-schedule-local')).toBeFocused();
+ await expect(page.locator('#cms-toast')).toContainText('选择未来的发布时间');
+ expect(records.site.status).toBe('review');
+ expect(records.site.revision).toBe(4);
+});
+
+test('V55.7 stale draft schedule guides re-review instead of offering unauthorized publish',async({page})=>{
+ const {records}=await mockCms(page,'reviewer');
+ records.site.status='draft';records.site.source='cms';records.site.revision=5;
+ records.site.schedule={status:'stale',publish_at:new Date(Date.now()+86400000).toISOString(),revision:4,error:'版本已变'};
+ await page.goto(origin+'/admin/content?kind=site');
+ await page.locator('#cms-schedules-open').click();
+ await page.locator('[data-v557-schedule-resolve]').click();
+ await expect(page.locator('.cms-easy-heading h2')).toContainText('Atlas Demo');
+ await expect(page.locator('[data-editor-tab="content"]')).toHaveAttribute('aria-selected','true');
+ await expect(page.locator('[data-schedule-save]')).toHaveCount(0);
+ await expect(page.locator('#cms-toast')).toContainText('重新提交审核');
+ expect(records.site.status).toBe('draft');
+});
+
+test('V55.7 editor can see schedule diagnosis but cannot use reviewer repair actions',async({page})=>{
+ const {records}=await mockCms(page,'editor');
+ records.site.status='review';records.site.revision=2;
+ records.site.schedule={status:'failed',publish_at:new Date(Date.now()+86400000).toISOString(),revision:2,error:'审查失败'};
+ await page.goto(origin+'/admin/content?kind=site');
+ await page.locator('#cms-schedules-open').click();
+ await expect(page.locator('.cms-v557-schedule-help')).toContainText('自动发布检查失败');
+ await expect(page.locator('[data-v557-schedule-resolve]')).toHaveCount(0);
+ await expect(page.locator('[data-v514-schedule-open="site:demo-site"]')).toHaveText('打开内容');
+});
+
+test('V55.7 media SEO summary filters missing ALT and focuses its simple editor',async({page})=>{
+ const {uploads}=await mockCms(page,'owner');
+ const record=(id,name,alt)=>({
+  id,url:'/api/media/'+id,file_name:name,mime:'image/png',mime_type:'image/png',
+  byte_size:4096,created_at:'2026-11-20T10:00:00Z',used_by:[],usage_count:0,alt_text:alt,caption:''
+ });
+ uploads.push(record('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','one.png',''),
+  record('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','two.png','A machine panel'),
+  record('cccccccc-cccc-4ccc-8ccc-cccccccccccc','three.png',''));
+ await page.goto(origin+'/admin/content?kind=site&workspace=media');
+ await expect(page.locator('#cms-v557-media-audit')).toBeVisible();
+ await expect(page.locator('#cms-v557-alt-count')).toContainText('本页 2 张待补 ALT');
+ await page.locator('#cms-v557-show-missing').click();
+ await expect(page.locator('#cms-media-seo')).toHaveValue('missing');
+ await expect(page.locator('[data-media-id]')).toHaveCount(2);
+ await page.locator('[data-v557-edit-alt="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"]').click();
+ await expect(page.locator('[data-media-id="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"] details')).toHaveAttribute('open','');
+ const alt=page.locator('[data-media-id="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"] [data-media-alt]');
+ await expect(alt).toBeFocused();
+ await alt.fill('Industrial machine control panel close-up');
+ await page.locator('[data-media-id="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"] [data-media-meta-save]').click();
+ await expect(page.locator('[data-media-id]')).toHaveCount(1);
+ await expect(page.locator('#cms-v557-alt-count')).toContainText('本页 1 张待补 ALT');
+ expect(uploads[0].alt_text).toBe('Industrial machine control panel close-up');
+ await page.locator('#cms-v557-show-missing').click();
+ await expect(page.locator('#cms-media-seo')).toHaveValue('all');
+ await expect(page.locator('[data-media-id]')).toHaveCount(3);
+ await expect(page.locator('[data-media-id="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"] [data-media-seo-status]')).toHaveAttribute('data-media-seo-status','ready');
+});
+
+test('V55.7 image picker keeps ALT maintenance controls out of simple selection mode',async({page})=>{
+ const {uploads}=await mockCms(page,'owner');
+ uploads.push({id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',url:'/api/media/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',file_name:'factory.png',mime:'image/png',mime_type:'image/png',byte_size:4096,created_at:'2026-11-20T10:00:00Z',used_by:[],usage_count:0,alt_text:'',caption:''});
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await page.locator('[data-editor-pick-media="field-screenshot_url"]').click();
+ await expect(page.locator('#cms-media-dialog')).toHaveClass(/cms-media-picker-mode/);
+ await expect(page.locator('#cms-v557-media-audit')).toBeHidden();
+ await expect(page.locator('[data-v51-use-media]')).toBeVisible();
+});
+
+test('V55.7 320px media ALT audit has no document horizontal overflow',async({page})=>{
+ const {uploads}=await mockCms(page,'owner');
+ uploads.push({id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',url:'/api/media/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',file_name:'factory.png',mime:'image/png',mime_type:'image/png',byte_size:4096,created_at:'2026-11-20T10:00:00Z',used_by:[],usage_count:0,alt_text:'',caption:''});
+ await page.setViewportSize({width:320,height:760});
+ await page.goto(origin+'/admin/content?kind=site&workspace=media');
+ await expect(page.locator('#cms-v557-media-audit')).toBeVisible();
+ await expect(page.locator('#cms-v557-show-missing')).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});

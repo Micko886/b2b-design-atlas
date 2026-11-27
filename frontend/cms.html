@@ -6,8 +6,8 @@
 <meta name="theme-color" content="#f5f7fb">
 <title>内容管理 · B2B Atlas Control Room</title>
 <link rel="stylesheet" href="/assets/admin.css?v=5300">
-<link rel="stylesheet" href="/assets/cms.css?v=5560">
-<script defer src="/assets/cms.js?v=5560"></script>
+<link rel="stylesheet" href="/assets/cms.css?v=5570">
+<script defer src="/assets/cms.js?v=5570"></script>
 </head>
 <body data-cms-mode="__CMS_MODE__">
 <svg xmlns="http://www.w3.org/2000/svg" class="icon-sprite" aria-hidden="true">
@@ -33,7 +33,7 @@
 </svg>
 <div class="dashboard-layout cms-layout atlas-v521-layout">
  <aside class="sidebar" id="cms-sidebar">
-  <div class="sidebar-brand"><div class="brand-symbol" aria-hidden="true"><span></span><span></span><span></span><span></span></div><div class="brand-wordmark"><strong>B2B Atlas</strong><small>CONTROL ROOM</small></div><span class="brand-version">V55.6</span></div>
+  <div class="sidebar-brand"><div class="brand-symbol" aria-hidden="true"><span></span><span></span><span></span><span></span></div><div class="brand-wordmark"><strong>B2B Atlas</strong><small>CONTROL ROOM</small></div><span class="brand-version">V55.7</span></div>
   <div class="workspace-chip"><span class="workspace-chip-icon">A</span><span><strong>Atlas Workspace</strong><small>Content Studio</small></span></div>
   <nav class="side-nav atlas-v521-nav atlas-v530-nav" aria-label="后台主导航">
    <span class="nav-group-label">工作区 <span>WORKSPACE</span></span>
@@ -146,6 +146,7 @@
   <label>图片格式<select id="cms-media-type"><option value="all">全部格式</option><option value="jpeg">JPG</option><option value="png">PNG</option><option value="webp">WebP</option></select></label>
   <label>媒体 ALT<select id="cms-media-seo"><option value="all">全部</option><option value="missing">待补 ALT</option><option value="ready">已填写 ALT</option></select></label>
  </div>
+ <div id="cms-v557-media-audit" class="cms-v557-media-audit" aria-label="图片 ALT 处理"><span id="cms-v557-alt-count" role="status">正在检查本页 ALT…</span><button type="button" id="cms-v557-show-missing">只看待补 ALT</button></div>
  <div class="cms-v532-summary"><span id="cms-media-total" role="status">正在读取媒体…</span><div><button type="button" id="cms-media-select-unused">全选本页未引用</button><span id="cms-media-selected">已选择 0 张</span><button type="button" id="cms-media-bulk-delete" class="cms-v532-danger" disabled>删除选中（0）</button></div></div>
  <p class="cms-v532-hint">媒体库 ALT 是新内容复用时的建议值，不会自动改写已经发布的页面 ALT。批量删除最多 20 张，已被内容引用的图片不可选择。</p>
  <div id="cms-media-grid" class="cms-v51-media-grid" aria-live="polite"></div>
@@ -205,6 +206,7 @@
     <h2>发布排期中心</h2><p>统一查看待发布、已发布、失败与取消的排期。可直接打开对应内容进行调整。</p></div>
     <button type="button" data-v514-close="schedules" aria-label="关闭">×</button></div>
   <div id="cms-v556-schedule-summary" class="cms-v556-schedule-summary" aria-label="排期状态概览"><span>正在读取排期状态…</span></div>
+  <p id="cms-v557-schedule-alert" class="cms-v557-schedule-alert" role="status" hidden></p>
   <div class="cms-v514-dialog-tools"><span id="cms-schedule-count">加载中…</span><button type="button" id="cms-schedule-refresh" class="cms-btn-secondary">刷新排期</button></div>
   <div class="cms-calendar-controls">
  <div class="cms-calendar-view" role="group" aria-label="日历视图">
@@ -221,7 +223,7 @@
   <select id="cms-calendar-status">
    <option value="all">全部计划</option>
    <option value="pending">待发布</option>
-   <option value="attention">需处理（失败或失效）</option>
+   <option value="attention">需处理（异常或超时）</option>
    <option value="published">已发布</option>
    <option value="failed">发布失败</option>
    <option value="stale">版本失效</option>

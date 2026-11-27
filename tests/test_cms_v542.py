@@ -25,8 +25,8 @@ class Cms542(unittest.TestCase):
         self.assertIn('max-height:calc(100dvh - 24px)',self.css)
 
     def test_assets(self):
-        self.assertIn('/assets/cms.js?v=5560',self.html)
-        self.assertIn('/assets/cms.css?v=5560',self.html)
+        self.assertIn('/assets/cms.js?v=5570',self.html)
+        self.assertIn('/assets/cms.css?v=5570',self.html)
 
     def test_bulk_selection_is_action_and_role_aware(self):
         self.assertIn("const bulkActionRules=",self.js)
@@ -66,8 +66,21 @@ class Cms542(unittest.TestCase):
         self.assertIn('function paintScheduleSummary()',self.js)
         self.assertIn('id="cms-v556-schedule-summary"',self.html)
         self.assertIn('<option value="attention">',self.html)
-        self.assertIn("['failed','stale'].includes(item.status)",self.js)
+        self.assertIn("function scheduleIssue(item,now=Date.now())",self.js)
         self.assertIn("formatScheduleTime(schedule.publish_at)",self.js)
+
+    def test_schedule_intervention_and_media_alt_shortcuts(self):
+        self.assertIn("function scheduleIssue(item,now=Date.now())",self.js)
+        self.assertIn('data-v557-schedule-resolve',self.js)
+        self.assertIn("state.selected.status==='review'",self.js)
+        self.assertIn("setEditorTab(state.selected.status==='draft'?",self.js)
+        self.assertIn('id="cms-v557-schedule-alert"',self.html)
+        self.assertIn("function paintScheduleSummary()",self.js)
+        self.assertIn("未来 24 小时内有",self.js)
+        self.assertIn('id="cms-v557-media-audit"',self.html)
+        self.assertIn('id="cms-v557-show-missing"',self.html)
+        self.assertIn("data-v557-edit-alt",self.js)
+        self.assertIn("audit.hidden=Boolean(state.mediaField||state.mediaTarget)",self.js)
 
 if __name__=='__main__':
     unittest.main()

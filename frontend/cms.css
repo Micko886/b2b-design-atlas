@@ -1295,3 +1295,19 @@ body.cms-editor-active .cms-edit-quick-actions{display:flex;align-items:center;g
 .cms-v556-schedule-summary button:not(:disabled):hover{border-color:var(--blue)}
 .cms-v556-schedule-summary button:focus-visible,.cms-v556-calendar-jump:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 @media(max-width:480px){.cms-v556-schedule-summary{gap:6px}.cms-v556-schedule-summary button{padding:11px 9px;min-height:78px}.cms-v556-schedule-summary button strong{font-size:21px}.cms-v556-schedule-summary button span{font-size:10px}}
+
+/* V55.7 · Schedule intervention and accessible ALT editing shortcuts. */
+.cms-v557-schedule-alert{margin:6px 0 13px;padding:11px 13px;border-radius:9px;border:1px solid var(--line-strong);background:var(--surface-2);color:var(--ink-strong);font-size:11px;line-height:1.7}
+.cms-v557-schedule-alert[hidden]{display:none!important}
+.cms-v557-schedule-issue{border-color:var(--line-strong)}
+.cms-v557-schedule-help{padding:9px 11px;border-radius:7px;background:var(--surface);color:var(--ink-strong)!important;font-weight:700;line-height:1.6!important}
+.cms-v557-schedule-issue button[data-v557-schedule-resolve]{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:7px 12px!important;border:1px solid var(--blue)!important;border-radius:8px;background:var(--surface);color:var(--blue)!important}
+.cms-v557-schedule-issue button[data-v557-schedule-resolve]:hover{background:var(--blue-soft)}
+.cms-v557-media-audit{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 12px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--surface-2);font-size:11px;color:var(--ink-strong)}
+.cms-v557-media-audit span{font-size:11px;font-weight:760}
+.cms-v557-media-audit button{min-height:36px;padding:7px 11px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);color:var(--blue);font-size:11px;font-weight:760;cursor:pointer}
+.cms-v557-alt-edit{border:1px solid var(--blue);border-radius:8px;background:var(--blue-soft);color:var(--blue);min-height:36px;padding:8px 10px;font-size:11px;font-weight:760;cursor:pointer}
+.cms-v557-alt-edit:hover,.cms-v557-media-audit button:hover{border-color:var(--blue);background:var(--blue-soft)}
+.cms-v557-media-audit button:focus-visible,.cms-v557-alt-edit:focus-visible,.cms-v557-schedule-issue button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.cms-media-picker-mode .cms-v557-media-audit{display:none!important}
+@media(max-width:480px){.cms-v557-media-audit{align-items:flex-start;flex-direction:column}.cms-v557-media-audit button{width:100%}.cms-v557-schedule-alert{padding:9px 10px}}
