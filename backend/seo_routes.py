@@ -74,26 +74,30 @@ def seo_record(path,collection=None):
     c=collection if collection is not None else catalog()
     if category=="websites" and slug in c["sites"]:
         x=c["sites"][slug]
-        return {"title":x.get("name",slug)+" · 网站设计研究",
-                "description":x.get("summary") or x.get("focus") or "研究 "+x.get("name",slug)+" 的网站设计。",
-                "path":path,"indexed":True,"image":resource_image(category,x,c)}
+        return {"title":x.get("seo_title") or x.get("name",slug)+" · 网站设计研究",
+                "description":x.get("seo_description") or x.get("summary") or x.get("focus") or "研究 "+x.get("name",slug)+" 的网站设计。",
+                "path":path,"indexed":True,"image":resource_image(category,x,c),
+                "keywords":x.get("seo_keywords") or ""}
     if category=="sections" and slug in c["modules"]:
         x=c["modules"][slug]
-        return {"title":x.get("title",slug)+" · 页面模块研究",
-                "description":x.get("lesson") or x.get("summary") or "从真实 B2B 案例中研究页面结构和模块设计。",
-                "path":path,"indexed":True,"image":resource_image(category,x,c)}
+        return {"title":x.get("seo_title") or x.get("title",slug)+" · 页面模块研究",
+                "description":x.get("seo_description") or x.get("lesson") or x.get("summary") or "从真实 B2B 案例中研究页面结构和模块设计。",
+                "path":path,"indexed":True,"image":resource_image(category,x,c),
+                "keywords":x.get("seo_keywords") or ""}
     if category=="patterns" and slug in c["patterns"]:
         x=c["patterns"][slug]
-        return {"title":x.get("title",slug)+" · 设计模式",
-                "description":x.get("question") or x.get("principle") or "B2B 数字产品设计方法研究。",
-                "path":path,"indexed":True,"image":resource_image(category,x,c)}
+        return {"title":x.get("seo_title") or x.get("title",slug)+" · 设计模式",
+                "description":x.get("seo_description") or x.get("question") or x.get("principle") or "B2B 数字产品设计方法研究。",
+                "path":path,"indexed":True,"image":resource_image(category,x,c),
+                "keywords":x.get("seo_keywords") or ""}
     if category=="insights" and slug in c["articles"]:
         x=c["articles"][slug]
         return {"title":x.get("seo_title") or x.get("title",slug),
                 "description":x.get("seo_description") or x.get("subtitle") or "B2B Atlas 原创设计研究文章",
                 "path":path,"indexed":True,"kind":"article",
                 "published":x.get("published_at",""),"author":x.get("author","B2B Atlas 编辑部"),
-                "image":resource_image(category,x,c)}
+                "image":resource_image(category,x,c),
+                "keywords":x.get("seo_keywords") or ", ".join(t for t in x.get("tags",[]) if isinstance(t,str)) if isinstance(x.get("tags"),list) else x.get("seo_keywords") or ""}
     return None
 
 def safe(v,maxlen=300):
@@ -113,6 +117,8 @@ def public_image(value):
 
 
 def resource_image(kind, item, collection):
+    share=public_image(item.get("seo_image"))
+    if share:return share
     if kind in ("websites","sections"):
         return public_image(item.get("screenshot_url"))
     if kind=="insights":
@@ -269,11 +275,13 @@ def seo_schema(path,record,collection,canonical,image):
         webpage={"@type":"WebPage","name":record["title"],"url":canonical,
                  "description":record["description"],"inLanguage":"zh-CN",
                  "primaryImageOfPage":image,"breadcrumb":breadcrumbs}
+        if record.get("keywords"):webpage["keywords"]=record["keywords"]
         return {**base,"@graph":[webpage,breadcrumbs]}
     article={"@type":"Article","headline":record["title"],"description":record["description"],
              "inLanguage":"zh-CN","author":{"@type":"Organization","name":record.get("author") or "B2B Atlas 编辑部"},
              "publisher":{"@type":"Organization","name":"B2B Atlas"},
              "mainEntityOfPage":canonical,"image":image}
+    if record.get("keywords"):article["keywords"]=record["keywords"]
     published=record.get("published")
     if isinstance(published,str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}",published):
         article["datePublished"]=published
