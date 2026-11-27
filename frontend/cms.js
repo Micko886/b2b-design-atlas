@@ -1563,6 +1563,7 @@ async function openMedia(){
     :'选择已有图片，或上传一张新图片自动填入当前内容。')
   :'查找图片、维护可复用的 ALT 与图注、查看引用关系。删除引用中的图片会被服务器阻止。';
  $('#cms-media-picker-intro').hidden=!picking;
+ hideBulkAltEditor();
  if(picking){
   // A previously filtered SEO workbench must never look like an empty image picker.
   Object.assign(mediaWorkbench,{query:'',usage:'all',fileType:'all',seo:'all',offset:0});
@@ -1668,11 +1669,13 @@ function renderMediaCards(){
      :state.mediaField?'<button type="button" class="cms-v550-select-photo" data-v51-use-media="'+h(item.url)+'">'+(state.mediaField==='field-gallery'?'添加这张截图':'使用这张图片')+'</button>':'')
    +'<div class="cms-v532-state"><span data-media-seo-status="'+(alt.trim()?'ready':'missing')+'">'+(alt.trim()?'已填写 ALT':'待补 ALT')+'</span><span>'+(used?'引用 '+used+' 条内容':'未引用')+'</span></div>'
    +(!alt.trim()&&can('media')?'<button type="button" class="cms-v557-alt-edit" data-v557-edit-alt="'+h(item.id)+'">补充图片 ALT</button>':'')
+   +(used&&!state.mediaField&&!state.mediaTarget?'<button type="button" class="cms-v558-refs-open" data-v558-open-refs="'+h(item.id)+'">查看引用（'+used+'）</button>':'')
    +'<details class="cms-v532-details"><summary>SEO 信息与引用关系</summary><div class="cms-v532-details-body">'
    +'<label>图片 ALT（复用建议）<input data-media-alt maxlength="240" value="'+h(alt)+'" placeholder="说明图片内容，而不是堆砌关键词"></label>'
    +'<label>图片说明或来源<textarea data-media-caption maxlength="320" rows="2" placeholder="可选：图片背景和来源">'+h(caption)+'</textarea></label>'
    +(can('media')?'<button type="button" data-media-meta-save="'+h(item.id)+'">保存 SEO 资料</button>':'')
-   +'<div class="cms-v532-references"><strong>当前引用</strong>'+mediaReferenceLinks(item)+'</div></div></details>'
+   +'<div class="cms-v532-references" tabindex="-1"><strong>当前引用（CMS 草稿与已发布内容）</strong>'+mediaReferenceLinks(item)
+   +(used>20?'<p>引用数量较多，当前最多显示 20 条。</p>':'')+'</div></div></details>'
    +(can('media')?'<button type="button" data-media-crop="'+h(item.id)+'">裁剪 / 设置焦点</button>':'')
    +'<button type="button" data-v51-copy-media="'+h(item.url)+'">复制图片地址</button>'
    +(can('media')?'<button type="button" data-v51-delete-media="'+h(item.id)+'" class="cms-v51-delete"'+(used?' disabled title="被内容引用，不能删除"':'')+'>'+(used?'引用中 · 不可删除':'删除图片')+'</button>':'')
@@ -1683,8 +1686,13 @@ function renderMediaCards(){
  const audit=$('#cms-v557-media-audit'),auditText=$('#cms-v557-alt-count'),auditButton=$('#cms-v557-show-missing');
  if(audit&&auditText&&auditButton){
   audit.hidden=Boolean(state.mediaField||state.mediaTarget);
-  auditText.textContent='本页 '+missing+' 张待补 ALT'+(mediaWorkbench.seo==='missing'?' · 仅显示未填写':'');
+  const inUse=items.filter(item=>Number(item.usage_count||0)>0).length;
+  auditText.textContent='本页 '+missing+' 张待补 ALT · '+inUse+' 张已被引用'
+   +(mediaWorkbench.seo==='missing'?' · 仅显示未填写':'');
   auditButton.textContent=mediaWorkbench.seo==='missing'?'查看全部媒体':'只看待补 ALT';
+  const batch=$('#cms-v558-bulk-alt-open');
+  batch.disabled=!missing||!can('media');
+  batch.textContent='批量补 ALT（'+Math.min(20,missing)+'）';
  }
  const page=$('#cms-media-page');if(page)page.textContent='第 '+(Math.floor(mediaWorkbench.offset/mediaWorkbench.limit)+1)+' 页';
  const prev=$('#cms-media-prev'),next=$('#cms-media-next');
@@ -1697,8 +1705,56 @@ function updateMediaBulkSelection(){
  if(button){button.disabled=!count||!can('media');button.textContent='删除选中（'+count+'）'}
  const text=$('#cms-media-selected');if(text)text.textContent='已选择 '+count+' 张';
 }
+function hideBulkAltEditor(){
+ const panel=$('#cms-v558-bulk-alt-panel');if(panel)panel.hidden=true;
+}
 function resetMediaFilters(){
- mediaWorkbench.offset=0;mediaWorkbench.selected.clear();
+ mediaWorkbench.offset=0;mediaWorkbench.selected.clear();hideBulkAltEditor();
+}
+function openBulkAltEditor(){
+ if(!can('media')||state.mediaField||state.mediaTarget)return;
+ const rows=(state.mediaRecords||[]).filter(item=>!String(item.alt_text||'').trim()).slice(0,20);
+ if(!rows.length){message('本页图片已经全部填写了 ALT。');return}
+ const root=$('#cms-v558-bulk-alt-inputs'),panel=$('#cms-v558-bulk-alt-panel');
+ root.innerHTML=rows.map(item=>
+  '<label class="cms-v558-alt-row"><span><strong>'+h(item.file_name)+'</strong><small>'
+   +(item.usage_count?'已被 '+Number(item.usage_count)+' 条 CMS 内容引用':'尚未被 CMS 内容引用')
+   +'</small></span><input type="text" data-v558-bulk-alt-id="'+h(item.id)+'" maxlength="240"'
+   +' autocomplete="off" placeholder="例如：工业机器人在生产线上的操作界面" aria-label="为 '+h(item.file_name)+' 填写图片 ALT"></label>'
+ ).join('');
+ panel.hidden=false;
+ $('#cms-v558-alt-note').textContent=rows.length+' 张可编辑；留空的图片不会提交。'
+  +((state.mediaRecords||[]).filter(x=>!String(x.alt_text||'').trim()).length>20?'本批最多处理 20 张，请保存后继续。':'');
+ updateBulkAltProgress();
+ root.querySelector('input')?.focus({preventScroll:true});
+}
+function updateBulkAltProgress(){
+ const inputs=Array.from(document.querySelectorAll('#cms-v558-bulk-alt-inputs [data-v558-bulk-alt-id]'));
+ const done=inputs.filter(input=>input.value.trim()).length;
+ $('#cms-v558-alt-progress').textContent='已填写 '+done+' / '+inputs.length+' 张';
+ $('#cms-v558-alt-save').disabled=!done||!can('media');
+}
+async function saveBulkAlt(){
+ if(!can('media')||state.mediaField||state.mediaTarget)return;
+ const inputs=Array.from(document.querySelectorAll('#cms-v558-bulk-alt-inputs [data-v558-bulk-alt-id]'));
+ const items=inputs.map(input=>({id:input.dataset.v558BulkAltId,alt_text:input.value.trim()}))
+  .filter(item=>item.alt_text);
+ if(!items.length){message('请至少填写一张图片的 ALT。',false);return}
+ if(items.length>20){message('每批最多提交 20 张图片。',false);return}
+ const current=new Map((state.mediaRecords||[]).map(item=>[item.id,item]));
+ if(items.some(item=>!current.has(item.id)||String(current.get(item.id).alt_text||'').trim())){
+  message('图片列表已经变化，请刷新后再保存。',false);return;
+ }
+ const save=$('#cms-v558-alt-save');save.disabled=true;
+ try{
+  const result=await api('/api/admin/media/bulk-alt',{method:'POST',body:JSON.stringify({items})});
+  hideBulkAltEditor();
+  await refreshMedia();
+  message('已保存 '+result.updated+' 张图片 ALT。不会自动修改现有已发布页面。');
+ }catch(e){
+  $('#cms-v558-alt-note').textContent='保存未完成：'+e.message+'。请刷新图片列表后核对，已有输入仍保留。';
+  message(e.message,false);
+ }finally{updateBulkAltProgress()}
 }
 async function refreshMedia(){
  const seq=++mediaWorkbench.request;
@@ -2653,8 +2709,8 @@ function boot(){
  for(const [id,key] of [['cms-media-usage','usage'],['cms-media-type','fileType'],['cms-media-seo','seo']]){
   $('#'+id).addEventListener('change',e=>{mediaWorkbench[key]=e.target.value;resetMediaFilters();refreshMedia()});
  }
- $('#cms-media-prev').addEventListener('click',()=>{if(mediaWorkbench.offset>0){mediaWorkbench.offset-=mediaWorkbench.limit;mediaWorkbench.selected.clear();refreshMedia()}});
- $('#cms-media-next').addEventListener('click',()=>{if(mediaWorkbench.offset+mediaWorkbench.limit<mediaWorkbench.total){mediaWorkbench.offset+=mediaWorkbench.limit;mediaWorkbench.selected.clear();refreshMedia()}});
+ $('#cms-media-prev').addEventListener('click',()=>{if(mediaWorkbench.offset>0){mediaWorkbench.offset-=mediaWorkbench.limit;mediaWorkbench.selected.clear();hideBulkAltEditor();refreshMedia()}});
+ $('#cms-media-next').addEventListener('click',()=>{if(mediaWorkbench.offset+mediaWorkbench.limit<mediaWorkbench.total){mediaWorkbench.offset+=mediaWorkbench.limit;mediaWorkbench.selected.clear();hideBulkAltEditor();refreshMedia()}});
  $('#cms-media-select-unused').addEventListener('click',()=>{
   const available=(state.mediaRecords||[]).filter(item=>!item.usage_count).slice(0,20);
   mediaWorkbench.selected=new Set(available.map(x=>x.id));renderMediaCards();
@@ -2670,6 +2726,13 @@ function boot(){
   updateMediaBulkSelection();
  });
  $('#cms-media-grid').addEventListener('click',async event=>{
+  const refs=event.target.closest('[data-v558-open-refs]');
+  if(refs){
+   const card=refs.closest('[data-media-id]'),details=card?.querySelector('.cms-v532-details');
+   const target=details?.querySelector('.cms-v532-references');
+   if(details&&target){details.open=true;target.focus({preventScroll:true});target.scrollIntoView({block:'nearest'})}
+   return;
+  }
   const editAlt=event.target.closest('[data-v557-edit-alt]');
   if(editAlt){
    if(!can('media'))return;
@@ -2685,6 +2748,10 @@ function boot(){
   $('#cms-media-seo').value=mediaWorkbench.seo;
   resetMediaFilters();refreshMedia();
  });
+ $('#cms-v558-bulk-alt-open').addEventListener('click',openBulkAltEditor);
+ $('#cms-v558-alt-cancel').addEventListener('click',hideBulkAltEditor);
+ $('#cms-v558-alt-save').addEventListener('click',saveBulkAlt);
+ $('#cms-v558-bulk-alt-inputs').addEventListener('input',updateBulkAltProgress);
  $('#cms-media-select').addEventListener('click',()=>$('#cms-media-file').click());
  $('#cms-media-file').addEventListener('change',async e=>{const files=Array.from(e.target.files||[]);e.target.value='';await uploadMedia(files)});
  const drop=$('#cms-media-drop');

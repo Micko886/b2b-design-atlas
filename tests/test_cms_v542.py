@@ -25,8 +25,8 @@ class Cms542(unittest.TestCase):
         self.assertIn('max-height:calc(100dvh - 24px)',self.css)
 
     def test_assets(self):
-        self.assertIn('/assets/cms.js?v=5570',self.html)
-        self.assertIn('/assets/cms.css?v=5570',self.html)
+        self.assertIn('/assets/cms.js?v=5580',self.html)
+        self.assertIn('/assets/cms.css?v=5580',self.html)
 
     def test_bulk_selection_is_action_and_role_aware(self):
         self.assertIn("const bulkActionRules=",self.js)
@@ -81,6 +81,17 @@ class Cms542(unittest.TestCase):
         self.assertIn('id="cms-v557-show-missing"',self.html)
         self.assertIn("data-v557-edit-alt",self.js)
         self.assertIn("audit.hidden=Boolean(state.mediaField||state.mediaTarget)",self.js)
+
+    def test_bulk_alt_and_media_reference_workbench(self):
+        self.assertIn('id="cms-v558-bulk-alt-panel"',self.html)
+        self.assertIn('id="cms-v558-bulk-alt-open"',self.html)
+        self.assertIn('id="cms-v558-alt-save"',self.html)
+        self.assertIn("function openBulkAltEditor()",self.js)
+        self.assertIn("function saveBulkAlt()",self.js)
+        self.assertIn("api('/api/admin/media/bulk-alt'",self.js)
+        self.assertIn("data-v558-open-refs",self.js)
+        self.assertIn("当前引用（CMS 草稿与已发布内容）",self.js)
+        self.assertIn("mediaWorkbench.seo==='missing'",self.js)
 
 if __name__=='__main__':
     unittest.main()

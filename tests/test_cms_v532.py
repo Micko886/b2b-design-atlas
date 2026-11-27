@@ -151,6 +151,85 @@ class MediaWorkBenchV532(unittest.TestCase):
         self.assertEqual(self.listing()["items"][0]["alt_text"],"New recommended ALT")
         self.assertEqual(self.db.all("SELECT * FROM atlas_cms_entries"),[])
 
+    def test_bulk_alt_fills_two_missing_preserves_caption_and_public_payload(self):
+        one=self.upload("machine.png")
+        two=self.upload("workshop.png")
+        self.attach_to_draft(one["id"],slug="public-example",published=True)
+        public_before=self.db.one(
+            "SELECT draft_json,published_json FROM atlas_cms_entries WHERE slug=?",
+            ("public-example",))
+        self.call("PUT","/api/admin/media/{media_id}/metadata",one["id"],
+                  cms_routes.MediaMetadata(alt_text="",caption="Original photographer"),object())
+        payload=cms_routes.MediaBulkAlt(items=[
+            cms_routes.MediaBulkAltItem(id=one["id"],alt_text="Industrial machine control panel"),
+            cms_routes.MediaBulkAltItem(id=two["id"],alt_text="Metalworking workshop interior")])
+        result=self.call("POST","/api/admin/media/bulk-alt",payload,object())
+        self.assertEqual(result["updated"],2)
+        ready=self.listing(seo="ready")
+        self.assertEqual(ready["total"],2)
+        info=next(x for x in ready["items"] if x["id"]==one["id"])
+        self.assertEqual(info["caption"],"Original photographer")
+        self.assertEqual(info["usage_count"],1)
+        public_after=self.db.one(
+            "SELECT draft_json,published_json FROM atlas_cms_entries WHERE slug=?",
+            ("public-example",))
+        self.assertEqual(public_before,public_after)
+        self.require.assert_any_call(unittest.mock.ANY,mutate=True,permission="media")
+
+    def test_bulk_alt_rejects_a_stale_item_atomically(self):
+        first=self.upload("new.png")
+        second=self.upload("edited.png")
+        self.call("PUT","/api/admin/media/{media_id}/metadata",second["id"],
+                  cms_routes.MediaMetadata(alt_text="Already described",caption="Keep this"),object())
+        payload=cms_routes.MediaBulkAlt(items=[
+            cms_routes.MediaBulkAltItem(id=first["id"],alt_text="First image"),
+            cms_routes.MediaBulkAltItem(id=second["id"],alt_text="Overwritten image")])
+        with self.assertRaises(HTTPException) as err:
+            self.call("POST","/api/admin/media/bulk-alt",payload,object())
+        self.assertEqual(err.exception.status_code,409)
+        self.assertEqual(self.listing(seo="missing")["total"],1)
+        self.assertEqual(self.db.one(
+            "SELECT alt_text,caption FROM atlas_cms_media_meta WHERE media_id=?",
+            (second["id"],)),{"alt_text":"Already described","caption":"Keep this"})
+        self.assertIsNone(self.db.one("SELECT * FROM atlas_cms_media_meta WHERE media_id=?",
+                                       (first["id"],)))
+
+    def test_bulk_alt_rejects_missing_ids_and_duplicates_before_writing(self):
+        existing=self.upload("valid.png")
+        missing=str(uuid.uuid4())
+        for ids,expected_status in (
+            ([existing["id"],missing],404),
+            ([existing["id"],existing["id"]],422),
+            ([existing["id"],"x"*36],422),
+        ):
+            with self.subTest(ids=ids),self.assertRaises(HTTPException) as err:
+                payload=cms_routes.MediaBulkAlt(items=[
+                    cms_routes.MediaBulkAltItem(id=id,alt_text="Meaningful image description")
+                    for id in ids])
+                self.call("POST","/api/admin/media/bulk-alt",payload,object())
+            self.assertEqual(err.exception.status_code,expected_status)
+            self.assertEqual(self.listing(seo="missing")["total"],1)
+        self.assertFalse(self.db.all("SELECT * FROM atlas_cms_media_meta"))
+
+    def test_bulk_alt_has_strict_item_and_text_limits(self):
+        item_id=str(uuid.uuid4())
+        with self.assertRaises(ValidationError):
+            cms_routes.MediaBulkAlt(items=[])
+        with self.assertRaises(ValidationError):
+            cms_routes.MediaBulkAlt(items=[
+                cms_routes.MediaBulkAltItem(id=item_id,alt_text="description")
+                for _ in range(21)])
+        with self.assertRaises(ValidationError):
+            cms_routes.MediaBulkAltItem(id=item_id,alt_text="x"*241)
+        self.upload("blank.png")
+        payload=cms_routes.MediaBulkAlt(items=[
+            cms_routes.MediaBulkAltItem(id=self.listing()["items"][0]["id"],alt_text="  ")])
+        with self.assertRaises(HTTPException) as err:
+            self.call("POST","/api/admin/media/bulk-alt",payload,object())
+        self.assertEqual(err.exception.status_code,422)
+        self.assertEqual(self.listing(seo="missing")["total"],1)
+
+
 
 if __name__=="__main__":
     unittest.main()

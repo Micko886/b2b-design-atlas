@@ -564,6 +564,13 @@ class MediaMetadata(BaseModel):
 class MediaBulkDelete(BaseModel):
     ids: list[str] = Field(min_length=1,max_length=20)
 
+class MediaBulkAltItem(BaseModel):
+    id: str = Field(min_length=36,max_length=36)
+    alt_text: str = Field(min_length=1,max_length=240)
+
+class MediaBulkAlt(BaseModel):
+    items: list[MediaBulkAltItem] = Field(min_length=1,max_length=20)
+
 class BulkItem(BaseModel):
     slug: str = Field(min_length=1,max_length=111)
     expected_revision: int = Field(ge=1)
@@ -920,6 +927,43 @@ def register_cms_routes(app: FastAPI):
                          updated_by=excluded.updated_by,updated_at=excluded.updated_at""",
                        (media_id,alt_text,caption,session["user_id"],utc_now()))
         return {"ok":True,"id":media_id,"alt_text":alt_text,"caption":caption}
+
+    @app.post("/api/admin/media/bulk-alt",include_in_schema=False)
+    def bulk_fill_media_alt(data:MediaBulkAlt,request:Request):
+        # A dedicated fill-missing-only action: never silently overwrite a
+        # teammate's metadata or mutate published content/snapshot JSON.
+        session=require_admin(request,mutate=True,permission="media");ensure_cms()
+        ids=[item.id for item in data.items]
+        if len(ids)!=len(set(ids)):
+            user_auth.error(422,"同一张图片不能重复提交。")
+        for item in data.items:
+            try:uuid.UUID(item.id)
+            except ValueError:user_auth.error(422,"媒体 ID 不合法。")
+            if not item.alt_text.strip():
+                user_auth.error(422,"图片 ALT 不能为空，请先填写内容描述。")
+        # Every item is validated before any write; this also prevents a
+        # partially successful batch after a stale or deleted image.
+        with user_auth.db() as db:
+            existing=[]
+            for item in data.items:
+                if not db.one("SELECT id FROM atlas_cms_media WHERE id=?",(item.id,)):
+                    user_auth.error(404,"图片列表已变化，请刷新后再批量保存。")
+                metadata=db.one(
+                    "SELECT alt_text,caption FROM atlas_cms_media_meta WHERE media_id=?",
+                    (item.id,))
+                if metadata and metadata["alt_text"].strip():
+                    user_auth.error(409,"有图片的 ALT 已被其他编辑更新，请刷新后再提交。")
+                existing.append((item.id,item.alt_text.strip(),
+                                 metadata["caption"] if metadata else ""))
+            now=utc_now()
+            for media_id,alt_text,caption in existing:
+                db.execute("""INSERT INTO atlas_cms_media_meta(media_id,alt_text,caption,updated_by,updated_at)
+                           VALUES(?,?,?,?,?)
+                           ON CONFLICT(media_id) DO UPDATE SET
+                             alt_text=excluded.alt_text,caption=excluded.caption,
+                             updated_by=excluded.updated_by,updated_at=excluded.updated_at""",
+                           (media_id,alt_text,caption,session["user_id"],now))
+        return {"ok":True,"updated":len(existing),"ids":ids}
 
     def safely_delete_media(db,ids):
         # Validate ALL requested media first, then delete in one DB transaction.

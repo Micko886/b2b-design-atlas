@@ -72,6 +72,22 @@ async function mockCms(page,role='owner',forcedErrors={}){
    else if(String(body.alt_text||'').length>240){status=422;result={detail:'ALT is too long'}}
    else{item.alt_text=String(body.alt_text||'').trim();item.caption=String(body.caption||'').trim();result={ok:true,id,alt_text:item.alt_text,caption:item.caption}}
   }
+  else if(p==='/api/admin/media/bulk-alt'&&method==='POST'){
+   const items=Array.isArray(body.items)?body.items:[];
+   const ids=items.map(item=>item.id);
+   if(role==='reviewer'||role==='guest'){status=403;result={detail:'没有媒体管理权限'}}
+   else if(!items.length||items.length>20||new Set(ids).size!==ids.length||
+     items.some(item=>typeof item.alt_text!=='string'||!item.alt_text.trim()||item.alt_text.length>240||!/^[0-9a-f-]{36}$/.test(item.id))){
+    status=422;result={detail:'批量 ALT 数据不合法'}
+   }else if(items.some(item=>!uploads.some(upload=>upload.id===item.id))){
+    status=404;result={detail:'图片列表已变化，请刷新后再批量保存'}
+   }else if(items.some(item=>uploads.find(upload=>upload.id===item.id).alt_text?.trim())){
+    status=409;result={detail:'有图片的 ALT 已被其他编辑更新'}
+   }else{
+    for(const item of items)uploads.find(upload=>upload.id===item.id).alt_text=item.alt_text.trim();
+    result={ok:true,updated:items.length,ids};
+   }
+  }
   else if(p==='/api/admin/media/bulk-delete'&&method==='POST'){
    const target=uploads.filter(item=>(body.ids||[]).includes(item.id));
    if(target.some(item=>item.usage_count)){status=409;result={detail:'有图片仍被草稿或公开内容引用'}}
@@ -1752,5 +1768,121 @@ test('V55.7 320px media ALT audit has no document horizontal overflow',async({pa
  await page.goto(origin+'/admin/content?kind=site&workspace=media');
  await expect(page.locator('#cms-v557-media-audit')).toBeVisible();
  await expect(page.locator('#cms-v557-show-missing')).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
+
+
+test('V55.8 batch ALT saves only filled images while preserving captions and content references',async({page})=>{
+ const {uploads,records}=await mockCms(page,'owner');
+ const seed=(id,name,caption,usage_count=0)=>({
+  id,url:'/api/media/'+id,file_name:name,mime:'image/png',mime_type:'image/png',
+  byte_size:4000,created_at:'2026-11-25T10:00:00Z',usage_count,
+  used_by:usage_count?[{kind:'site',slug:'demo-site'}]:[],alt_text:'',caption
+ });
+ uploads.push(seed('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','factory-a.png','Original photographer',1),
+  seed('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','factory-b.png','Second image'),
+  seed('cccccccc-cccc-4ccc-8ccc-cccccccccccc','factory-c.png','Third image'));
+ const published=structuredClone(records.site.payload);
+ await page.goto(origin+'/admin/content?kind=site&workspace=media');
+ await expect(page.locator('#cms-v558-bulk-alt-open')).toHaveText('批量补 ALT（3）');
+ await expect(page.locator('#cms-v557-alt-count')).toContainText('1 张已被引用');
+ await page.locator('#cms-v558-bulk-alt-open').click();
+ await expect(page.locator('#cms-v558-bulk-alt-inputs [data-v558-bulk-alt-id]')).toHaveCount(3);
+ await expect(page.locator('#cms-v558-alt-save')).toBeDisabled();
+ await page.locator('[data-v558-bulk-alt-id="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"]').fill('Machine control dashboard at factory');
+ await page.locator('[data-v558-bulk-alt-id="bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"]').fill('Production floor showing robot arms');
+ await expect(page.locator('#cms-v558-alt-progress')).toContainText('已填写 2 / 3 张');
+ await page.locator('#cms-v558-alt-save').click();
+ await expect(page.locator('#cms-v558-bulk-alt-panel')).toBeHidden();
+ expect(uploads.map(x=>x.alt_text)).toEqual(['Machine control dashboard at factory','Production floor showing robot arms','']);
+ expect(uploads[0].caption).toBe('Original photographer');
+ expect(records.site.payload).toEqual(published);
+ await expect(page.locator('#cms-v557-alt-count')).toContainText('本页 1 张待补 ALT');
+});
+
+test('V55.8 ALT batch save is atomic when a teammate has filled one image',async({page})=>{
+ const {uploads}=await mockCms(page);
+ const seed=(id,name)=>({id,url:'/api/media/'+id,file_name:name,mime:'image/png',mime_type:'image/png',
+  byte_size:3000,created_at:'2026-11-25',usage_count:0,used_by:[],alt_text:'',caption:''});
+ uploads.push(seed('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','a.png'),
+  seed('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','b.png'));
+ await page.goto(origin+'/admin/content?kind=site&workspace=media');
+ await page.locator('#cms-v558-bulk-alt-open').click();
+ await page.locator('[data-v558-bulk-alt-id="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"]').fill('Reference photo A');
+ await page.locator('[data-v558-bulk-alt-id="bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"]').fill('Reference photo B');
+ uploads[1].alt_text='Another editor already filled this ALT';
+ await page.locator('#cms-v558-alt-save').click();
+ await expect(page.locator('#cms-v558-alt-note')).toContainText('有图片的 ALT 已被其他编辑更新');
+ expect(uploads[0].alt_text).toBe('');
+ expect(uploads[1].alt_text).toBe('Another editor already filled this ALT');
+ await expect(page.locator('#cms-v558-bulk-alt-panel')).toBeVisible();
+ await expect(page.locator('[data-v558-bulk-alt-id="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"]')).toHaveValue('Reference photo A');
+});
+
+test('V55.8 ALT batch editor caps current page at 20, never silently fills remaining images',async({page})=>{
+ const {uploads}=await mockCms(page);
+ for(let i=0;i<26;i++){
+  const id='aaaaaaaa-aaaa-4aaa-8aaa-'+String(i+1).padStart(12,'0');
+  uploads.push({id,url:'/api/media/'+id,file_name:'batch-'+i+'.png',mime:'image/png',mime_type:'image/png',
+   byte_size:3000,created_at:'2026-11-25',usage_count:0,used_by:[],alt_text:'',caption:''});
+ }
+ await page.goto(origin+'/admin/content?kind=site&workspace=media');
+ await expect(page.locator('[data-media-id]')).toHaveCount(24);
+ await expect(page.locator('#cms-v558-bulk-alt-open')).toHaveText('批量补 ALT（20）');
+ await page.locator('#cms-v558-bulk-alt-open').click();
+ await expect(page.locator('[data-v558-bulk-alt-id]')).toHaveCount(20);
+ await expect(page.locator('#cms-v558-alt-note')).toContainText('本批最多处理 20 张');
+ await page.locator('[data-v558-bulk-alt-id]').first().fill('Description of one item only');
+ await page.locator('#cms-v558-alt-save').click();
+ expect(uploads.filter(item=>item.alt_text)).toHaveLength(1);
+ await expect(page.locator('[data-media-id]')).toHaveCount(24);
+ await expect(page.locator('#cms-v557-alt-count')).toContainText('本页 23 张待补 ALT');
+ await page.locator('#cms-media-next').click();
+ await expect(page.locator('[data-media-id]')).toHaveCount(2);
+ await expect(page.locator('#cms-v558-alt-count')).toHaveCount(0);
+ await expect(page.locator('#cms-v558-bulk-alt-open')).toHaveText('批量补 ALT（2）');
+});
+
+test('V55.8 referenced media shows a direct citation link and keeps delete blocked',async({page})=>{
+ const {uploads}=await mockCms(page);
+ uploads.push({id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',url:'/api/media/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  file_name:'used.png',mime:'image/png',mime_type:'image/png',byte_size:6000,created_at:'2026-11-25',
+  usage_count:2,used_by:[{kind:'site',slug:'demo-site'},{kind:'article',slug:'demo-article'}],
+  alt_text:'Factory assembly photo',caption:'Factory tour'});
+ await page.goto(origin+'/admin/content?kind=site&workspace=media');
+ await expect(page.locator('[data-v558-open-refs]')).toHaveText('查看引用（2）');
+ await page.locator('[data-v558-open-refs]').click();
+ await expect(page.locator('.cms-v532-details')).toHaveAttribute('open','');
+ const ref=page.locator('.cms-v532-references');
+ await expect(ref).toBeFocused();
+ await expect(ref).toContainText('CMS 草稿与已发布内容');
+ await expect(ref.locator('a')).toHaveCount(2);
+ await expect(ref.locator('a').first()).toHaveAttribute('href','/admin/content?kind=site&edit=demo-site');
+ await expect(page.locator('[data-v51-delete-media]')).toBeDisabled();
+});
+
+test('V55.8 image picker does not show bulk SEO editor or reference management',async({page})=>{
+ const {uploads}=await mockCms(page,'owner');
+ uploads.push({id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',url:'/api/media/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  file_name:'reference.png',mime:'image/png',mime_type:'image/png',byte_size:4000,
+  created_at:'2026-11-25',usage_count:1,used_by:[{kind:'site',slug:'demo-site'}],alt_text:'',caption:''});
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await page.locator('[data-editor-pick-media="field-screenshot_url"]').click();
+ await expect(page.locator('#cms-v558-bulk-alt-panel')).toBeHidden();
+ await expect(page.locator('#cms-v558-bulk-alt-open')).toBeHidden();
+ await expect(page.locator('[data-v558-open-refs]')).toHaveCount(0);
+ await expect(page.locator('[data-v51-use-media]')).toBeVisible();
+});
+
+test('V55.8 320px bulk ALT panel is usable without horizontal overflow',async({page})=>{
+ const {uploads}=await mockCms(page,'owner');
+ uploads.push({id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',url:'/api/media/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  file_name:'industrial-machine.png',mime:'image/png',mime_type:'image/png',byte_size:4000,
+  created_at:'2026-11-25',usage_count:0,used_by:[],alt_text:'',caption:''});
+ await page.setViewportSize({width:320,height:760});
+ await page.goto(origin+'/admin/content?kind=site&workspace=media');
+ await page.locator('#cms-v558-bulk-alt-open').click();
+ await expect(page.locator('#cms-v558-bulk-alt-panel')).toBeVisible();
+ await expect(page.locator('[data-v558-bulk-alt-id]')).toBeFocused();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });

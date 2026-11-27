@@ -6,8 +6,8 @@
 <meta name="theme-color" content="#f5f7fb">
 <title>内容管理 · B2B Atlas Control Room</title>
 <link rel="stylesheet" href="/assets/admin.css?v=5300">
-<link rel="stylesheet" href="/assets/cms.css?v=5570">
-<script defer src="/assets/cms.js?v=5570"></script>
+<link rel="stylesheet" href="/assets/cms.css?v=5580">
+<script defer src="/assets/cms.js?v=5580"></script>
 </head>
 <body data-cms-mode="__CMS_MODE__">
 <svg xmlns="http://www.w3.org/2000/svg" class="icon-sprite" aria-hidden="true">
@@ -33,7 +33,7 @@
 </svg>
 <div class="dashboard-layout cms-layout atlas-v521-layout">
  <aside class="sidebar" id="cms-sidebar">
-  <div class="sidebar-brand"><div class="brand-symbol" aria-hidden="true"><span></span><span></span><span></span><span></span></div><div class="brand-wordmark"><strong>B2B Atlas</strong><small>CONTROL ROOM</small></div><span class="brand-version">V55.7</span></div>
+  <div class="sidebar-brand"><div class="brand-symbol" aria-hidden="true"><span></span><span></span><span></span><span></span></div><div class="brand-wordmark"><strong>B2B Atlas</strong><small>CONTROL ROOM</small></div><span class="brand-version">V55.8</span></div>
   <div class="workspace-chip"><span class="workspace-chip-icon">A</span><span><strong>Atlas Workspace</strong><small>Content Studio</small></span></div>
   <nav class="side-nav atlas-v521-nav atlas-v530-nav" aria-label="后台主导航">
    <span class="nav-group-label">工作区 <span>WORKSPACE</span></span>
@@ -146,9 +146,15 @@
   <label>图片格式<select id="cms-media-type"><option value="all">全部格式</option><option value="jpeg">JPG</option><option value="png">PNG</option><option value="webp">WebP</option></select></label>
   <label>媒体 ALT<select id="cms-media-seo"><option value="all">全部</option><option value="missing">待补 ALT</option><option value="ready">已填写 ALT</option></select></label>
  </div>
- <div id="cms-v557-media-audit" class="cms-v557-media-audit" aria-label="图片 ALT 处理"><span id="cms-v557-alt-count" role="status">正在检查本页 ALT…</span><button type="button" id="cms-v557-show-missing">只看待补 ALT</button></div>
+ <div id="cms-v557-media-audit" class="cms-v557-media-audit" aria-label="图片 ALT 处理"><span id="cms-v557-alt-count" role="status">正在检查本页 ALT…</span><div class="cms-v558-audit-actions"><button type="button" id="cms-v557-show-missing">只看待补 ALT</button><button type="button" id="cms-v558-bulk-alt-open" disabled>批量补 ALT</button></div></div>
+ <section id="cms-v558-bulk-alt-panel" class="cms-v558-bulk-alt-panel" aria-label="批量补充图片 ALT" hidden>
+  <div class="cms-v558-bulk-head"><div><h3>批量补充图片 ALT</h3><p>为本页最多 20 张未填写的图片添加简洁描述；已填写的不会覆盖，留空的不会提交。</p></div><span id="cms-v558-alt-progress" role="status">已填写 0 张</span></div>
+  <div id="cms-v558-bulk-alt-inputs" class="cms-v558-alt-list"></div>
+  <p id="cms-v558-alt-note" class="cms-v558-alt-note">仅更新媒体库中的建议 ALT，不自动修改现有文章或已发布页面。</p>
+  <div class="cms-v558-bulk-actions"><button type="button" id="cms-v558-alt-cancel">取消</button><button type="button" id="cms-v558-alt-save" disabled>保存已填写的 ALT</button></div>
+ </section>
  <div class="cms-v532-summary"><span id="cms-media-total" role="status">正在读取媒体…</span><div><button type="button" id="cms-media-select-unused">全选本页未引用</button><span id="cms-media-selected">已选择 0 张</span><button type="button" id="cms-media-bulk-delete" class="cms-v532-danger" disabled>删除选中（0）</button></div></div>
- <p class="cms-v532-hint">媒体库 ALT 是新内容复用时的建议值，不会自动改写已经发布的页面 ALT。批量删除最多 20 张，已被内容引用的图片不可选择。</p>
+ <p class="cms-v532-hint">ALT 用于新内容的图片描述建议，不会自动改写已经发布的页面。引用关系检查覆盖 CMS 草稿与已发布内容快照；被引用的图片不可删除。批量删除每次最多 20 张。</p>
  <div id="cms-media-grid" class="cms-v51-media-grid" aria-live="polite"></div>
  <div class="cms-v532-pagination"><button type="button" id="cms-media-prev" disabled>上一页</button><span id="cms-media-page">第 1 页</span><button type="button" id="cms-media-next" disabled>下一页</button></div>
  <div class="cms-dialog-actions"><button class="cms-btn-secondary" type="button" data-media-close>关闭</button></div></dialog>
