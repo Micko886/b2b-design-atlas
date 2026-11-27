@@ -98,6 +98,9 @@ def seo_record(path,collection=None,page_overrides=None):
                 "image":public_image(cfg.get("seo_image")),
                 "keywords":cfg.get("seo_keywords") or "",
                 "path":"/"+k if k else "/","indexed":True}
+    if parts==["methodology"]:
+        from app import seo_methodology
+        return dict(seo_methodology.RECORD)
     if len(parts)==1 and parts[0] in PRIVATE:
         k=parts[0]
         return {"title":PRIVATE[k][0],"description":PRIVATE[k][1],"path":"/"+k,"indexed":False}
@@ -283,6 +286,9 @@ def public_prerender(path, record, collection):
     is passed here; no drafts, profile data, or private collection is included.
     """
     if not record or not record.get("indexed") or collection is None:return ""
+    if record.get("kind")=="methodology":
+        from app import seo_methodology
+        return seo_methodology.prerender()
     if record.get("kind")=="directory":
         from app import seo_directory
         return seo_directory.prerender(path,record,collection)
@@ -397,6 +403,8 @@ def public_prerender(path, record, collection):
             out.append('<section aria-label="研究来源"><h2>参考资料与原始来源</h2>'
                        +'<p>资料链接供读者核对公开信息；案例观察不等于第三方性能验证。</p>'
                        +'<ul>'+''.join(links)+'</ul></section>')
+    if kind=="insights":
+        out.append('<p class="research-methodology-link"><a href="/methodology">研究方法与引用说明</a></p>')
     out.append('</article>'+nav+'</div>')
     return ''.join(out)
 
@@ -431,6 +439,7 @@ def sitemap_items(collection):
         for slug,item in sorted(entries.items()):
             if not isinstance(slug,str) or not _SLUG.fullmatch(slug):continue
             yield "/"+route+"/"+slug,(article_lastmod(item) if route=="insights" else None)
+    yield "/methodology",None
     from app import seo_directory
     yield from seo_directory.sitemap_entries(collection)
 
@@ -452,7 +461,8 @@ def llms_document(collection):
         "- [页面模块]("+ORIGIN+"/sections)",
         "- [设计模式]("+ORIGIN+"/patterns)",
         "- [研究文章]("+ORIGIN+"/insights)",
-        "- [所有公开资源目录]("+ORIGIN+"/directory)", "",
+        "- [所有公开资源目录]("+ORIGIN+"/directory)",
+        "- [研究方法与引用说明]("+ORIGIN+"/methodology)", "",
         "## 研究文章"
     ]
     articles=collection.get("articles",{}) if isinstance(collection,dict) else {}
@@ -480,6 +490,9 @@ def seo_schema(path,record,collection,canonical,image):
     """Single route-aware JSON-LD node; avoid guessed performance claims."""
     parts=[x for x in path.strip("/").split("/") if x]
     base={"@context":"https://schema.org"}
+    if record.get("kind")=="methodology":
+        return {**base,"@type":"AboutPage","name":record["title"],
+                "url":canonical,"description":record["description"],"inLanguage":"zh-CN"}
     if record.get("kind")=="directory":
         return {**base,"@type":"CollectionPage","name":record["title"],
                 "url":canonical,"description":record["description"],"inLanguage":"zh-CN"}
@@ -503,7 +516,8 @@ def seo_schema(path,record,collection,canonical,image):
         return {**base,"@graph":[webpage,breadcrumbs]}
     article={"@type":"Article","headline":record["title"],"description":record["description"],
              "inLanguage":"zh-CN","author":{"@type":"Organization","name":record.get("author") or "B2B Atlas 编辑部"},
-             "publisher":{"@type":"Organization","name":"B2B Atlas"},
+             "publisher":{"@type":"Organization","name":"B2B Atlas","url":ORIGIN+"/"},
+              "isAccessibleForFree":True,
              "mainEntityOfPage":canonical}
     if record.get("image"):article["image"]=image
     original=collection.get("articles",{}).get(parts[1]) if isinstance(collection,dict) else None
@@ -521,7 +535,7 @@ def seo_schema(path,record,collection,canonical,image):
 def seo_document(full_path):
     clean="/"+full_path.strip("/") if full_path.strip("/") else "/"
     parts=[part for part in clean.strip("/").split("/") if part]
-    collection=catalog() if (not parts or parts[0] in PUBLIC or parts[0]=="directory") else None
+    collection=catalog() if (not parts or parts[0] in PUBLIC or parts[0]=="directory") else ({} if parts==["methodology"] else None)
     page_overrides=read_page_seo() if collection is not None else {}
     record=seo_record(clean,collection,page_overrides)
     found=record is not None
@@ -530,11 +544,12 @@ def seo_document(full_path):
     title=record["title"] if record["title"].startswith("B2B Atlas") else record["title"]+" · B2B Atlas"
     desc=record["description"]
     template=(STATIC/"index.html").read_text(encoding="utf-8")
-    if record.get("kind")=="directory":
-        # Keep fully server-rendered directory markup: the SPA has no such route.
-        from app import seo_directory
+    if record.get("kind") in ("directory","methodology"):
+        # Standalone public HTML does not get overwritten by unrelated SPA routes.
+        from app import seo_directory, seo_methodology
         template=re.sub(r'<script src="/assets/app\.js[^"]*" defer></script>',"",template,count=1)
-        template=template.replace("</head>",seo_directory.STYLE+"</head>",1)
+        style=seo_directory.STYLE if record["kind"]=="directory" else seo_methodology.STYLE
+        template=template.replace("</head>",style+"</head>",1)
     template=re.sub(r"<title>.*?</title>","<title>"+safe(title,220)+"</title>",template,count=1,flags=re.S)
     template=re.sub(r'<meta name="description" content="[^"]*">','<meta name="description" content="'+safe(desc,270)+'">',template,count=1)
     image=ORIGIN+(record.get("image") or "/assets/visual-placeholder.svg")
