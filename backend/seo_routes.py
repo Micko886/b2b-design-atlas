@@ -101,6 +101,9 @@ def seo_record(path,collection=None,page_overrides=None):
     if len(parts)==1 and parts[0] in PRIVATE:
         k=parts[0]
         return {"title":PRIVATE[k][0],"description":PRIVATE[k][1],"path":"/"+k,"indexed":False}
+    if parts and parts[0]=="directory":
+        from app import seo_directory
+        return seo_directory.record(parts,collection if collection is not None else catalog())
     if len(parts)!=2:return None
     category,slug=parts
     if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,120}",slug):return None
@@ -280,6 +283,9 @@ def public_prerender(path, record, collection):
     is passed here; no drafts, profile data, or private collection is included.
     """
     if not record or not record.get("indexed") or collection is None:return ""
+    if record.get("kind")=="directory":
+        from app import seo_directory
+        return seo_directory.prerender(path,record,collection)
     nav='<nav aria-label="设计研究目录"><a href="/websites">网站案例</a> · <a href="/sections">页面模块</a> · <a href="/patterns">设计模式</a> · <a href="/insights">研究文章</a></nav>'
     sections={"websites":"sites","sections":"modules","patterns":"patterns","insights":"articles"}
     parts=[x for x in path.strip("/").split("/") if x]
@@ -296,7 +302,7 @@ def public_prerender(path, record, collection):
     entries=collection[sections[kind]]
     if len(parts)==1:
         return ('<div class="shell listing seo-prerender"><h1>'+safe(record["title"],180)+'</h1>'
-                +_paragraph(record["description"])+nav+'<ul>'
+                +_paragraph(record["description"])+nav+'<p><a href="/directory">查看完整公开资源目录</a></p><ul>'
                 +''.join(_record_link(kind,slug,item) for slug,item in list(entries.items())[:100])
                 +'</ul></div>')
     if len(parts)!=2:return ""
@@ -425,6 +431,8 @@ def sitemap_items(collection):
         for slug,item in sorted(entries.items()):
             if not isinstance(slug,str) or not _SLUG.fullmatch(slug):continue
             yield "/"+route+"/"+slug,(article_lastmod(item) if route=="insights" else None)
+    from app import seo_directory
+    yield from seo_directory.sitemap_entries(collection)
 
 
 def llms_document(collection):
@@ -443,7 +451,8 @@ def llms_document(collection):
         "- [网站案例]("+ORIGIN+"/websites)",
         "- [页面模块]("+ORIGIN+"/sections)",
         "- [设计模式]("+ORIGIN+"/patterns)",
-        "- [研究文章]("+ORIGIN+"/insights)", "",
+        "- [研究文章]("+ORIGIN+"/insights)",
+        "- [所有公开资源目录]("+ORIGIN+"/directory)", "",
         "## 研究文章"
     ]
     articles=collection.get("articles",{}) if isinstance(collection,dict) else {}
@@ -471,6 +480,9 @@ def seo_schema(path,record,collection,canonical,image):
     """Single route-aware JSON-LD node; avoid guessed performance claims."""
     parts=[x for x in path.strip("/").split("/") if x]
     base={"@context":"https://schema.org"}
+    if record.get("kind")=="directory":
+        return {**base,"@type":"CollectionPage","name":record["title"],
+                "url":canonical,"description":record["description"],"inLanguage":"zh-CN"}
     if not parts or len(parts)==1:
         item={"@type":"WebSite" if not parts else "CollectionPage",
               "name":"B2B Atlas" if not parts else record["title"],
@@ -509,7 +521,7 @@ def seo_schema(path,record,collection,canonical,image):
 def seo_document(full_path):
     clean="/"+full_path.strip("/") if full_path.strip("/") else "/"
     parts=[part for part in clean.strip("/").split("/") if part]
-    collection=catalog() if (not parts or parts[0] in PUBLIC) else None
+    collection=catalog() if (not parts or parts[0] in PUBLIC or parts[0]=="directory") else None
     page_overrides=read_page_seo() if collection is not None else {}
     record=seo_record(clean,collection,page_overrides)
     found=record is not None
@@ -518,6 +530,11 @@ def seo_document(full_path):
     title=record["title"] if record["title"].startswith("B2B Atlas") else record["title"]+" · B2B Atlas"
     desc=record["description"]
     template=(STATIC/"index.html").read_text(encoding="utf-8")
+    if record.get("kind")=="directory":
+        # Keep fully server-rendered directory markup: the SPA has no such route.
+        from app import seo_directory
+        template=re.sub(r'<script src="/assets/app\.js[^"]*" defer></script>',"",template,count=1)
+        template=template.replace("</head>",seo_directory.STYLE+"</head>",1)
     template=re.sub(r"<title>.*?</title>","<title>"+safe(title,220)+"</title>",template,count=1,flags=re.S)
     template=re.sub(r'<meta name="description" content="[^"]*">','<meta name="description" content="'+safe(desc,270)+'">',template,count=1)
     image=ORIGIN+(record.get("image") or "/assets/visual-placeholder.svg")
