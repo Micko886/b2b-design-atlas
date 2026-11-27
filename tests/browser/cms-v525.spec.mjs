@@ -118,6 +118,31 @@ async function mockCms(page,role='owner',forcedErrors={}){
     result={ok:true,revision:1,status:'draft'};
    }
   }
+  else if(p==='/api/admin/schedules'&&method==='GET'){
+   const items=Object.values(records).filter(x=>x.schedule).map(x=>({
+    kind:x.kind,slug:x.slug,revision:x.schedule.revision,publish_at:x.schedule.publish_at,
+    status:x.schedule.status,error:x.schedule.error||'',current_revision:x.revision,
+    content_status:x.status
+   }));
+   result={items,execution_note:'测试环境中，排期按后台模拟数据展示。'};
+  }
+  else if(/^\/api\/admin\/content\/(site|module|pattern|article)\/[^/]+\/schedule$/.test(p)&&['POST','DELETE'].includes(method)){
+   const match=p.match(/^\/api\/admin\/content\/(site|module|pattern|article)\/([^/]+)\/schedule$/);
+   const record=Object.values(records).find(x=>x.kind===match[1]&&x.slug===match[2]);
+   if(role==='editor'||role==='guest'){status=403;result={detail:'只有审核员可以管理排期'}}
+   else if(!record){status=404;result={detail:'Content not found'}}
+   else if(method==='POST'){
+    if(record.status!=='review'||body.expected_revision!==record.revision){
+     status=409;result={detail:'审核版本已经变化'};
+    }else if(!Number.isFinite(Date.parse(body.publish_at))||Date.parse(body.publish_at)<Date.now()+60000){
+     status=422;result={detail:'发布时间必须在未来'};
+    }else{
+     record.schedule={status:'pending',publish_at:body.publish_at,revision:record.revision,error:''};
+     result={ok:true,kind:match[1],slug:match[2],publish_at:body.publish_at,status:'pending'};
+    }
+   }else if(record.schedule?.status!=='pending'){status=409;result={detail:'没有有效排期'}}
+   else{record.schedule.status='cancelled';result={ok:true,kind:match[1],slug:match[2],status:'cancelled'}}
+  }
   else if(p==='/api/admin/content'&&method==='GET'){
    const kind=url.searchParams.get('kind');
    result={items:Object.values(records).filter(x=>x.kind===kind).map(x=>({kind,slug:x.slug,label:x.payload.name||x.payload.title,status:x.status,source:x.source,revision:x.revision,updated_at:x.updated_at||'',sector:x.payload.sector||x.payload.category||x.payload.family||''}))};
@@ -1504,4 +1529,105 @@ test('V55.5 reviewer compare action remains usable on 320px viewport',async({pag
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
  await page.locator('[data-review-compare="demo-site"]').click();
  await expect(page.locator('#cms-diff-dialog')).toHaveJSProperty('open',true);
+});
+
+
+test('V55.6 reviewer opens scheduling directly from the approval buttons',async({page})=>{
+ const {records}=await mockCms(page,'reviewer');
+ records.site.status='review';records.site.source='cms';records.site.revision=3;
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await expect(page.locator('[data-schedule-open]')).toBeVisible();
+ await expect(page.locator('.cms-review-schedule')).not.toHaveAttribute('open','');
+ await page.locator('[data-schedule-open]').click();
+ await expect(page.locator('.cms-review-schedule')).toHaveAttribute('open','');
+ await expect(page.locator('#cms-schedule-local')).toBeFocused();
+ await expect(page.locator('[data-transition="publish"]')).toBeVisible();
+ await expect(page.locator('[data-transition="reject"]')).toBeVisible();
+});
+
+test('V55.6 saving a future release shows local time and opens its date in the calendar',async({page})=>{
+ const {records}=await mockCms(page,'reviewer');
+ records.site.status='review';records.site.source='cms';records.site.revision=3;
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await page.locator('[data-schedule-open]').click();
+ const scheduled=new Date(Date.now()+5*86400000);
+ scheduled.setHours(10,30,0,0);
+ const pad=n=>String(n).padStart(2,'0');
+ const local=scheduled.getFullYear()+'-'+pad(scheduled.getMonth()+1)+'-'+pad(scheduled.getDate())+'T10:30';
+ await page.locator('#cms-schedule-local').fill(local);
+ await page.locator('[data-schedule-save]').click();
+ await expect(page.locator('.cms-v514-schedule-state')).toContainText('已预约');
+ await expect(page.locator('.cms-v514-schedule-state')).toContainText('10:30');
+ expect(records.site.schedule.status).toBe('pending');
+ expect(records.site.schedule.revision).toBe(3);
+ await expect(page.locator('[data-transition="publish"]')).toBeDisabled();
+ await page.locator('[data-schedule-calendar]').click();
+ await expect(page.locator('#cms-schedules-dialog')).toHaveJSProperty('open',true);
+ await expect(page.locator('#cms-calendar-status')).toHaveValue('pending');
+ await expect(page.locator('#cms-calendar-label')).toContainText(scheduled.getFullYear()+'年 '+(scheduled.getMonth()+1)+'月');
+ await expect(page.locator('[data-v556-schedule-filter="pending"] strong')).toHaveText('1');
+ await expect(page.locator('#cms-schedule-items')).toContainText('10:30');
+ await expect(page.locator('[data-v514-schedule-open="site:demo-site"]')).toHaveCount(2);
+});
+
+test('V55.6 schedule summary filters failed and stale plans without losing published records',async({page})=>{
+ const {records}=await mockCms(page,'reviewer');
+ const future=new Date(Date.now()+86400000).toISOString();
+ records.site.schedule={status:'pending',publish_at:future,revision:2};
+ records.site.revision=2;records.site.status='review';
+ records.article.schedule={status:'failed',publish_at:future,revision:3,error:'图片不存在'};
+ records.module.schedule={status:'stale',publish_at:future,revision:2,error:'文章版本变更'};
+ records.pattern.schedule={status:'published',publish_at:future,revision:4};
+ await page.goto(origin+'/admin/content?kind=site');
+ await page.locator('#cms-schedules-open').click();
+ await expect(page.locator('[data-v556-schedule-filter="pending"] strong')).toHaveText('1');
+ await expect(page.locator('[data-v556-schedule-filter="published"] strong')).toHaveText('1');
+ await expect(page.locator('[data-v556-schedule-filter="attention"] strong')).toHaveText('2');
+ await page.locator('[data-v556-schedule-filter="attention"]').click();
+ await expect(page.locator('#cms-calendar-status')).toHaveValue('attention');
+ await expect(page.locator('.cms-v514-schedule-item')).toHaveCount(2);
+ await expect(page.locator('#cms-schedule-items')).toContainText('图片不存在');
+ await expect(page.locator('#cms-schedule-items')).toContainText('文章版本变更');
+ await page.locator('[data-v556-schedule-filter="attention"]').click();
+ await expect(page.locator('#cms-calendar-status')).toHaveValue('all');
+ await expect(page.locator('.cms-v514-schedule-item')).toHaveCount(4);
+});
+
+test('V55.6 reviewers cancel pending schedules without publishing records',async({page})=>{
+ const {records}=await mockCms(page,'reviewer');
+ records.site.status='review';records.site.source='cms';records.site.revision=3;
+ records.site.schedule={status:'pending',publish_at:new Date(Date.now()+86400000).toISOString(),revision:3};
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await expect(page.locator('[data-schedule-calendar]')).toBeVisible();
+ page.on('dialog',dialog=>dialog.accept());
+ await page.locator('[data-schedule-cancel]').click();
+ await expect(page.locator('[data-transition="publish"]')).toBeEnabled();
+ await expect(page.locator('[data-schedule-calendar]')).toHaveCount(0);
+ expect(records.site.status).toBe('review');
+ expect(records.site.schedule.status).toBe('cancelled');
+});
+
+test('V55.6 editors can inspect calendar but cannot schedule from the review tab',async({page})=>{
+ const {records}=await mockCms(page,'editor');
+ records.site.status='review';records.site.source='cms';records.site.revision=2;
+ records.site.schedule={status:'pending',publish_at:new Date(Date.now()+86400000).toISOString(),revision:2};
+ await page.goto(origin+'/admin/content?kind=site&edit=demo-site');
+ await expect(page.locator('[data-schedule-open]')).toHaveCount(0);
+ await expect(page.locator('[data-schedule-save]')).toHaveCount(0);
+ await expect(page.locator('[data-schedule-calendar]')).toHaveCount(0);
+ await page.locator('#cms-schedules-open').click();
+ await expect(page.locator('#cms-schedules-dialog')).toHaveJSProperty('open',true);
+ await expect(page.locator('.cms-calendar-event[draggable="true"]')).toHaveCount(0);
+});
+
+test('V55.6 calendar summary and actions fit a 320px viewport',async({page})=>{
+ const {records}=await mockCms(page,'reviewer');
+ records.site.status='review';records.site.source='cms';records.site.revision=2;
+ records.site.schedule={status:'pending',publish_at:new Date(Date.now()+86400000).toISOString(),revision:2};
+ await page.setViewportSize({width:320,height:760});
+ await page.goto(origin+'/admin/content?kind=site');
+ await page.locator('#cms-schedules-open').click();
+ await expect(page.locator('#cms-v556-schedule-summary button')).toHaveCount(3);
+ await expect(page.locator('#cms-calendar-grid')).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });

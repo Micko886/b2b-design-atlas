@@ -1281,3 +1281,17 @@ body.cms-editor-active .cms-edit-quick-actions{display:flex;align-items:center;g
  .cms-v555-review-nav>div:last-child{width:100%}
  .cms-v555-review-nav button{flex:1 1 0;min-width:0}
 }
+
+/* V55.6 · Release planning connected directly to reviewed content. */
+.cms-v556-review-calendar{border-color:var(--blue)!important;color:var(--blue)!important}
+.cms-review-schedule .cms-v556-calendar-jump{display:inline-flex;align-items:center;justify-content:center;min-height:36px;margin:2px 16px 9px;padding:7px 12px;border:1px solid var(--blue);border-radius:8px;color:var(--blue);background:var(--surface);font-size:11px;font-weight:750;cursor:pointer}
+.cms-review-schedule .cms-v556-calendar-jump:hover{background:var(--blue-soft)}
+.cms-v556-schedule-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:18px 0 10px}
+.cms-v556-schedule-summary button{display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-width:0;min-height:82px;padding:13px 15px;background:var(--surface-2);color:var(--ink-strong);border:1px solid var(--line);border-radius:11px;cursor:pointer}
+.cms-v556-schedule-summary button strong{font-size:23px;font-weight:830;font-variant-numeric:tabular-nums;line-height:1}
+.cms-v556-schedule-summary button span{font-size:11px;color:var(--muted-strong);font-weight:700}
+.cms-v556-schedule-summary button[aria-pressed="true"]{border-color:var(--blue);background:var(--blue-soft)}
+.cms-v556-schedule-summary button:disabled{cursor:default;opacity:.55}
+.cms-v556-schedule-summary button:not(:disabled):hover{border-color:var(--blue)}
+.cms-v556-schedule-summary button:focus-visible,.cms-v556-calendar-jump:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+@media(max-width:480px){.cms-v556-schedule-summary{gap:6px}.cms-v556-schedule-summary button{padding:11px 9px;min-height:78px}.cms-v556-schedule-summary button strong{font-size:21px}.cms-v556-schedule-summary button span{font-size:10px}}

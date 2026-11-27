@@ -822,13 +822,15 @@ function renderForm(item){
    '<section class="cms-v514-review-actions"><div class="cms-v514-review-heading"><div><span class="section-eyebrow">APPROVAL / RELEASE</span><h3>审核与发布控制</h3><p>只有审核员与最高管理员可批准、退回和安排发布。</p></div></div>'
    +(s==='review'?'<div class="cms-v514-review-buttons">'
     +'<button type="button" class="primary" data-transition="publish" '+(isPending?'disabled title="请先取消现有排期"':'')+'>审核并立即发布</button>'
+    +'<button type="button" data-schedule-open class="cms-v556-review-calendar">预约发布</button>'
     +'<button type="button" data-transition="reject" class="cms-review-reject">退回修改</button></div>'
     +'<label class="cms-v514-reason">审核意见（退回时必填）<textarea id="cms-review-reason" maxlength="400" rows="3" placeholder="说明需要修改的内容、引用或设计问题"></textarea></label>'
     +'<details class="cms-review-schedule"'+(isPending?' open':'')+'><summary>预约发布时间 <span>可选 · 不立即发布</span></summary><div class="cms-v514-release-box"><label>预约发布时间（当前设备本地时间）<input id="cms-schedule-local" type="datetime-local" aria-label="选择计划发布时间"></label>'
     +'<button type="button" data-schedule-save>保存发布排期</button>'
     +(isPending?'<button type="button" data-schedule-cancel>取消排期</button>':'')
     +'</div>'
-    +(isPending?'<p class="cms-v514-schedule-state">已预约 · '+h(schedule.publish_at)+' UTC · v'+schedule.revision+'</p>':'')
+    +(isPending?'<p class="cms-v514-schedule-state">已预约 · '+h(formatScheduleTime(schedule.publish_at))+' · v'+schedule.revision+'</p>':'')
+    +(isPending?'<button type="button" class="cms-v556-calendar-jump" data-schedule-calendar>在运营日历中查看</button>':'')
     +(schedule?.status==='failed'||schedule?.status==='stale'?'<p class="cms-v514-schedule-error">'+h(schedule.error||'原排期已失效')+'</p>':'')
     +'<small>仅针对已审核的当前版本。免费开发环境采用下一次目录访问触发到期发布。</small></details>'
     :s==='published'?'<div class="cms-v514-review-buttons"><button type="button" class="warn" data-transition="archive">归档下线</button></div>'
@@ -1978,10 +1980,34 @@ function datetimeLocal(iso){
  const pad=x=>String(x).padStart(2,'0');
  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
 }
+function formatScheduleTime(iso){
+ const date=new Date(iso);
+ if(!Number.isFinite(date.valueOf()))return '时间未知';
+ return date.toLocaleString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false});
+}
 function syncScheduleEditor(item){
  const input=$('#cms-schedule-local');if(!input)return;
  input.min=datetimeLocal(new Date(Date.now()+61000).toISOString());
  if(item.schedule?.status==='pending')input.value=datetimeLocal(item.schedule.publish_at);
+}
+function focusReviewSchedule(){
+ if(!can('review')||state.selected?.status!=='review')return;
+ setEditorTab('review');
+ const schedule=$('#cms-editor-body .cms-review-schedule');
+ if(!schedule)return;
+ schedule.open=true;
+ const input=$('#cms-schedule-local');
+ if(input){input.scrollIntoView({block:'nearest'});input.focus({preventScroll:true})}
+}
+async function openItemCalendar(){
+ if(!can('view')||!state.selected)return;
+ const publishAt=state.selected.schedule?.publish_at;
+ if(!publishAt){message('这条内容尚未安排发布日期。',false);return}
+ const date=new Date(publishAt);
+ if(!Number.isFinite(date.getTime())){message('日期无效，请刷新内容后再查看日历。',false);return}
+ calendarCursor=new Date(date.getFullYear(),date.getMonth(),date.getDate());
+ $('#cms-calendar-status').value='pending';
+ await openScheduleQueue();
 }
 async function saveSchedule(){
  if(!can('review')||state.busy||!state.selected)return;
@@ -1998,7 +2024,7 @@ async function saveSchedule(){
      method:'POST',body:JSON.stringify({expected_revision:item.revision,publish_at:date.toISOString()})});
    item.schedule={...schedule,revision:item.revision};
    renderForm(item);syncScheduleEditor(item);
-   message('发布排期已保存 · '+datetimeLocal(schedule.publish_at));
+   message('发布排期已保存 · '+formatScheduleTime(schedule.publish_at)+'（本地时间）');
  }catch(e){message(e.message,false)}
  finally{btnDisable(false)}
 }
@@ -2023,7 +2049,16 @@ function calendarDateKey(d){
 }
 function calendarVisibleRows(){
  const status=$('#cms-calendar-status')?.value||'all';
- return state.scheduleItems.filter(item=>status==='all'||item.status===status);
+ return state.scheduleItems.filter(item=>status==='all'||(status==='attention'?['failed','stale'].includes(item.status):item.status===status));
+}
+function paintScheduleSummary(){
+ const root=$('#cms-v556-schedule-summary');if(!root)return;
+ const counts={pending:0,published:0,failed:0,stale:0};
+ state.scheduleItems.forEach(item=>{if(Object.hasOwn(counts,item.status))counts[item.status]++});
+ const attention=counts.failed+counts.stale;
+ root.innerHTML='<button type="button" data-v556-schedule-filter="pending" aria-pressed="'+String($('#cms-calendar-status').value==='pending')+'"><strong>'+counts.pending+'</strong><span>待发布</span></button>'
+  +'<button type="button" data-v556-schedule-filter="published" aria-pressed="'+String($('#cms-calendar-status').value==='published')+'"><strong>'+counts.published+'</strong><span>已发布</span></button>'
+  +'<button type="button" data-v556-schedule-filter="attention" aria-pressed="'+String($('#cms-calendar-status').value==='attention')+'"'+(!attention?' disabled':'')+'><strong>'+attention+'</strong><span>需处理</span></button>';
 }
 function calendarStart(){
  const d=calendarView==='month'
@@ -2114,12 +2149,13 @@ function installCalendarDrag(){
 function paintScheduleQueue(){
  const box=$('#cms-schedule-items');
  const rows=calendarVisibleRows();
+ paintScheduleSummary();
  $('#cms-schedule-count').textContent=rows.length+' 条排期记录';
  const labels={pending:'等待发布',published:'按计划发布',cancelled:'已取消',stale:'版本已失效',failed:'校验失败'};
  box.innerHTML=rows.length?rows.map(item=>
    '<div class="cms-v514-schedule-item" role="listitem"><div class="cms-v514-schedule-item-top">'
     +'<strong>'+h(item.slug)+'</strong><span data-schedule-status="'+h(item.status)+'">'+h(labels[item.status]||item.status)+'</span></div>'
-    +'<p>'+h(kinds[item.kind]?.label||item.kind)+' · '+h(item.publish_at)+' UTC · v'+item.revision+'</p>'
+    +'<p>'+h(kinds[item.kind]?.title||item.kind)+' · '+h(formatScheduleTime(item.publish_at))+'（本地） · v'+item.revision+'</p>'
     +(item.error?'<small>'+h(item.error)+'</small>':'')
     +'<button type="button" data-v514-schedule-open="'+h(item.kind)+':'+h(item.slug)+'">打开内容</button></div>').join('')
     :'<p class="cms-loading">暂无发布排期。可先提交内容审核，再预约发布时间。</p>';
@@ -2284,6 +2320,8 @@ function boot(){
      state.q='';state.status='';state.page=1;state.selectedSlugs.clear();$('#cms-search').value='';$('#cms-status').value='';
      markWorkspace('content');drawItems();$('#cms-search').focus();return;
    }
+   if(e.target.closest('[data-schedule-open]')){focusReviewSchedule();return}
+   if(e.target.closest('[data-schedule-calendar]')){await openItemCalendar();return}
    if(e.target.closest('[data-schedule-save]')){await saveSchedule();return}
    if(e.target.closest('[data-schedule-cancel]')){await cancelSchedule();return}
    const queueEntry=e.target.closest('[data-v514-schedule-open]');
@@ -2529,6 +2567,13 @@ function boot(){
  $('#cms-schedules-dialog').addEventListener('close',()=>markWorkspace(state.status==='review'?'review':'content'));
  $('#cms-schedule-refresh').addEventListener('click',refreshSchedules);
  $('#cms-calendar-status').addEventListener('change',()=>{paintCalendar();paintScheduleQueue()});
+ $('#cms-v556-schedule-summary').addEventListener('click',e=>{
+  const button=e.target.closest('[data-v556-schedule-filter]');
+  if(!button||button.disabled)return;
+  const target=button.dataset.v556ScheduleFilter,select=$('#cms-calendar-status');
+  select.value=select.value===target?'all':target;
+  paintCalendar();paintScheduleQueue();
+ });
  $('#cms-calendar-today').addEventListener('click',()=>{calendarCursor=new Date();paintCalendar()});
  $$('[data-cal-view]').forEach(button=>button.addEventListener('click',()=>{
    calendarView=button.dataset.calView;paintCalendar()
