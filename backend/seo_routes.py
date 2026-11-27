@@ -451,7 +451,7 @@ def seo_document(full_path):
     template=re.sub(r'<meta name="description" content="[^"]*">','<meta name="description" content="'+safe(desc,270)+'">',template,count=1)
     image=ORIGIN+(record.get("image") or "/assets/visual-placeholder.svg")
     extras=(
-        ('<link rel="canonical" href="'+safe(canonical,650)+'">' if record["indexed"] else '')
+        ('<link rel="canonical" href="'+safe(canonical,650)+'">' if record["indexed"] else '') +
         '<meta name="robots" content="'+("index, follow" if record["indexed"] else "noindex, follow")+'">'
         '<meta property="og:type" content="'+("article" if record.get("kind")=="article" else "website")+'">'
         '<meta property="og:site_name" content="B2B Atlas">'
