@@ -251,6 +251,27 @@ function homeView(){
  </div>`;
 }
 /* Insights editorial module — all content comes from articles.json */
+const INDUSTRY_TOPICS=[
+ {id:'manufacturing',label:'工业制造',en:'MANUFACTURING',summary:'从工艺能力到技术资料、信任证据和 RFQ 询价',related:['industry-manufacturing-web-experience','industrial-rfq-journey','technical-spec-content-architecture','b2b-trust-signals']},
+ {id:'robotics',label:'机器人',en:'ROBOTICS',summary:'让产品演示、真实任务、能力边界和部署证据互相支撑',related:['industry-robotics-web-experience','industrial-photography-and-3d','vast-cinematic-engineering','sections-as-research-unit']},
+ {id:'automation',label:'工业自动化',en:'AUTOMATION',summary:'按设备选型、系统组成与实施阶段组织复杂信息',related:['industry-automation-web-experience','product-navigation-families','technical-spec-content-architecture','website-to-pattern-workflow']}
+];
+function researchTopic(topic){return INDUSTRY_TOPICS.find(x=>x.id===topic)}
+function topicLinks(){
+ const selected=new URLSearchParams(location.search).get('topic')||'';
+ return '<section class="insight-topics" aria-label="行业设计研究专题"><div class="insight-topics-head">'
+  +'<div><span class="eyebrow">INDUSTRY / RESEARCH SERIES</span><h2>行业研究专题</h2><p>从真实官网、原始资料和设计问题出发，不只收集截图。</p></div>'
+  +'<a href="/insights" data-link="/insights">浏览全部文章 ↗</a></div>'
+  +'<div class="insight-topic-grid">'+INDUSTRY_TOPICS.map(t=>{
+   const featured=state.articles.find(a=>a.industry_topic===t.id);
+   const count=t.related.filter(id=>state.articles.some(a=>a.id===id)).length;
+   const url='/insights?topic='+encodeURIComponent(t.id);
+   return '<a class="insight-topic-card'+(selected===t.id?' is-active':'')+'" href="'+url+'" data-link="'+url+'" aria-label="阅读'+h(t.label)+'研究专题">'
+    +'<div class="insight-topic-visual"><img loading="lazy" src="'+img(featured?articleImage(featured):'')+'" alt="'+h(t.label)+'研究案例截图"></div>'
+    +'<div class="insight-topic-body"><small>'+h(t.en)+' · '+count+' 篇相关研究</small><strong>'+h(t.label)+'</strong><p>'+h(t.summary)+'</p><span>查看专题研究 ↗</span></div></a>';
+  }).join('')+'</div></section>';
+}
+
 function articleBy(id){return state.articles.find(a=>a.id===id)}
 function articleCat(id){return state.articleCategories.find(x=>x.id===id)}
 function articleLink(a){return '/insights/'+encodeURIComponent(a.id)}
@@ -273,6 +294,7 @@ function insightsIndex(){
  return `<div class="shell insights-index">
  <div class="insights-heading"><div><span class="eyebrow">EDITORIAL / INSIGHTS</span><h1>资讯与研究<span class="insights-heading-dot">.</span></h1><p>关于 B2B 网站、工业产品与数字体验的观察、案例和设计方法。<br>从真实参考中找到值得带进下一个项目的思路。</p></div><div class="insights-heading-aside"><strong>${state.articles.length.toString().padStart(2,'0')}</strong><span>原创研究文章</span><i></i><strong>${state.articleCategories.length.toString().padStart(2,'0')}</strong><span>研究主题</span></div></div>
  ${insightFeature(feature)}
+ ${topicLinks()}
  <section class="insights-library" aria-label="文章列表"><div class="insights-library-head"><div><span class="eyebrow">LATEST RESEARCH</span><h2>探索全部文章</h2><p>案例研究 · 设计方法 · 视觉系统 · 转化与内容策略</p></div></div>
  <div class="insights-controls"><nav class="insights-categories" aria-label="文章分类"><a href="/insights" data-link="/insights" class="${category===''?'active':''}">全部 <small>${state.articles.length}</small></a>${state.articleCategories.map(x=>{const count=state.articles.filter(a=>a.category===x.id).length;return `<a href="/insights?category=${h(x.id)}" data-link="/insights?category=${h(x.id)}" class="${category===x.id?'active':''}">${h(x.name)} <small>${count}</small></a>`}).join('')}</nav>
  <div class="insights-tools"><label class="insights-search"><span aria-hidden="true">⌕</span><input id="insights-search" type="search" placeholder="搜索研究文章…" aria-label="搜索文章" value="${h(q)}"></label><label class="insights-sort-label"><span class="sr-only">排序</span><select id="insights-sort"><option value="latest" ${sort==='latest'?'selected':''}>最新文章</option><option value="az" ${sort==='az'?'selected':''}>按标题排序</option></select></label></div></div>
@@ -285,19 +307,22 @@ function insightsIndex(){
 function renderInsightResults(){
  const target=$('#insights-results');if(!target)return;
  const params=new URLSearchParams(location.search),category=params.get('category')||'',q=(params.get('q')||'').trim().toLowerCase(),sort=params.get('sort')||'latest';
- const baseline=!category&&!q&&sort==='latest',feature=state.articles.find(a=>a.featured)||state.articles[0];
+ const topic=researchTopic(params.get('topic')),baseline=!category&&!q&&!topic&&sort==='latest',feature=state.articles.find(a=>a.featured)||state.articles[0];
  const hero=$('.insight-feature');if(hero)hero.hidden=!baseline;
- let rows=state.articles.filter(a=>!category||a.category===category).filter(a=>!q||[a.title,a.subtitle,a.category,...a.tags,...a.takeaways,...a.sections.map(s=>s.title)].join(' ').toLowerCase().includes(q));
+ let rows=state.articles.filter(a=>!category||a.category===category).filter(a=>!topic||topic.related.includes(a.id)||a.industry_topic===topic.id).filter(a=>!q||[a.title,a.subtitle,a.category,...a.tags,...a.takeaways,...a.sections.map(s=>s.title)].join(' ').toLowerCase().includes(q));
  if(sort==='az')rows.sort((a,b)=>a.title.localeCompare(b.title,'zh-Hans'));
  else rows.sort((a,b)=>(b.published_at||'').localeCompare(a.published_at||''));
  if(baseline&&feature)rows=rows.filter(a=>a.id!==feature.id);
- $('#insights-result-label').textContent=baseline?'更多精选文章':category?articleCat(category)?.name||'分类文章':'搜索结果';
+ $('#insights-result-label').textContent=baseline?'更多精选文章':topic?topic.label+'专题研究':category?articleCat(category)?.name||'分类文章':'搜索结果';
  $('#insights-result-count').textContent=(baseline?state.articles.length-1:rows.length)+' 篇';
  target.innerHTML=rows.length?`<div class="insights-grid">${rows.map((a,i)=>articleCard(a,i)).join('')}</div>`:`<div class="insights-empty"><h3>没有找到相关内容</h3><p>换个关键词，或浏览其他分类。</p><a href="/insights" data-link="/insights" class="quiet-button">查看全部文章 ↗</a></div>`;
 }
 function insightReference(r){
  if(r[0]==='website'){let s=site(r[1]);if(!s)return '';return `<a class="insight-reference" href="${pathSite(s)}" data-link="${pathSite(s)}"><img src="${img(s.screenshot_url)}" loading="lazy" alt="${h(s.name)} 网站"><span><small>WEBSITE STUDY</small><strong>${h(s.name)}</strong><em>${h(s.sector)} · 查看案例 ↗</em></span></a>`}
  if(r[0]==='pattern'){let p=pattern(r[1]);if(!p)return '';return `<a class="insight-reference insight-reference-pattern" href="/patterns/${encodeURIComponent(p.id)}" data-link="/patterns/${encodeURIComponent(p.id)}"><span class="insight-pattern-glyph">▤</span><span><small>DESIGN PATTERN</small><strong>${h(p.title)}</strong><em>${h(p.family)} · 设计方法 ↗</em></span></a>`}
+ if(r[0]==='article'){const a=articleBy(r[1]);if(!a)return '';
+  const url=articleLink(a);
+  return '<a class="insight-reference insight-reference-pattern" href="'+url+'" data-link="'+url+'"><span class="insight-pattern-glyph">↗</span><span><small>RELATED RESEARCH</small><strong>'+h(a.title)+'</strong><em>继续阅读相关文章 ↗</em></span></a>'}
  return '';
 }
 function renderInsightBlock(block){
