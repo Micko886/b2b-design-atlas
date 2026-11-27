@@ -1702,7 +1702,7 @@ test('V55.7 editor can see schedule diagnosis but cannot use reviewer repair act
  await page.locator('#cms-schedules-open').click();
  await expect(page.locator('.cms-v557-schedule-help')).toContainText('自动发布检查失败');
  await expect(page.locator('[data-v557-schedule-resolve]')).toHaveCount(0);
- await expect(page.locator('[data-v514-schedule-open="site:demo-site"]')).toHaveText('打开内容');
+ await expect(page.locator('#cms-schedule-items [data-v514-schedule-open="site:demo-site"]')).toHaveText('打开内容');
 });
 
 test('V55.7 media SEO summary filters missing ALT and focuses its simple editor',async({page})=>{
