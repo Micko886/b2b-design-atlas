@@ -1221,3 +1221,14 @@ body{color:var(--ink);background:#fff;font-family:Inter,"Noto Sans CJK SC",ui-sa
  .listing-v38 .listing-toolbar .view-control{grid-column:2;justify-self:end;max-width:100%;margin-left:0}
  .listing-v38 .category-nav{max-width:100%;min-width:0}
 }
+
+
+/* V61 · The 320px overflow originates in the header, not the masonry grid. */
+@media(max-width:360px){
+ .topbar-inner{gap:6px}
+ .topbar-inner .brand{gap:8px;min-width:0}
+ .topbar-inner .brand strong{font-size:18px}
+ .topbar-tools{gap:0;flex-shrink:0}
+ .topbar-tools .icon-button{width:35px;height:36px}
+ .topbar-tools .bookmark-nav{display:none}
+}
