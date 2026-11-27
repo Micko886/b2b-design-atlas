@@ -1232,3 +1232,12 @@ body{color:var(--ink);background:#fff;font-family:Inter,"Noto Sans CJK SC",ui-sa
  .topbar-tools .icon-button{width:35px;height:36px}
  .topbar-tools .bookmark-nav{display:none}
 }
+
+
+/* V62 · Citation transparency in the existing article sidebar. */
+.insight-source-links{display:grid;gap:8px}
+.insight-source-links h3{margin-bottom:1px}
+.insight-source-links p{font-size:11px;line-height:1.7;color:var(--muted);margin:0 0 3px}
+.insight-source-links a{display:block;overflow-wrap:anywhere;font-size:12px;line-height:1.6;color:var(--blue);text-decoration:none;border-radius:6px;padding:6px 0}
+.insight-source-links a:hover{text-decoration:underline}
+.insight-source-links a:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
