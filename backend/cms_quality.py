@@ -66,7 +66,126 @@ def quality_report(slug,payload):
             "canonical_path":"/insights/"+slug,
             "note":"编辑质量检查并非搜索引擎排名预测；公开前仍需人工核验图片与引用授权。"}
 
+
+# V56 · Lightweight read-only audit of the *published* catalog.
+# Checks are editorial hints, never ranking predictions or evidence of
+# real crawler indexing. Drafts and private user content are not inspected.
+_KIND_MAP={"site":("sites","websites"),"module":("modules","sections"),
+           "pattern":("patterns","patterns"),"article":("articles","insights")}
+
+
+def audit_resource(kind,slug,item,catalog):
+    """Evaluate source, SEO text, image context and published cross-references."""
+    from app import seo_routes
+    issues=[]
+    if not isinstance(item,dict):
+        return {"kind":kind,"slug":slug,"title":slug,"issues":[
+            {"code":"invalid","label":"内容结构无效","advice":"请检查公开内容的数据结构。"}],
+            "issue_count":1}
+    title=item.get("seo_title") or item.get("name") or item.get("title") or ""
+    description=(item.get("seo_description") or
+                 (item.get("summary") or item.get("focus") if kind=="site" else
+                  item.get("lesson") or item.get("summary") if kind=="module" else
+                  item.get("question") or item.get("principle") if kind=="pattern" else
+                  item.get("subtitle")) or "")
+    title=str(title).strip()
+    description=str(description).strip()
+    def warn(code,label,advice):
+        issues.append({"code":code,"label":label,"advice":advice})
+    if not title:
+        warn("title","缺少标题","补全内容标题或 SEO 标题。")
+    elif len(title)>70:
+        warn("title","搜索标题较长","建议缩短标题，避免搜索结果截断。")
+    if not description:
+        warn("description","缺少搜索描述","填写具体的研究摘要或 SEO 描述。")
+    elif len(description)<35:
+        warn("description","搜索描述过短","说明研究对象、设计特点与可借鉴的价值。")
+    elif len(description)>170:
+        warn("description","搜索描述较长","建议提炼内容重点，避免展示截断。")
+    cover=seo_routes.content_image(_KIND_MAP[kind][1],item,catalog)
+    if kind in ("site","module","article") and not cover:
+        warn("image","内容封面待补充","添加真实案例截图或已授权的媒体封面。")
+    if kind=="site":
+        url=item.get("url","")
+        if not isinstance(url,str) or not url.startswith(("https://","http://")):
+            warn("source","原始网站来源不完整","补充可访问的官方来源 URL。")
+        related=[x for x in catalog["modules"].values()
+                 if isinstance(x,dict) and x.get("site_id")==slug]
+        if not related:
+            warn("links","尚无关联页面模块","适当关联该网站的首屏、产品页或其他真实页面模块。")
+        if isinstance(item.get("gallery"),list):
+            if any(isinstance(x,dict) and x.get("url") and not str(x.get("label") or "").strip()
+                   for x in item["gallery"]):
+                warn("image_labels","部分截图缺少说明","为案例相册的图片补充名称与上下文。")
+    elif kind=="module":
+        site=item.get("site_id")
+        if not isinstance(site,str) or site not in catalog["sites"]:
+            warn("source","所属网站来源不可用","关联已经发布的网站案例。")
+        if not isinstance(item.get("url"),str) or not item["url"].startswith(("https://","http://")):
+            warn("source_url","缺少原始页面链接","尽量提供对应模块的官网页面 URL，便于核实。")
+        linked=any(slug in p.get("modules",[]) for p in catalog["patterns"].values()
+                   if isinstance(p,dict) and isinstance(p.get("modules"),list))
+        if not linked:
+            warn("links","尚未关联设计模式","如适合，关联解释该模块方法的设计模式。")
+    elif kind=="pattern":
+        mods=item.get("modules")
+        if not isinstance(mods,list) or not any(
+                isinstance(mid,str) and mid in catalog["modules"] for mid in mods):
+            warn("links","缺少已发布的参考模块","关联至少一个实际页面模块来支撑设计原则。")
+        if not str(item.get("when") or "").strip():
+            warn("context","尚未说明适用场景","补充这种设计方法适合解决什么问题。")
+    elif kind=="article":
+        if not str(item.get("published_at") or "").strip():
+            warn("date","缺少文章发布日期","填写可核实的发布日期，帮助读者判断研究时效。")
+        references=item.get("references")
+        has_refs=isinstance(references,list) and bool(references)
+        has_external=any(
+            isinstance(block,dict) and block.get("type")=="link"
+            and isinstance(block.get("url"),str) and block["url"].startswith(("https://","http://"))
+            for section in (item.get("sections") if isinstance(item.get("sections"),list) else [])
+            if isinstance(section,dict)
+            for block in (section.get("blocks") if isinstance(section.get("blocks"),list) else []))
+        if not has_refs and not has_external:
+            warn("sources","缺少可核验的参考来源","加入相关案例、模块、设计模式或原始资料链接。")
+        missing_alt=0
+        for section in (item.get("sections") if isinstance(item.get("sections"),list) else []):
+            if not isinstance(section,dict):continue
+            blocks=section.get("blocks")
+            if isinstance(blocks,list):
+                missing_alt+=sum(1 for b in blocks if isinstance(b,dict) and
+                    b.get("type")=="image" and b.get("src") and
+                    not str(b.get("alt") or "").strip())
+            elif section.get("image") and not str(section.get("image_caption") or "").strip():
+                missing_alt+=1
+        if missing_alt:
+            warn("alt",str(missing_alt)+" 张正文配图缺少 ALT",
+                 "为配图写明具体内容；旧版章节图片可补充说明或转换为独立图片块。")
+    return {"kind":kind,"slug":slug,"title":title or slug,
+            "issues":issues,"issue_count":len(issues)}
+
+
+def audit_published(kind,catalog,limit=100):
+    """Summarize all public resources; return at most limit records needing edits."""
+    key,route=_KIND_MAP[kind]
+    records=catalog.get(key,{})
+    findings=[]
+    for slug,item in records.items():
+        if not isinstance(slug,str):continue
+        result=audit_resource(kind,slug,item,catalog)
+        if result["issue_count"]:findings.append(result)
+    findings.sort(key=lambda x:(-x["issue_count"],x["slug"]))
+    count=len(findings)
+    return {"kind":kind,"route":route,"total":len(records),
+            "flagged":count,"clear":max(0,len(records)-count),
+            "items":findings[:limit],"remaining":max(0,count-limit),
+            "note":"仅检查已公开内容的文本、图片和关联完整性；不检测外链是否在线，也不代表搜索排名或收录状态。"}
+
 def register_quality_routes(app:FastAPI):
+    @app.get("/api/admin/seo/audit",include_in_schema=False)
+    def audit_catalog(request:Request,kind:cms_routes.KIND="site"):
+        cms_routes.require_admin(request,permission="view")
+        return audit_published(kind,cms_routes.seo_routes.catalog())
+
     @app.post("/api/admin/seo/check",include_in_schema=False)
     def check_draft(data:SeoPreview,request:Request):
         cms_routes.require_admin(request,permission="edit")
