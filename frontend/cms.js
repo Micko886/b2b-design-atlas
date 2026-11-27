@@ -341,6 +341,7 @@ function bulkEligibility(item,action=$('#cms-bulk-action')?.value||'submit'){
  return {ok:true,reason:''};
 }
 function setStudioMode(editing){
+ if(editing)closeSeoAudit();
  const layout=$('.cms-split');if(layout)layout.classList.toggle('cms-editing',Boolean(editing));
  document.body.classList.toggle('cms-editor-active',Boolean(editing));
  const metrics=$('#cms-metrics');if(metrics)metrics.hidden=Boolean(editing);
@@ -379,6 +380,51 @@ function listNextAction(item){
  if(item.status==='archived')return can('edit')?'查看归档 · 可重新编辑 →':'查看归档记录 →';
  return '查看内容 →';
 }
+// V56: On-demand audit of published content. The scan never changes CMS drafts.
+let seoAuditGeneration=0,seoAuditData=null,seoAuditShown=12;
+function closeSeoAudit(clear=false){
+ seoAuditGeneration++;
+ const panel=$('#cms-audit-panel'),button=$('#cms-audit-open');
+ if(panel)panel.hidden=true;
+ if(button)button.setAttribute('aria-expanded','false');
+ if(clear)seoAuditData=null;
+}
+function renderSeoAuditRows(){
+ const list=$('#cms-audit-list'),more=$('#cms-audit-more');
+ if(!list||!more||!seoAuditData)return;
+ const issues=seoAuditData.items||[];
+ list.innerHTML=issues.length?issues.slice(0,seoAuditShown).map(item=>
+  '<article class="cms-audit-item"><div><strong>'+h(item.title)+'</strong>'
+  +'<small>'+item.issue_count+' 项建议 · '+h(item.issues.slice(0,3).map(x=>x.label).join('、'))+'</small></div>'
+  +'<button type="button" data-seo-audit-edit="'+h(item.slug)+'">打开编辑</button></article>'
+ ).join(''):'<p class="cms-audit-empty">当前栏目未发现这些基础检查项的问题。其他 SEO 要求仍需人工核对。</p>';
+ more.hidden=seoAuditShown>=issues.length;
+ if(!more.hidden)more.textContent='继续查看（剩余 '+(issues.length-seoAuditShown)+' 条）';
+}
+async function runPublishedSeoAudit(){
+ if(mode!=='admin')return;
+ const panel=$('#cms-audit-panel'),trigger=$('#cms-audit-open');
+ if(!panel||!trigger)return;
+ panel.hidden=false;trigger.setAttribute('aria-expanded','true');
+ const kind=state.kind,generation=++seoAuditGeneration;
+ seoAuditShown=12;
+ $('#cms-audit-summary').textContent='正在检查当前栏目已公开的内容…';
+ $('#cms-audit-list').innerHTML='<p class="cms-loading">正在分析标题、描述、来源和关联资料…</p>';
+ $('#cms-audit-more').hidden=true;
+ try{
+  const data=await api('/api/admin/seo/audit?kind='+encodeURIComponent(kind));
+  if(generation!==seoAuditGeneration||kind!==state.kind||panel.hidden)return;
+  seoAuditData=data;
+  $('#cms-audit-summary').textContent='共 '+data.total+' 条公开资料 · '+data.flagged+' 条有优化建议 · '+data.clear+' 条通过基础检查';
+  $('#cms-audit-note').textContent=data.note+(data.remaining?' · 列表仅列出前 '+data.items.length+' 条优先处理内容。':'');
+  renderSeoAuditRows();
+ }catch(error){
+  if(generation!==seoAuditGeneration||kind!==state.kind||panel.hidden)return;
+  $('#cms-audit-summary').textContent='本次巡检没有完成';
+  $('#cms-audit-list').innerHTML='<div class="cms-error">'+h(error.message)+'</div>';
+ }
+}
+
 function drawItems(){
  const filtered=listFiltered(),items=listPage(filtered),root=$('#cms-items');
  root.innerHTML=items.length?items.map(item=>{
@@ -407,6 +453,8 @@ function drawItems(){
   }
 }
 async function loadKind(keep=false){
+ closeSeoAudit(true);
+ $('#cms-audit-open').hidden=mode!=='admin';
  showKind();
  $('#cms-items').innerHTML='<div class="cms-loading">正在读取内容…</div>';
  let records=[],items=[];
@@ -906,6 +954,9 @@ function renderForm(item){
  const steps='<div class="cms-steps">'+['内容准备','保存草稿','提交审核','正式发布'].map((title,i)=>'<span class="cms-step '+(i===index+1?'current':i<index+1?'passed':'')+'"><span>'+String(i+1).padStart(2,'0')+'</span>'+title+'</span>'+(i<3?'<span class="cms-step-line"></span>':'')).join('')+'</div>';
  const meta='<div class="cms-editor-meta">'+stateClasses(s)+'<span>修订版本 <strong>v'+item.revision+'</strong></span><span>内容来源：'+h(item.source==='cms'?'PostgreSQL CMS':'项目内容文件')+'</span>'+(item.published_at?'<span>发布时间：'+h(item.published_at.slice(0,16))+'</span>':'')+'</div>';
  const mediaHint=item.kind==='site'?'':mode==='admin'&&can('media')?'<div class="cms-editor-media-hint"><span>需要上传或更换图片？</span><button type="button" data-editor-open-media>打开媒体库 / 上传图片</button></div>':'';
+ const auditHint=seoAuditData?.kind===item.kind?seoAuditData.items?.find(x=>x.slug===item.slug):null;
+ const auditNote=auditHint?'<aside class="cms-audit-editor-note"><strong>公开版本的巡检建议</strong><p>这里显示的是上次扫描公开页面时发现的问题；如已有更新草稿，请核对后再修改。</p><ul>'
+  +auditHint.issues.map(x=>'<li>'+h(x.label)+'：'+h(x.advice)+'</li>').join('')+'</ul></aside>':'';
  const form='<div class="cms-editor-content"><form id="cms-edit-form" class="cms-form">'
   +(item.kind==='site'?siteEditorForm(values,editable):simpleEditorForm(item.kind,values,editable))
   +seoSettings(values,item.kind,editable)
@@ -964,7 +1015,7 @@ const history=item.history||[];
  root.classList.toggle('cms-easy-mode',true);
  root.innerHTML=topbar+siteHeader+rejectionNote+tabs
   +'<div id="cms-transition-feedback" class="cms-transition-feedback" role="status" aria-live="polite" hidden></div>'
-  +'<div data-editor-pane="content">'+form+'</div>'
+  +'<div data-editor-pane="content">'+auditNote+form+'</div>'
   +'<div class="cms-private-preview-pane" data-editor-pane="preview" hidden><div class="cms-preview-heading"><div><h3>发布前预览</h3><p>模拟前台视觉效果，显示当前草稿和未保存修改；预览本身不会发布内容。</p></div><span id="cms-private-preview-state">仅当前浏览器可见</span></div><p id="cms-private-preview-error" role="alert" hidden></p><div id="cms-private-preview"></div></div>'
   +(item.kind==='article'?'<div data-editor-pane="seo" hidden>'+seoPanel+'</div>':'')
   +'<div data-editor-pane="review" hidden>'+reviewNavigation(item)+reviewBrief(item)+reviewActions
@@ -2499,6 +2550,23 @@ function boot(){
    thumb.innerHTML=icon(kinds[state.kind].icon);
  },true);
  // Start every privileged action hidden until /api/admin/team/me succeeds.
+ $('#cms-audit-open').hidden=mode!=='admin';
+ $('#cms-audit-open').addEventListener('click',()=>{
+  if($('#cms-audit-panel').hidden)runPublishedSeoAudit();
+  else closeSeoAudit();
+ });
+ $('#cms-audit-refresh').addEventListener('click',runPublishedSeoAudit);
+ $('#cms-audit-close').addEventListener('click',()=>closeSeoAudit());
+ $('#cms-audit-more').addEventListener('click',()=>{seoAuditShown+=12;renderSeoAuditRows()});
+ $('#cms-audit-list').addEventListener('click',async event=>{
+  const button=event.target.closest('[data-seo-audit-edit]');
+  if(!button)return;
+  const slug=button.dataset.seoAuditEdit;
+  if(!state.items.some(x=>x.slug===slug)){
+   message('该内容不在当前列表，请刷新后重试。',false);return;
+  }
+  await selectItem(slug,true);
+ });
  for(const id of ['cms-new','cms-export','cms-media-open','cms-categories-open',
                   'cms-tags-open','cms-review-shortcut','cms-schedules-open',
                   'cms-settings-open','cms-team-open','cms-logout'])$('#'+id).hidden=true;
