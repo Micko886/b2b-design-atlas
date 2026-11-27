@@ -59,12 +59,25 @@ def catalog():
     return merge_catalog(base)
 catalog.cache_clear=base_catalog.cache_clear
 
-def seo_record(path,collection=None):
+def read_page_seo():
+    # The public HTML and browser navigation must use approved snapshots only.
+    try:
+        from app.seo_pages import published_pages
+        return published_pages()
+    except Exception:
+        return {}
+
+
+def seo_record(path,collection=None,page_overrides=None):
     parts=[x for x in path.strip("/").split("/") if x]
-    if len(parts)==0:return {"title":PUBLIC[""][0],"description":PUBLIC[""][1],"path":"/","indexed":True}
-    if len(parts)==1 and parts[0] in PUBLIC:
-        k=parts[0]
-        return {"title":PUBLIC[k][0],"description":PUBLIC[k][1],"path":"/"+k,"indexed":True}
+    if not parts or (len(parts)==1 and parts[0] in PUBLIC):
+        k=parts[0] if parts else ""
+        page="home" if not parts else k
+        cfg=(page_overrides if page_overrides is not None else read_page_seo()).get(page,{})
+        return {"title":cfg.get("seo_title") or PUBLIC[k][0],
+                "description":cfg.get("seo_description") or PUBLIC[k][1],
+                "image":public_image(cfg.get("seo_image")),
+                "path":"/"+k if k else "/","indexed":True}
     if len(parts)==1 and parts[0] in PRIVATE:
         k=parts[0]
         return {"title":PRIVATE[k][0],"description":PRIVATE[k][1],"path":"/"+k,"indexed":False}
@@ -319,7 +332,8 @@ def seo_document(full_path):
     clean="/"+full_path.strip("/") if full_path.strip("/") else "/"
     parts=[part for part in clean.strip("/").split("/") if part]
     collection=catalog() if (not parts or parts[0] in PUBLIC) else None
-    record=seo_record(clean,collection)
+    page_overrides=read_page_seo() if collection is not None else {}
+    record=seo_record(clean,collection,page_overrides)
     found=record is not None
     if not found:record={"title":"404 · 页面未找到","description":"页面不存在或已移动。探索 B2B Atlas 的网站、页面模块和设计文章。","path":clean,"indexed":False}
     canonical=ORIGIN+record["path"]
@@ -344,6 +358,9 @@ def seo_document(full_path):
     if record["indexed"]:
         data=seo_schema(clean,record,collection,canonical,image)
         extras+='<script id="atlas-seo-schema" type="application/ld+json">'+json.dumps(data,ensure_ascii=False).replace("<","\\u003c")+'</script>'
+    # Hydration must keep title/description/image identical to server response.
+    settings_json=json.dumps(page_overrides,ensure_ascii=False).replace("<","\\u003c").replace("&","\\u0026")
+    extras+='<script id="atlas-page-seo-data" type="application/json">'+settings_json+'</script>'
     template=template.replace("</head>",extras+"</head>",1)
     prerender=public_prerender(clean,record,collection)
     if prerender:
