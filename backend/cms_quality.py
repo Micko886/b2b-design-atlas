@@ -343,6 +343,20 @@ def register_quality_routes(app:FastAPI):
         report["overview"]=audit_overview(published)
         return report
 
+    @app.get("/api/admin/seo/audit/item",include_in_schema=False)
+    def audit_item(request:Request,kind:cms_routes.KIND,slug:str):
+        cms_routes.require_admin(request,permission="view")
+        if not cms_routes.SLUG.fullmatch(slug):
+            user_auth.error(422,"内容标识无效。")
+        snapshot=cms_routes.seo_routes.catalog()
+        key=_KIND_MAP[kind][0]
+        records=snapshot.get(key,{})
+        public=records.get(slug) if isinstance(records,dict) else None
+        if not isinstance(public,dict):
+            user_auth.error(404,"当前没有可复查的公开版本。")
+        collisions=metadata_peers(kind,slug,*metadata_values(kind,public),snapshot)
+        return {"published":True,**audit_resource(kind,slug,public,snapshot,collisions)}
+
     @app.post("/api/admin/seo/check",include_in_schema=False)
     def check_draft(data:SeoPreview,request:Request):
         cms_routes.require_admin(request,permission="edit")

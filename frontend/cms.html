@@ -6,8 +6,8 @@
 <meta name="theme-color" content="#f5f7fb">
 <title>内容管理 · B2B Atlas Control Room</title>
 <link rel="stylesheet" href="/assets/admin.css?v=5300">
-<link rel="stylesheet" href="/assets/cms.css?v=5701">
-<script defer src="/assets/cms.js?v=5701"></script>
+<link rel="stylesheet" href="/assets/cms.css?v=7101">
+<script defer src="/assets/cms.js?v=7101"></script>
 </head>
 <body data-cms-mode="__CMS_MODE__">
 <svg xmlns="http://www.w3.org/2000/svg" class="icon-sprite" aria-hidden="true">
@@ -80,6 +80,7 @@
      <section id="cms-audit-panel" class="cms-audit-panel" aria-label="本栏目公开内容 SEO 巡检" hidden>
      <div class="cms-audit-head"><div><strong>公开内容质量巡检</strong><p id="cms-audit-summary" role="status" aria-live="polite">仅检查已发布的公开资料，不包含草稿。</p></div><div class="cms-audit-actions"><select id="cms-audit-priority" aria-label="按 SEO 问题优先级筛选"><option value="all">全部建议</option><option value="high">优先处理</option><option value="normal">一般建议</option></select><button type="button" id="cms-audit-refresh">整改后重新检查</button><button type="button" id="cms-audit-close" aria-label="关闭 SEO 巡检">关闭</button></div></div>
      <div id="cms-audit-overview" class="cms-audit-overview" hidden></div>
+     <p id="cms-audit-followup" class="cms-audit-followup" role="status" aria-live="polite" hidden></p>
      <div id="cms-audit-list" class="cms-audit-list"></div>
      <button id="cms-audit-more" type="button" hidden>查看更多待改善内容</button>
      <small id="cms-audit-note">巡检建议仅供编辑参考，不代表搜索引擎排名或实际收录状态。</small>

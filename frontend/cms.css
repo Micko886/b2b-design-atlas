@@ -1410,6 +1410,9 @@ body.cms-editor-active .cms-edit-quick-actions{display:flex;align-items:center;g
 .cms-audit-item strong{font-size:11px;line-height:1.4;color:var(--ink-strong);overflow-wrap:anywhere}
 .cms-audit-item small{font-size:10px;line-height:1.5;color:var(--muted-strong);overflow-wrap:anywhere}
 .cms-audit-item button{flex:none;white-space:nowrap}
+.cms-audit-fix-status{padding:9px 13px;margin:0 20px 12px;font-size:11px;font-weight:650;color:var(--ink-strong);border:1px solid var(--line);border-radius:8px;background:var(--surface-2)}
+.cms-audit-followup{font-size:11px;line-height:1.7;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink-strong)}
+.cms-audit-followup[hidden]{display:none!important}
 .cms-audit-empty{font-size:11px;line-height:1.7;color:var(--muted-strong);margin:0}
 #cms-audit-more{width:100%;margin-bottom:10px}
 #cms-audit-note{font-size:10px;line-height:1.6;color:var(--muted);display:block}

@@ -89,6 +89,7 @@ function syncBusyButtonState(button,disabled){
 }
 function applyDraftResult(target,res,payload){
  target.revision=res.revision;target.status='draft';target.payload=payload;
+ if(seoTargetMatches(target.kind,target.slug))seoAuditTarget.stage='draft';
  const version=$('.cms-editor-meta strong');if(version)version.textContent='v'+res.revision;
  const status=$('.cms-editor-meta .cms-item-state, .cms-easy-header-side .cms-item-state');
  if(status){status.dataset.status='draft';status.textContent=statusText.draft}
@@ -383,6 +384,53 @@ function listNextAction(item){
 }
 // V56: On-demand audit of published content. The scan never changes CMS drafts.
 let seoAuditGeneration=0,seoAuditData=null,seoAuditShown=12;
+let seoAuditTarget=null;
+function seoTargetMatches(kind,slug){
+ return seoAuditTarget&&seoAuditTarget.kind===kind&&seoAuditTarget.slug===slug;
+}
+function seoTargetSummary(result){
+ const previous=new Set((seoAuditTarget?.issues||[]).map(x=>x.code));
+ const current=result.issues||[];
+ const outstanding=current.filter(x=>previous.has(x.code)).length;
+ if(outstanding)return '仍需整改：原有问题有 '+outstanding+' 项未消除，当前公开版本共有 '+current.length+' 项建议。';
+ if(current.length)return '原有问题已消除，但公开版本仍有 '+current.length+' 项其他建议。';
+ return 'SEO 复查通过：原有问题已经消除，公开版本无基础质量警告。';
+}
+async function verifySeoPublished(){
+ const selected=seoAuditTarget;
+ if(!selected||selected.stage!=='published')return null;
+ const response=await api('/api/admin/seo/audit/item?kind='+encodeURIComponent(selected.kind)
+                          +'&slug='+encodeURIComponent(selected.slug));
+ if(selected!==seoAuditTarget)return null;
+ selected.lastChecked=response;
+ return seoTargetSummary(response);
+}
+function renderSeoAuditFollowup(label=''){
+ const node=$('#cms-audit-followup');
+ if(node){node.hidden=!label;node.textContent=label;}
+}
+function focusSeoIssue(issue){
+ if(!can('edit')||!state.selected)return;
+ const fields={
+  title:['#field-seo_title','#field-name','#field-title'],
+  duplicate_title:['#field-seo_title','#field-name','#field-title'],
+  description:['#field-seo_description','#field-summary','#field-subtitle','#field-lesson','#field-question'],
+  duplicate_description:['#field-seo_description','#field-summary','#field-subtitle','#field-lesson','#field-question'],
+  source:['#field-url'],source_url:['#field-url'],image:['#field-screenshot_url','#field-cover_image'],
+  date:['#field-published_at'],context:['#field-when'],links:['#field-modules','#field-site_id'],
+  depth:['[data-block-text]','[data-v51-paragraphs]'],
+  alt:['[data-block-alt]','[data-v513-caption]'],
+  invalid_links:['[data-block-url]'],sources:['#field-references','[data-block-url]'],
+  broken_refs:['#field-references'],image_labels:['[data-gallery-label]']
+ };
+ setEditorTab('content');
+ const target=(fields[issue.code]||[]).map(selector=>$(selector)).find(Boolean);
+ if(target){
+  const details=target.closest('details');if(details)details.open=true;
+  target.scrollIntoView({behavior:'smooth',block:'center'});target.focus?.({preventScroll:true});
+ }else $('.cms-audit-editor-note')?.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
 function closeSeoAudit(clear=false){
  seoAuditGeneration++;
  const panel=$('#cms-audit-panel'),button=$('#cms-audit-open');
@@ -413,7 +461,7 @@ function renderSeoAuditRows(){
  list.innerHTML=issues.length?issues.slice(0,seoAuditShown).map(item=>
   '<article class="cms-audit-item"><div><strong>'+h(item.title)+'</strong>'
   +'<small>'+(item.priority==='high'?'优先处理 · ':'一般建议 · ')+item.issue_count+' 项 · '+h(item.issues.slice(0,3).map(x=>x.label).join('、'))+'</small></div>'
-  +'<button type="button" data-seo-audit-edit="'+h(item.slug)+'" data-seo-audit-focus="'+h(item.issues.find(x=>['title','description','image'].includes(x.code))?.code||'')+'">定位并编辑</button></article>'
+  +'<button type="button" data-seo-audit-edit="'+h(item.slug)+'">'+(can('edit')?'定位并整改':'定位并查看')+'</button></article>'
  ).join(''):'<p class="cms-audit-empty">当前筛选条件下没有待改善的记录，可切换其他筛选项查看。</p>';
  more.hidden=seoAuditShown>=issues.length;
  if(!more.hidden)more.textContent='继续查看（剩余 '+(issues.length-seoAuditShown)+' 条）';
@@ -429,6 +477,7 @@ async function runPublishedSeoAudit(){
  $('#cms-audit-summary').textContent='正在检查当前栏目已公开的内容…';
  $('#cms-audit-list').innerHTML='<p class="cms-loading">正在分析标题、描述、来源和关联资料…</p>';
  $('#cms-audit-more').hidden=true;
+ renderSeoAuditFollowup('');
  try{
   const data=await api('/api/admin/seo/audit?kind='+encodeURIComponent(kind));
   if(generation!==seoAuditGeneration||kind!==state.kind||panel.hidden)return;
@@ -437,6 +486,21 @@ async function runPublishedSeoAudit(){
   $('#cms-audit-summary').textContent='共 '+data.total+' 条公开资料 · '+data.flagged+' 条有优化建议（'+data.high+' 条需优先处理） · '+data.clear+' 条通过基础检查';
   $('#cms-audit-note').textContent=data.note+(data.remaining?' · 列表仅列出前 '+data.items.length+' 条优先处理内容。':'');
   renderSeoAuditRows();
+  if(seoAuditTarget?.kind===kind){
+   if(seoAuditTarget.stage==='published'){
+    try{
+     const status=await verifySeoPublished();
+     if(status&&generation===seoAuditGeneration&&!panel.hidden)
+      renderSeoAuditFollowup('「'+seoAuditTarget.slug+'」'+status);
+    }catch(error){
+     if(generation===seoAuditGeneration&&!panel.hidden)
+      renderSeoAuditFollowup('公开 SEO 复查失败：'+error.message+'。可重新巡检。');
+    }
+   }else renderSeoAuditFollowup('「'+seoAuditTarget.slug+'」'+(
+     seoAuditTarget.stage==='review'?'正在等待审核，公开版本未更改。':
+     seoAuditTarget.stage==='draft'?'已保存草稿，但还没有更新公开版本。':
+     '尚未完成公开 SEO 整改。'));
+  }
  }catch(error){
   if(generation!==seoAuditGeneration||kind!==state.kind||panel.hidden)return;
   $('#cms-audit-summary').textContent='本次巡检没有完成';
@@ -973,9 +1037,19 @@ function renderForm(item){
  const steps='<div class="cms-steps">'+['内容准备','保存草稿','提交审核','正式发布'].map((title,i)=>'<span class="cms-step '+(i===index+1?'current':i<index+1?'passed':'')+'"><span>'+String(i+1).padStart(2,'0')+'</span>'+title+'</span>'+(i<3?'<span class="cms-step-line"></span>':'')).join('')+'</div>';
  const meta='<div class="cms-editor-meta">'+stateClasses(s)+'<span>修订版本 <strong>v'+item.revision+'</strong></span><span>内容来源：'+h(item.source==='cms'?'PostgreSQL CMS':'项目内容文件')+'</span>'+(item.published_at?'<span>发布时间：'+h(item.published_at.slice(0,16))+'</span>':'')+'</div>';
  const mediaHint=item.kind==='site'?'':mode==='admin'&&can('media')?'<div class="cms-editor-media-hint"><span>需要上传或更换图片？</span><button type="button" data-editor-open-media>打开媒体库 / 上传图片</button></div>':'';
- const auditHint=seoAuditData?.kind===item.kind?seoAuditData.items?.find(x=>x.slug===item.slug):null;
+ const auditHint=seoTargetMatches(item.kind,item.slug)
+   ?{issues:seoAuditTarget.issues}
+   :(seoAuditData?.kind===item.kind?seoAuditData.items?.find(x=>x.slug===item.slug):null);
  const auditNote=auditHint?'<aside class="cms-audit-editor-note"><strong>公开版本的巡检建议</strong><p>这里显示的是上次扫描公开页面时发现的问题；如已有更新草稿，请核对后再修改。</p><ul>'
   +auditHint.issues.map(x=>'<li>'+h(x.label)+'：'+h(x.advice)+'</li>').join('')+'</ul></aside>':'';
+ const auditProgress=seoTargetMatches(item.kind,item.slug)
+  ?'<p class="cms-audit-fix-status" role="status">'
+   +h({editing:'请修改并保存草稿，正式发布后才可复查。',
+       draft:'草稿已保存，公开版本尚未更改。',
+       review:'已提交审核，公开版本尚未更改。',
+       published:'正式发布已完成，请点击 SEO 复查核验结果。',
+       rejected:'审核已退回，请修改并重新提交。'}[seoAuditTarget.stage]||'公开内容尚未核验。')+'</p>'
+  :'';
  const form='<div class="cms-editor-content"><form id="cms-edit-form" class="cms-form">'
   +(item.kind==='site'?siteEditorForm(values,editable):simpleEditorForm(item.kind,values,editable))
   +seoSettings(values,item.kind,editable)
@@ -1034,7 +1108,7 @@ const history=item.history||[];
  root.classList.toggle('cms-easy-mode',true);
  root.innerHTML=topbar+siteHeader+rejectionNote+tabs
   +'<div id="cms-transition-feedback" class="cms-transition-feedback" role="status" aria-live="polite" hidden></div>'
-  +'<div data-editor-pane="content">'+auditNote+form+'</div>'
+  +'<div data-editor-pane="content">'+auditNote+auditProgress+form+'</div>'
   +'<div class="cms-private-preview-pane" data-editor-pane="preview" hidden><div class="cms-preview-heading"><div><h3>发布前预览</h3><p>模拟前台视觉效果，显示当前草稿和未保存修改；预览本身不会发布内容。</p></div><span id="cms-private-preview-state">仅当前浏览器可见</span></div><p id="cms-private-preview-error" role="alert" hidden></p><div id="cms-private-preview"></div></div>'
   +(item.kind==='article'?'<div data-editor-pane="seo" hidden>'+seoPanel+'</div>':'')
   +'<div data-editor-pane="review" hidden>'+reviewNavigation(item)+reviewBrief(item)+reviewActions
@@ -1184,6 +1258,8 @@ function showTransitionSuccess(action,item){
  panel.innerHTML='<div><strong>'+h(info[0])+'</strong><p>'+h(info[1])+'</p></div>'
   +'<div class="cms-v546-result-actions"><button type="button" data-editor-tab-link="'+h(info[2])+'">'+h(info[3])+'</button>'
   +(action==='publish'?'<a target="_blank" rel="noopener" href="'+h(kinds[item.kind].url+item.slug)+'">查看前台 ↗</a>':'')
+  +(action==='publish'&&seoTargetMatches(item.kind,item.slug)
+   ?'<button type="button" data-seo-audit-verify>复查已发布 SEO</button>':'')
   +(next?'<button type="button" data-v555-next-review="'+h(next)+'">继续审核下一条 →</button>':'')
   +(can('review')&&['publish','reject'].includes(action)?'<button type="button" data-v555-review-queue>查看全部待审核</button>':'')+'</div>';
  panel.scrollIntoView({block:'nearest'});
@@ -1207,6 +1283,10 @@ async function transition(action){
    await api('/api/admin/content/'+item.kind+'/'+item.slug+'/'+action,{
     method:'POST',body:JSON.stringify({expected_revision:item.revision,...(action==='reject'?{reason}:{})})});
    applied=true;
+   if(seoTargetMatches(item.kind,item.slug)){
+    seoAuditTarget.stage={submit:'review',publish:'published',reject:'rejected',archive:'archived'}[action]||seoAuditTarget.stage;
+    seoAuditTarget.lastChecked=null;
+   }
    state.dirty=false;await loadKind(false);
    if(!await selectItem(item.slug,false,true))throw Error('操作已提交，但最新内容尚未成功载入。');
    showTransitionSuccess(action,state.selected);
@@ -2657,16 +2737,18 @@ function boot(){
   const button=event.target.closest('[data-seo-audit-edit]');
   if(!button)return;
   const slug=button.dataset.seoAuditEdit;
-  if(!state.items.some(x=>x.slug===slug)){
+  const finding=seoAuditData?.items?.find(x=>x.slug===slug);
+  if(!finding||!state.items.some(x=>x.slug===slug)){
    message('该内容不在当前列表，请刷新后重试。',false);return;
   }
-  await selectItem(slug,true);
-  if(state.selected?.slug===slug&&can('edit')){
-   const code=button.dataset.seoAuditFocus;
-   const target={title:'seo_title',description:'seo_description',image:'seo_image'}[code];
-   const panel=$('#cms-edit-form .cms-seo-settings');
-   if(target&&panel){panel.open=true;setEditorTab('content');
-    const field=$('#field-'+target);field?.scrollIntoView({behavior:'smooth',block:'center'});field?.focus({preventScroll:true})}
+  const previous=seoAuditTarget;
+  seoAuditTarget={kind:state.kind,slug,issues:finding.issues.map(x=>({...x})),
+                  stage:'editing',lastChecked:null};
+  const opened=await selectItem(slug,true);
+  if(!opened){seoAuditTarget=previous;return;}
+  if(can('edit')&&state.selected?.slug===slug){
+   const first=finding.issues.find(x=>x.priority==='high')||finding.issues[0];
+   if(first)focusSeoIssue(first);
   }
  });
  for(const id of ['cms-new','cms-export','cms-media-open','cms-categories-open',
@@ -2724,6 +2806,33 @@ function boot(){
    if(teamEntry){chooseTeamPerson(teamEntry.dataset.v514TeamId);return}
    const close=e.target.closest('[data-v514-close]');
    if(close){$('#cms-'+close.dataset.v514Close+'-dialog').close();return}
+   if(e.target.closest('[data-seo-audit-verify]')){
+    if(!state.selected||!seoTargetMatches(state.selected.kind,state.selected.slug)
+        ||state.selected.status!=='published'||state.busy||state.dirty){
+     message('请先审核并正式发布，再复查公开版本。',false);return;
+    }
+    const button=e.target.closest('[data-seo-audit-verify]');
+    button.disabled=true;button.textContent='正在复查公开版本…';
+    try{
+     const status=await verifySeoPublished();
+     if(!status)return;
+     const panel=$('#cms-transition-feedback');
+     panel.hidden=false;panel.dataset.state='success';
+     panel.innerHTML='<div><strong>已复查正式发布版本</strong><p>'+h(status)
+      +'</p><small>复查不会自动修改公开页面或审核中的草稿。</small></div>'
+      +'<div class="cms-v546-result-actions"><button type="button" data-seo-audit-return>返回 SEO 巡检</button></div>';
+     panel.scrollIntoView({block:'nearest'});
+    }catch(error){
+     message('公开 SEO 复查失败：'+error.message,false);
+     button.disabled=false;button.textContent='重新复查 SEO';
+    }
+    return;
+   }
+   if(e.target.closest('[data-seo-audit-return]')){
+    if(!closeEditor())return;
+    await runPublishedSeoAudit();
+    return;
+   }
    if(e.target.closest('[data-close-editor]')){closeEditor();return}
    if(e.target.closest('[data-editor-save]')){if(!state.dirty&&state.selected?.status!=='source')message('当前没有待保存的修改。');else if($('#cms-edit-form')?.reportValidity())await saveDraft({preventDefault(){}});return}
    if(e.target.closest('[data-editor-submit]')){await transition('submit');return}
