@@ -394,11 +394,17 @@ def cleaned(kind,slug,payload):
     if kind=="article" and result.get("cover_image"):
         if not isinstance(result["cover_image"],str) or not re.fullmatch(r"/api/media/[0-9a-f-]{36}",result["cover_image"]):
             user_auth.error(422,"文章封面只能选择已上传的媒体图片。")
+    # Optional search and AI-discovery metadata is shared by all four content types.
+    for metadata,max_chars in (("seo_title",100),("seo_description",300),("seo_keywords",240)):
+        v=result.get(metadata,"")
+        if v is not None and (not isinstance(v,str) or len(v)>max_chars):
+            user_auth.error(422,metadata+" 长度不合法。")
+    image=result.get("seo_image","")
+    if image is not None and image!="" and (
+        not isinstance(image,str) or not seo_routes.public_image(image)
+    ):
+        user_auth.error(422,"SEO 分享封面必须是媒体库图片或站内截图。")
     if kind=="article":
-        for metadata,max_chars in (("seo_title",100),("seo_description",300)):
-            v=result.get(metadata,"")
-            if v is not None and (not isinstance(v,str) or len(v)>max_chars):
-                user_auth.error(422,metadata+" 长度不合法。")
         for key,limit in (("tags",20),("takeaways",30)):
             value=result.get(key,[])
             if not isinstance(value,list) or len(value)>limit or any(
