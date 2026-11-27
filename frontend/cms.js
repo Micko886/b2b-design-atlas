@@ -590,8 +590,7 @@ function simpleEditorForm(kind,values,editable){
    title='基本信息';description='先填写标题、摘要和分类，再在下方逐章编辑文章正文。';
    basic=[['title','文章标题','text',true],['subtitle','文章摘要','long',true],
      ['category','文章分类','text',true],['author','作者','text',true]];
-   extra=[['seo_title','SEO 标题','text'],['seo_description','SEO 描述','long'],
-     ['cover_site','关联网站标识','text'],['published_at','发布日期','text'],
+   extra=[['cover_site','关联网站标识','text'],['published_at','发布日期','text'],
      ['reading_minutes','阅读时长（分钟）','number'],['featured','设为精选文章','bool']];
    aside=easyImagePreview('cover_image',values,editable,'这张封面用于文章列表和详情页展示。');
  }
@@ -799,6 +798,32 @@ async function openReviewDiff(revision=0){
  }catch(e){if(requestId===activeDiffRequest&&dialog.open)
    $('#cms-diff-results').innerHTML='<div class="cms-error">'+h(e.message)+'</div>'}
 }
+// One beginner-friendly SEO panel for all content types; empty values use the published fallback.
+function seoSettings(v,kind,editable){
+ const locked=editable?'':' disabled',heading=v.name||v.title||'内容标题';
+ const suffix={site:' · 网站设计研究',module:' · 页面模块研究',pattern:' · 设计模式',article:''}[kind]||'';
+ const summary=(kind==='site'?v.summary||v.focus:kind==='module'?v.lesson||v.summary:kind==='pattern'?v.question||v.principle:v.subtitle)||'内容摘要';
+ const url=location.host+(kinds[kind]?.url||'/websites/')+(state.selected?.slug||'');
+ return '<details class="cms-easy-advanced cms-seo-settings"><summary>SEO 设置 <span>选填 · 不填自动生成</span></summary>'
+  +'<div class="cms-seo-fields">'
+  +'<label for="field-seo_title">SEO 标题 <small>不填则使用内容标题</small></label>'
+  +'<input id="field-seo_title" data-field="seo_title" data-type="text" maxlength="100" placeholder="'+h(heading+suffix)+'" value="'+h(v.seo_title||'')+'"'+locked+'>'
+  +'<label for="field-seo_description">SEO 描述 <small>不填则使用内容简介</small></label>'
+  +'<textarea id="field-seo_description" data-field="seo_description" data-type="long" maxlength="300" rows="3" placeholder="'+h(summary)+'"'+locked+'>'+h(v.seo_description||'')+'</textarea>'
+  +'<label for="field-seo_keywords">主题关键词 <small>逗号分隔 · 不生成 meta keywords</small></label>'
+  +'<input id="field-seo_keywords" data-field="seo_keywords" data-type="text" maxlength="240" placeholder="例如：工业网站设计, 企业品牌视觉" value="'+h(v.seo_keywords||'')+'"'+locked+'>'
+  +'<label for="field-seo_image">分享封面 <small>仅用于社交分享，不影响正文封面</small></label>'
+  +'<div class="cms-seo-image-field"><input id="field-seo_image" data-field="seo_image" data-type="text" type="text" readonly placeholder="自动使用内容封面" value="'+h(v.seo_image||'')+'"'+locked+'>'
+  +(editable&&can('media')?'<button type="button" data-editor-pick-media="field-seo_image">选择图片</button>':'')
+  +(editable?'<button type="button" data-seo-image-clear>恢复默认</button>':'')+'</div>'
+  +'<div class="cms-seo-inline-preview"><span class="cms-seo-inline-eyebrow">Google 搜索展示预览 · 仅供参考</span>'
+  +'<small id="cms-seo-preview-url">'+h(url)+'</small><strong id="cms-seo-preview-title">'+h(heading+suffix)+' · B2B Atlas</strong>'
+  +'<p id="cms-seo-preview-desc">'+h(summary)+'</p><img id="cms-seo-preview-image" loading="lazy" alt="分享图片预览" hidden>'
+  +'<p id="cms-seo-inline-status" role="status" aria-live="polite"></p></div>'
+  +'<p class="cms-seo-inline-note">Canonical 自动维护。所有修改保存为草稿，审核发布后才会更新公开页面；实际搜索展示由搜索引擎决定。</p>'
+  +'</div></details>';
+}
+
 // V51.19 · Content SEO preflight (editor unsaved preview, reviewer saved snapshot).
 function seoStudio(v){
  return '<section id="cms-seo-panel" class="cms-seo-panel"><div class="cms-seo-head"><div>'
@@ -811,9 +836,35 @@ function seoStudio(v){
    +'<div id="cms-seo-result" class="cms-seo-result"><p>检查当前草稿，了解可以改善的可访问性与搜索展示问题。</p></div></section>';
 }
 function refreshSeoSnippet(){
- const title=$('#cms-seo-title');if(!title)return;
- title.textContent=$('#field-seo_title')?.value.trim()||$('#field-title')?.value.trim()||'文章标题';
- $('#cms-seo-desc').textContent=$('#field-seo_description')?.value.trim()||$('#field-subtitle')?.value.trim()||'请填写文章摘要';
+ if(!state.selected||!$('#cms-edit-form'))return;
+ const kind=state.selected.kind,heading=($('#field-name')||$('#field-title'))?.value.trim()||'内容标题';
+ const description=(kind==='site'?$('#field-summary')?.value||$('#field-focus')?.value:
+   kind==='module'?$('#field-lesson')?.value||$('#field-summary')?.value:
+   kind==='pattern'?$('#field-question')?.value||$('#field-principle')?.value:
+   $('#field-subtitle')?.value)||'内容简介';
+ const suffix={site:' · 网站设计研究',module:' · 页面模块研究',pattern:' · 设计模式',article:''}[kind]||'';
+ const title=$('#field-seo_title')?.value.trim()||heading+suffix;
+ const desc=$('#field-seo_description')?.value.trim()||description;
+ const fullTitle=title.startsWith('B2B Atlas')?title:title+' · B2B Atlas';
+ if($('#cms-seo-preview-title'))$('#cms-seo-preview-title').textContent=fullTitle;
+ if($('#cms-seo-preview-desc'))$('#cms-seo-preview-desc').textContent=desc;
+ const image=$('#field-seo_image')?.value.trim()||
+   (kind==='site'||kind==='module'?$('#field-screenshot_url')?.value:
+    kind==='article'?$('#field-cover_image')?.value:'');
+ const preview=$('#cms-seo-preview-image');
+ if(preview){
+  preview.hidden=!validSiteShot(image);
+  if(!preview.hidden)preview.src=image;else preview.removeAttribute('src');
+ }
+ const issues=[];
+ if(title.length>70)issues.push('标题较长');
+ if(desc.length<35)issues.push('描述可以更具体');
+ if(desc.length>170)issues.push('描述较长');
+ if(!validSiteShot(image))issues.push('没有可用分享图片');
+ if($('#cms-seo-inline-status'))$('#cms-seo-inline-status').textContent=
+   '标题 '+title.length+' 字 · 描述 '+desc.length+' 字'+(issues.length?' · '+issues.join('、'):' · 基础检查通过');
+ if($('#cms-seo-title'))$('#cms-seo-title').textContent=title;
+ if($('#cms-seo-desc'))$('#cms-seo-desc').textContent=desc;
 }
 async function runSeoAudit(){
  if(mode!=='admin'||!state.selected||state.selected.kind!=='article')return;
@@ -858,6 +909,7 @@ function renderForm(item){
  const form='<div class="cms-editor-content"><form id="cms-edit-form" class="cms-form">'
   +(item.kind==='site'?siteEditorForm(values,editable):simpleEditorForm(item.kind,values,editable))
   +(item.kind==='article'?articleStudio(values,editable):'')
+  +seoSettings(values,item.kind,editable)
   +(editable?'<div class="cms-easy-save-note"><span class="cms-autosave-led" aria-hidden="true"></span><span id="cms-autosave-status" role="status" aria-live="polite">修改后自动保存草稿</span><button type="button" data-autosave-retry hidden>重试保存</button><button type="button" data-autosave-copy hidden>复制未保存内容</button></div>':'')
   +'</form></div>';
  const schedule=item.schedule||null;
@@ -920,6 +972,7 @@ const history=item.history||[];
   +'<div data-editor-pane="history" hidden>'+timeline+'</div>';
  root.hidden=false;
  setStudioMode(true);
+ refreshSeoSnippet();
  if(item.kind==='article')refreshArticleHealth();
  setEditorTab(state.editorTab||'content');
  syncScheduleEditor(item);
@@ -1922,7 +1975,7 @@ async function uploadMedia(files){
  }
  if(uploaded===1&&lastUrl&&state.mediaField){
    const target=document.getElementById(state.mediaField);
-   if(target){target.value=lastUrl;state.mediaField=null;$('#cms-media-dialog').close();markDraftDirty();syncSiteImage();refreshArticlePreview();message('图片已关联到当前字段，请保存草稿')}
+   if(target){target.value=lastUrl;state.mediaField=null;$('#cms-media-dialog').close();markDraftDirty();syncSiteImage();refreshArticlePreview();refreshSeoSnippet();message('图片已关联到当前字段，请保存草稿')}
  }
  if(uploaded===1&&lastUrl&&state.mediaTarget){
    const target=state.mediaTarget.querySelector('[data-block-image],[data-v513-image]');
@@ -2514,6 +2567,7 @@ function boot(){
    if(galleryCover){const photo=galleryValue()[Number(galleryCover.dataset.galleryCover)],input=$('#field-screenshot_url');if(photo&&input){input.value=photo.url;syncSiteImage();markDraftDirty();message('已设为案例封面。')}return}
    const mediaPicker=e.target.closest('[data-editor-pick-media]');
    if(mediaPicker){state.mediaTarget=null;state.mediaField=mediaPicker.dataset.editorPickMedia;await openMedia();return}
+   if(e.target.closest('[data-seo-image-clear]')){const input=$('#field-seo_image');if(input){input.value='';markDraftDirty();refreshSeoSnippet()}return}
    const stageLink=e.target.closest('[data-editor-state-link]');
    if(stageLink){
      const tab=stageLink.dataset.editorStateLink;
@@ -2662,7 +2716,7 @@ function boot(){
    if(pickInline){state.mediaField=null;state.mediaTarget=pickInline.closest('[data-v51-section]');await openMedia();return}
    const clearInline=e.target.closest('[data-v513-clear-image]');
    if(clearInline){clearInline.closest('[data-v51-section]').querySelector('[data-v513-image]').value='';markDraftDirty();refreshArticlePreview();return}
-   const useMedia=e.target.closest('[data-v51-use-media]');if(useMedia){if(state.mediaField==='field-gallery'){state.mediaField=null;$('#cms-media-dialog').close();addGalleryImages([useMedia.dataset.v51UseMedia]);return}const target=state.mediaField?document.getElementById(state.mediaField):null;if(target){target.value=useMedia.dataset.v51UseMedia;state.mediaField=null;markDraftDirty();syncSiteImage();refreshArticlePreview();$('#cms-media-dialog').close();message('图片已选择，请保存草稿')}return}
+   const useMedia=e.target.closest('[data-v51-use-media]');if(useMedia){if(state.mediaField==='field-gallery'){state.mediaField=null;$('#cms-media-dialog').close();addGalleryImages([useMedia.dataset.v51UseMedia]);return}const target=state.mediaField?document.getElementById(state.mediaField):null;if(target){target.value=useMedia.dataset.v51UseMedia;state.mediaField=null;markDraftDirty();syncSiteImage();refreshArticlePreview();refreshSeoSnippet();$('#cms-media-dialog').close();message('图片已选择，请保存草稿')}return}
    const copy=e.target.closest('[data-v51-copy-media]');if(copy){try{await navigator.clipboard.writeText(location.origin+copy.dataset.v51CopyMedia);message('图片地址已复制')}catch{message('请从媒体列表中手动复制地址',false)}return}
    if(e.target.closest('[data-media-close]')){state.mediaTarget=null;state.mediaField=null;$('#cms-media-dialog').close();return}
    if(e.target.closest('[data-dialog-close]')){$('#cms-create-dialog').close();return}
