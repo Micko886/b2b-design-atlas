@@ -13,7 +13,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from fastapi import FastAPI, HTTPException, Request, Response
-from app import admin_routes, cms_access, cms_routes, user_auth
+from app import admin_routes, cms_access, cms_routes, seo_routes, user_auth
 
 
 class AuthenticatedWorkflowTests(unittest.TestCase):
@@ -202,6 +202,113 @@ class AuthenticatedWorkflowTests(unittest.TestCase):
         self.assertEqual(updated["status"],"draft")
         public=next(x for x in cms_routes.public_payload("site")["sites"] if x["id"]==slug)
         self.assertEqual(public["summary"],"Only a private draft")
+
+    def test_all_four_seo_content_types_publish_only_after_approval(self):
+        """HTTP SEO output follows actual CMS snapshots, not any unreviewed draft.
+
+        This workflow uses the same disposable SQLite fixture as auth tests.
+        No production users, PostgreSQL rows, or preview pages are modified.
+        """
+        owner=self.register("seo-owner")
+        editor=self.register("seo-editor")
+        reviewer=self.register("seo-reviewer")
+        self.owners.add(owner["id"])
+        self.grant(editor,"editor",owner)
+        self.grant(reviewer,"reviewer",owner)
+        categories=cms_routes.article_categories()
+        self.assertTrue(categories,"At least one published article category is required")
+        source_kind=[
+            ("site","qa-seo-site","websites",{
+                "name":"Research Source", "url":"https://example.org",
+                "sector":"Manufacturing", "summary":"Original industry observation",
+                "screenshot_url":"/screenshots/sites/vast.webp"}),
+            ("module","qa-seo-module","sections",{
+                "title":"Evidence Hero", "site_id":"qa-seo-site","category":"Hero",
+                "lesson":"Show verifiable product context",
+                "screenshot_url":"/screenshots/modules/qa-seo-module.webp"}),
+            ("pattern","qa-seo-pattern","patterns",{
+                "title":"Proof-first design", "family":"Navigation",
+                "question":"How do buyers evaluate a product?",
+                "principle":"Show sources near claims",
+                "modules":["qa-seo-module"]}),
+            ("article","qa-seo-article","insights",{
+                "title":"How to evaluate B2B designs",
+                "subtitle":"Original editorial introduction",
+                "category":categories[0]["id"],"author":"B2B Atlas 编辑部",
+                "cover_site":"qa-seo-site",
+                "sections":[{"title":"Research findings",
+                             "blocks":[{"type":"paragraph",
+                                        "text":"Evidence-backed case analysis with original context."}]}],
+                "references":[["website","qa-seo-site"],
+                              ["module","qa-seo-module"],["pattern","qa-seo-pattern"]]
+            })
+        ]
+        from fastapi import FastAPI
+        seo_app=FastAPI()
+        seo_routes.register_seo_routes(seo_app)
+        sitemap=next(route.endpoint for route in seo_app.routes
+                     if getattr(route,"path","")=="/sitemap.xml")
+        def html(route):
+            return seo_routes.seo_document(route).body.decode("utf-8")
+        def sitemap_text():
+            return sitemap().body.decode("utf-8")
+        for kind,slug,route,data in source_kind:
+            with self.subTest(kind=kind):
+                original_title="Approved "+kind+" research"
+                original_desc="Approved "+kind+" SEO summary based on published evidence."
+                payload={**data,"id":slug,"seo_title":original_title,
+                         "seo_description":original_desc,
+                         "seo_keywords":"B2B, documented research",
+                         "seo_image":"/screenshots/sites/vast.webp"}
+                path=route+"/"+slug
+                created=self.call("POST","/api/admin/content",
+                                  cms_routes.Create(kind=kind,slug=slug,payload=payload),
+                                  self.authed(editor,"POST"))
+                self.assertEqual(created["status"],"draft")
+                self.assertEqual(seo_routes.seo_document(path).status_code,404)
+                self.assertNotIn(path,sitemap_text())
+                self.assertNotIn(original_desc,html(route))
+                submitted=self.call("POST","/api/admin/content/{kind}/{slug}/submit",
+                                    kind,slug,cms_routes.Change(expected_revision=created["revision"]),
+                                    self.authed(editor,"POST"))
+                self.assertEqual(submitted["status"],"review")
+                self.assertEqual(seo_routes.seo_document(path).status_code,404)
+                published=self.call("POST","/api/admin/content/{kind}/{slug}/publish",
+                                    kind,slug,cms_routes.Change(expected_revision=submitted["revision"]),
+                                    self.authed(reviewer,"POST"))
+                self.assertEqual(published["status"],"published")
+                response=seo_routes.seo_document(path)
+                self.assertEqual(response.status_code,200)
+                self.assertEqual(response.headers["X-Robots-Tag"],"index, follow")
+                body=response.body.decode("utf-8")
+                self.assertIn(original_title,body)
+                self.assertIn(original_desc,body)
+                self.assertIn('name="description"',body)
+                self.assertIn('rel="canonical"',body)
+                self.assertIn('application/ld+json',body)
+                self.assertIn('"keywords": "B2B, documented research"',body)
+                self.assertIn("https://b2b-design-atlas-preview.onrender.com/screenshots/sites/vast.webp",body)
+                self.assertIn(path,sitemap_text())
+                pending={**payload,"seo_title":"UNREVIEWED "+original_title,
+                         "seo_description":"UNREVIEWED "+original_desc}
+                updated=self.call("PUT","/api/admin/content/{kind}/{slug}",
+                                  kind,slug,cms_routes.Draft(
+                                      expected_revision=published["revision"],
+                                      payload=pending),self.authed(editor,"PUT"))
+                self.assertEqual(updated["status"],"draft")
+                body=html(path)
+                self.assertIn(original_title,body)
+                self.assertIn(original_desc,body)
+                self.assertNotIn("UNREVIEWED",body)
+                self.assertIn(path,sitemap_text())
+        # The private draft of one record never changes its published snapshot.
+        kind,slug,route,_=source_kind[-1]
+        archived=self.call("POST","/api/admin/content/{kind}/{slug}/archive",
+                           kind,slug,cms_routes.Change(expected_revision=4),
+                           self.authed(reviewer,"POST"))
+        self.assertEqual(archived["status"],"archived")
+        self.assertEqual(seo_routes.seo_document(route+"/"+slug).status_code,404)
+        self.assertNotIn(route+"/"+slug,sitemap_text())
 
     def test_favorites_are_isolated_and_require_valid_csrf(self):
         user_a=self.register("collector-a")
