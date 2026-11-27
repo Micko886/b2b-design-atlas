@@ -319,7 +319,7 @@ def seo_document(full_path):
 def register_seo_routes(app:FastAPI):
     @app.get("/robots.txt",include_in_schema=False)
     def robots():
-        return PlainTextResponse("User-agent: *\nDisallow: /account\nDisallow: /collections\nDisallow: /board\nDisallow: /login\nDisallow: /register\nDisallow: /forgot-password\nDisallow: /reset-password\nDisallow: /compare\nSitemap: "+ORIGIN+"/sitemap.xml\n",headers={"Cache-Control":"public, max-age=3600"})
+        return PlainTextResponse("User-agent: *\nDisallow: /admin\nDisallow: /account\nDisallow: /collections\nDisallow: /board\nDisallow: /login\nDisallow: /register\nDisallow: /forgot-password\nDisallow: /reset-password\nDisallow: /compare\nSitemap: "+ORIGIN+"/sitemap.xml\n",headers={"Cache-Control":"public, max-age=3600"})
     @app.get("/sitemap.xml",include_in_schema=False)
     def sitemap():
         c=catalog()
