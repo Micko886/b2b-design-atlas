@@ -390,6 +390,21 @@ function closeSeoAudit(clear=false){
  if(button)button.setAttribute('aria-expanded','false');
  if(clear)seoAuditData=null;
 }
+function renderSeoAuditOverview(data){
+ const root=$('#cms-audit-overview');
+ if(!root)return;
+ root.hidden=!data;
+ if(!data){root.textContent='';return;}
+ const groups=(data.sections||[]).map(x=>'<div class="cms-audit-overview-kind"><span>'
+  +h(x.label)+'</span><strong>'+Number(x.flagged||0)+' / '+Number(x.total||0)+'</strong>'
+  +'<small>'+Number(x.high||0)+' 条优先</small></div>').join('');
+ const issues=(data.top_issues||[]).slice(0,6).map(x=>'<span class="cms-audit-issue-chip">'
+  +h(x.label)+' · '+Number(x.count||0)+'</span>').join('');
+ root.innerHTML='<div class="cms-audit-overview-title"><strong>全站公开内容概览</strong><small>'
+  +Number(data.total||0)+' 条公开 · '+Number(data.flagged||0)+' 条建议完善 · '+Number(data.high||0)
+  +' 条优先</small></div><div class="cms-audit-overview-kinds">'+groups+'</div>'
+  +(issues?'<p class="cms-audit-overview-caption">最常见的问题</p><div class="cms-audit-issue-chips">'+issues+'</div>':'');
+}
 function renderSeoAuditRows(){
  const list=$('#cms-audit-list'),more=$('#cms-audit-more');
  if(!list||!more||!seoAuditData)return;
@@ -410,6 +425,7 @@ async function runPublishedSeoAudit(){
  panel.hidden=false;trigger.setAttribute('aria-expanded','true');
  const kind=state.kind,generation=++seoAuditGeneration;
  seoAuditShown=12;
+ renderSeoAuditOverview(null);
  $('#cms-audit-summary').textContent='正在检查当前栏目已公开的内容…';
  $('#cms-audit-list').innerHTML='<p class="cms-loading">正在分析标题、描述、来源和关联资料…</p>';
  $('#cms-audit-more').hidden=true;
@@ -417,6 +433,7 @@ async function runPublishedSeoAudit(){
   const data=await api('/api/admin/seo/audit?kind='+encodeURIComponent(kind));
   if(generation!==seoAuditGeneration||kind!==state.kind||panel.hidden)return;
   seoAuditData=data;
+  renderSeoAuditOverview(data.overview);
   $('#cms-audit-summary').textContent='共 '+data.total+' 条公开资料 · '+data.flagged+' 条有优化建议（'+data.high+' 条需优先处理） · '+data.clear+' 条通过基础检查';
   $('#cms-audit-note').textContent=data.note+(data.remaining?' · 列表仅列出前 '+data.items.length+' 条优先处理内容。':'');
   renderSeoAuditRows();

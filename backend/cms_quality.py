@@ -184,7 +184,7 @@ def audit_resource(kind,slug,item,catalog,duplicates=None):
         warn("image","内容封面待补充","添加真实案例截图或已授权的媒体封面。")
     if kind=="site":
         url=item.get("url","")
-        if not isinstance(url,str) or not url.startswith(("https://","http://")):
+        if not seo_routes.source_url(url):
             warn("source","原始网站来源不完整","补充可访问的官方来源 URL。")
         related=[x for x in catalog["modules"].values()
                  if isinstance(x,dict) and x.get("site_id")==slug]
@@ -198,7 +198,7 @@ def audit_resource(kind,slug,item,catalog,duplicates=None):
         site=item.get("site_id")
         if not isinstance(site,str) or site not in catalog["sites"]:
             warn("source","所属网站来源不可用","关联已经发布的网站案例。")
-        if not isinstance(item.get("url"),str) or not item["url"].startswith(("https://","http://")):
+        if not seo_routes.source_url(item.get("url")):
             warn("source_url","缺少原始页面链接","尽量提供对应模块的官网页面 URL，便于核实。")
         linked=any(slug in p.get("modules",[]) for p in catalog["patterns"].values()
                    if isinstance(p,dict) and isinstance(p.get("modules"),list))
@@ -226,7 +226,9 @@ def audit_resource(kind,slug,item,catalog,duplicates=None):
                 broken_refs+=1
                 continue
             target=target_kind.get(ref[0])
-            if target and ref[1] in catalog[target]:
+            choices=catalog.get(target,{}) if target else {}
+            if (isinstance(choices,dict) and isinstance(choices.get(ref[1]),dict)
+                    and not (ref[0]=="article" and ref[1]==slug)):
                 valid_refs+=1
             else:
                 broken_refs+=1
@@ -235,7 +237,7 @@ def audit_resource(kind,slug,item,catalog,duplicates=None):
                  "重新选择已发布的案例、模块、模式或文章，避免无效内链。")
         has_external=any(
             isinstance(block,dict) and block.get("type")=="link"
-            and isinstance(block.get("url"),str) and block["url"].startswith(("https://","http://"))
+            and seo_routes.source_url(block.get("url"))
             for section in (item.get("sections") if isinstance(item.get("sections"),list) else [])
             if isinstance(section,dict)
             for block in (section.get("blocks") if isinstance(section.get("blocks"),list) else []))
@@ -290,9 +292,11 @@ def audit_published(kind,catalog,limit=100):
     records=catalog.get(key,{})
     duplicates=duplicate_map(kind,catalog)
     findings=[]
+    frequencies=defaultdict(int)
     for slug,item in records.items():
         if not isinstance(slug,str):continue
         result=audit_resource(kind,slug,item,catalog,duplicates.get(slug))
+        for issue in result["issues"]:frequencies[issue["code"]]+=1
         if result["issue_count"]:findings.append(result)
     findings.sort(key=lambda x:(x["priority"]!="high",-x["high_issue_count"],-x["issue_count"],x["slug"]))
     count=len(findings)
@@ -300,13 +304,44 @@ def audit_published(kind,catalog,limit=100):
             "flagged":count,"high":sum(x["priority"]=="high" for x in findings),
             "clear":max(0,len(records)-count),
             "items":findings[:limit],"remaining":max(0,count-limit),
+            "issue_counts":dict(sorted(frequencies.items(),key=lambda x:(-x[1],x[0]))),
             "note":"仅检查已公开内容的文本、图片和关联完整性；不检测外链是否在线，也不代表搜索排名或收录状态。"}
+
+
+# V70 - aggregate a single published-only catalog view across all four types.
+_ISSUE_LABELS={
+ "source":"原始来源不完整","source_url":"页面来源链接缺失","sources":"研究缺少公开资料",
+ "broken_refs":"引用了未发布或无效内容","duplicate_title":"重复 SEO 标题",
+ "duplicate_description":"重复 SEO 描述","title":"标题需要完善",
+ "description":"搜索描述需要完善","depth":"正文内容较少","invalid_links":"研究引用链接有误",
+ "alt":"图片缺少 ALT","image":"封面待补充","links":"资源关联待完善",
+ "date":"文章日期待核实","image_labels":"相册说明缺失","context":"适用场景待补充"}
+_KIND_LABELS={"site":"网站案例","module":"页面模块","pattern":"设计模式","article":"研究文章"}
+
+def audit_overview(catalog):
+    """Counts reflect *all* approved public content, never drafts or profiles."""
+    sums=defaultdict(int)
+    sections=[]
+    frequency=defaultdict(int)
+    for kind in ("site","module","pattern","article"):
+        report=audit_published(kind,catalog,limit=0)
+        sections.append({"kind":kind,"label":_KIND_LABELS[kind],
+                         **{key:report[key] for key in ("total","flagged","high","clear")}})
+        for key in ("total","flagged","high","clear"):sums[key]+=report[key]
+        for code,count in report["issue_counts"].items():frequency[code]+=count
+    return {**sums,"sections":sections,"top_issues":[
+        {"code":code,"label":_ISSUE_LABELS.get(code,code),"count":n}
+        for code,n in sorted(frequency.items(),key=lambda x:(-x[1],x[0]))],
+        "note":"仅检查当前正式发布的四类公开资料（含 CMS 已发布版本）；不包含审核中草稿及个人资料。"}
 
 def register_quality_routes(app:FastAPI):
     @app.get("/api/admin/seo/audit",include_in_schema=False)
     def audit_catalog(request:Request,kind:cms_routes.KIND="site"):
         cms_routes.require_admin(request,permission="view")
-        return audit_published(kind,cms_routes.seo_routes.catalog())
+        published=cms_routes.seo_routes.catalog()
+        report=audit_published(kind,published)
+        report["overview"]=audit_overview(published)
+        return report
 
     @app.post("/api/admin/seo/check",include_in_schema=False)
     def check_draft(data:SeoPreview,request:Request):

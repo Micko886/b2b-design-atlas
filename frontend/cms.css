@@ -1451,3 +1451,18 @@ body.cms-editor-active .cms-edit-quick-actions{display:flex;align-items:center;g
 .cms-audit-actions select:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .cms-audit-item:has(button[data-seo-audit-focus]){min-width:0}
 @media(max-width:600px){.cms-audit-actions{width:100%}.cms-audit-actions select{flex:1;max-width:none}}
+
+/* V70 public SEO quality overview */
+.cms-audit-overview[hidden]{display:none!important}
+.cms-audit-overview{padding:13px;margin:12px 0 4px;border:1px solid var(--line);border-radius:11px;background:var(--surface)}
+.cms-audit-overview-title{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.cms-audit-overview-title strong{font-size:12px;color:var(--ink-strong)}
+.cms-audit-overview-title small,.cms-audit-overview-kind small{font-size:10px;color:var(--muted)}
+.cms-audit-overview-kinds{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.cms-audit-overview-kind{display:grid;gap:4px;padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2)}
+.cms-audit-overview-kind span{font-size:10px;color:var(--muted-strong)}
+.cms-audit-overview-kind strong{font-size:14px;color:var(--ink-strong)}
+.cms-audit-overview-caption{font-size:10px;margin:12px 0 7px;color:var(--muted-strong)}
+.cms-audit-issue-chips{display:flex;flex-wrap:wrap;gap:5px}
+.cms-audit-issue-chip{font-size:10px;border:1px solid var(--line);border-radius:6px;padding:5px 7px;color:var(--muted-strong)}
+@media(max-width:720px){.cms-audit-overview-kinds{grid-template-columns:repeat(2,minmax(0,1fr))}}
