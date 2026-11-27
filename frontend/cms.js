@@ -2027,7 +2027,7 @@ async function uploadMedia(files){
  }
  if(uploaded===1&&lastUrl&&state.mediaField){
    const target=document.getElementById(state.mediaField);
-   if(target){target.value=lastUrl;state.mediaField=null;$('#cms-media-dialog').close();markDraftDirty();syncSiteImage();refreshArticlePreview();refreshSeoSnippet();message('图片已关联到当前字段，请保存草稿')}
+   if(target){const pageImage=state.mediaField==='cms-page-seo-image';target.value=lastUrl;state.mediaField=null;$('#cms-media-dialog').close();if(pageImage){siteSeoDirty=true;previewSiteSeo();message('已选择分享图片，请保存 SEO 草稿')}else{markDraftDirty();syncSiteImage();refreshArticlePreview();refreshSeoSnippet();message('图片已关联到当前字段，请保存草稿')}}
  }
  if(uploaded===1&&lastUrl&&state.mediaTarget){
    const target=state.mediaTarget.querySelector('[data-block-image],[data-v513-image]');
@@ -2860,7 +2860,7 @@ function boot(){
    if(pickInline){state.mediaField=null;state.mediaTarget=pickInline.closest('[data-v51-section]');await openMedia();return}
    const clearInline=e.target.closest('[data-v513-clear-image]');
    if(clearInline){clearInline.closest('[data-v51-section]').querySelector('[data-v513-image]').value='';markDraftDirty();refreshArticlePreview();return}
-   const useMedia=e.target.closest('[data-v51-use-media]');if(useMedia){if(state.mediaField==='field-gallery'){state.mediaField=null;$('#cms-media-dialog').close();addGalleryImages([useMedia.dataset.v51UseMedia]);return}const target=state.mediaField?document.getElementById(state.mediaField):null;if(target){target.value=useMedia.dataset.v51UseMedia;state.mediaField=null;markDraftDirty();syncSiteImage();refreshArticlePreview();refreshSeoSnippet();$('#cms-media-dialog').close();message('图片已选择，请保存草稿')}return}
+   const useMedia=e.target.closest('[data-v51-use-media]');if(useMedia){if(state.mediaField==='field-gallery'){state.mediaField=null;$('#cms-media-dialog').close();addGalleryImages([useMedia.dataset.v51UseMedia]);return}const target=state.mediaField?document.getElementById(state.mediaField):null;if(target){const pageImage=state.mediaField==='cms-page-seo-image';target.value=useMedia.dataset.v51UseMedia;state.mediaField=null;$('#cms-media-dialog').close();if(pageImage){siteSeoDirty=true;previewSiteSeo();message('已选择分享图片，请保存 SEO 草稿')}else{markDraftDirty();syncSiteImage();refreshArticlePreview();refreshSeoSnippet();message('图片已选择，请保存草稿')}}return}
    const copy=e.target.closest('[data-v51-copy-media]');if(copy){try{await navigator.clipboard.writeText(location.origin+copy.dataset.v51CopyMedia);message('图片地址已复制')}catch{message('请从媒体列表中手动复制地址',false)}return}
    if(e.target.closest('[data-media-close]')){state.mediaTarget=null;state.mediaField=null;$('#cms-media-dialog').close();return}
    if(e.target.closest('[data-dialog-close]')){$('#cms-create-dialog').close();return}
