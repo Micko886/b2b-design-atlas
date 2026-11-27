@@ -154,6 +154,17 @@ def _record_link(kind, slug, item):
             +_paragraph(description,250)+'</li>')
 
 
+def _linked_research(kind, entries, title, limit=8):
+    """Cross-link only resources already present in the published catalog."""
+    links=[]
+    for slug,item in entries:
+        if len(links)>=limit:break
+        entry=_record_link(kind,slug,item)
+        if entry:links.append(entry)
+    if not links:return ""
+    return '<section><h2>'+safe(title,100)+'</h2><ul>'+''.join(links)+'</ul></section>'
+
+
 def public_prerender(path, record, collection):
     """Serve meaningful, escaped body text without relying on JavaScript execution.
 
@@ -199,12 +210,20 @@ def public_prerender(path, record, collection):
         url=item.get("url")
         if isinstance(url,str) and re.fullmatch(r"https?://[^<>\s\"']+",url,re.I):
             out.append('<p>原始网站：<a rel="nofollow noopener noreferrer" href="'+safe(url,550)+'">'+safe(url,400)+'</a></p>')
+        out.append(_linked_research("sections",
+            ((mid,mod) for mid,mod in collection["modules"].items()
+             if isinstance(mod,dict) and mod.get("site_id")==parts[1]),
+            "此网站的页面模块"))
     elif kind=="sections":
         for key,label in (("category","模块分类"),("lesson","设计要点"),("summary","模块说明")):
             if item.get(key):out.append('<section><h2>'+label+'</h2>'+_paragraph(item[key])+'</section>')
         site=item.get("site_id")
         if isinstance(site,str) and _SLUG.fullmatch(site) and site in collection["sites"]:
             out.append('<p>关联案例：<a href="/websites/'+site+'">'+safe(collection["sites"][site].get("name",site))+'</a></p>')
+        out.append(_linked_research("patterns",
+            ((pid,p) for pid,p in collection["patterns"].items()
+             if isinstance(p,dict) and isinstance(p.get("modules"),list) and parts[1] in p["modules"]),
+            "运用此模块的设计模式"))
     elif kind=="patterns":
         for key,label in (("family","设计类型"),("question","设计问题"),("principle","核心原则"),
                           ("when","适用场景"),("compare","比较视角")):
