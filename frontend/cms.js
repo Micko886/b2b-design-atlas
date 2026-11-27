@@ -218,8 +218,9 @@ function setCmsRole(){
  const title={owner:'最高管理员',editor:'内容编辑',reviewer:'审核员'}[state.role]||'未授权';
  $('#cms-role').textContent=(state.user?.display_name||'Atlas')+' · '+title;
  $('#cms-logout').hidden=mode!=='admin';
- $('#cms-tools-menu').hidden=!(can('taxonomy')||can('team')||can('export'));
- $('#cms-settings-open').hidden=!(can('taxonomy')||can('team')||can('export'));
+ $('#cms-tools-menu').hidden=!can('view');
+ $('#cms-settings-open').hidden=!can('view');
+ $('#cms-page-seo-open').hidden=!can('view');
  $$('[data-owner-only]').forEach(el=>el.hidden=!can('team'));
  $('#cms-new').hidden=!can('edit');
  $('#cms-export').hidden=!can('export');
@@ -2456,8 +2457,82 @@ async function openReviewQueue(){
   $('#cms-review-queue').textContent=e.message;
  }
 }
+// V57 · A compact SEO editor for homepage and four public catalog entry pages.
+let siteSeoPages=[],siteSeoDirty=false,siteSeoBusy=false,siteSeoLast='home';
+function selectedSiteSeo(){return siteSeoPages.find(x=>x.page===$('#cms-page-seo-page')?.value)}
+function previewSiteSeo(){
+ const item=selectedSiteSeo();if(!item)return;
+ const title=$('#cms-page-seo-title').value.trim()||item.default_title;
+ const desc=$('#cms-page-seo-desc').value.trim()||item.default_description;
+ const suffix=title.startsWith('B2B Atlas')?'':' · B2B Atlas';
+ $('#cms-page-seo-preview-url').textContent=location.host+(item.page==='home'?'/':'/'+item.page);
+ $('#cms-page-seo-preview-title').textContent=title+suffix;
+ $('#cms-page-seo-preview-desc').textContent=desc;
+ const warnings=[];
+ if(title.length>70)warnings.push('标题较长');
+ if(desc.length<35)warnings.push('描述可以更具体');
+ if(desc.length>170)warnings.push('描述较长');
+ $('#cms-page-seo-preview-warnings').textContent='标题 '+title.length+' 字 · 描述 '+desc.length+' 字'+(warnings.length?' · '+warnings.join('、'):' · 基础检查通过');
+}
+function renderSiteSeo(){
+ const item=selectedSiteSeo();if(!item)return;
+ siteSeoLast=item.page;siteSeoDirty=false;
+ const p=item.payload||{};
+ for(const [field,value] of [['title',p.seo_title||''],['desc',p.seo_description||''],['image',p.seo_image||'']]){
+  $('#cms-page-seo-'+field).value=value;
+  $('#cms-page-seo-'+field).disabled=!can('edit');
+ }
+ $('#cms-page-seo-title').placeholder=item.default_title;
+ $('#cms-page-seo-desc').placeholder=item.default_description;
+ const labels={default:'使用系统默认 SEO',draft:'草稿（未公开）',review:'待审核（未公开）',published:'已发布（修改需重新审核）'};
+ $('#cms-page-seo-state').textContent=labels[item.status]||item.status;
+ $('#cms-page-seo-save').hidden=!can('edit');
+ $('#cms-page-seo-submit').hidden=!can('edit')||item.status!=='draft';
+ $('#cms-page-seo-publish').hidden=!can('review')||item.status!=='review';
+ $('#cms-page-seo-reject').hidden=!can('review')||item.status!=='review';
+ $('#cms-page-seo-pick-image').hidden=!can('edit')||!can('media');
+ $('#cms-page-seo-clear-image').hidden=!can('edit');
+ previewSiteSeo();
+}
+async function refreshSiteSeo(){
+ const key=$('#cms-page-seo-page').value;
+ const data=await api('/api/admin/seo/pages');
+ siteSeoPages=data.pages||[];
+ if(siteSeoPages.some(x=>x.page===key))$('#cms-page-seo-page').value=key;
+ renderSiteSeo();
+}
+async function openSiteSeo(){
+ if(!can('view'))return;
+ if(state.dirty){message('请先保存或放弃当前内容草稿。',false);return}
+ if($('#cms-settings-dialog').open)$('#cms-settings-dialog').close();
+ const modal=$('#cms-page-seo-dialog');if(!modal.open)modal.showModal();
+ markWorkspace('settings');closeMobile();
+ $('#cms-page-seo-state').textContent='正在读取设置…';
+ try{await refreshSiteSeo()}catch(e){$('#cms-page-seo-state').textContent='加载失败：'+e.message;message(e.message,false)}
+}
+async function updateSiteSeo(action){
+ if(siteSeoBusy)return;
+ const item=selectedSiteSeo();if(!item)return;
+ if(action!=='save'&&siteSeoDirty){message('请先保存当前修改，再执行审核操作。',false);return}
+ siteSeoBusy=true;
+ for(const id of ['save','submit','publish','reject','refresh'])$('#cms-page-seo-'+id).disabled=true;
+ try{
+  const path='/api/admin/seo/pages/'+encodeURIComponent(item.page);
+  const payload=action==='save'
+   ?{expected_revision:item.revision,payload:{
+     seo_title:$('#cms-page-seo-title').value,
+     seo_description:$('#cms-page-seo-desc').value,
+     seo_image:$('#cms-page-seo-image').value}}
+   :{expected_revision:item.revision};
+  await api(path+(action==='save'?'':'/'+action),{method:action==='save'?'PUT':'POST',body:JSON.stringify(payload)});
+  await refreshSiteSeo();
+  message(({save:'SEO 草稿已保存（尚未公开）',submit:'SEO 设置已提交审核',publish:'SEO 设置已正式发布',reject:'SEO 设置已退回草稿'})[action]);
+ }catch(e){$('#cms-page-seo-state').textContent='操作失败：'+e.message;message(e.message,false)}
+ finally{siteSeoBusy=false;for(const id of ['save','submit','publish','reject','refresh'])$('#cms-page-seo-'+id).disabled=false}
+}
+
 async function openSettingsHub(){
- if(!(can('taxonomy')||can('team')||can('export'))){message('当前账号没有系统管理权限。',false);return}
+ if(!can('view')){message('当前账号没有查看设置的权限。',false);return}
  markWorkspace('settings');
  const dialog=$('#cms-settings-dialog');if(!dialog.open)dialog.showModal();
  closeMobile();
@@ -2844,6 +2919,32 @@ function boot(){
  $('#cms-review-shortcut').addEventListener('click',openReviewQueue);
  $('#cms-review-refresh').addEventListener('click',refreshReviewQueue);
  $('#cms-settings-open').addEventListener('click',openSettingsHub);
+ $('#cms-page-seo-open').addEventListener('click',openSiteSeo);
+ $('#cms-page-seo-close').addEventListener('click',()=>{
+   if(siteSeoDirty&&!confirm('SEO 设置尚未保存，确定放弃修改吗？'))return;
+   siteSeoDirty=false;$('#cms-page-seo-dialog').close();
+ });
+ $('#cms-page-seo-page').addEventListener('change',()=>{
+   if(siteSeoDirty&&!confirm('当前修改未保存，确定切换页面吗？')){
+     $('#cms-page-seo-page').value=siteSeoLast;return;
+   }
+   renderSiteSeo();
+ });
+ for(const id of ['title','desc'])$('#cms-page-seo-'+id).addEventListener('input',()=>{
+   siteSeoDirty=true;previewSiteSeo();
+ });
+ $('#cms-page-seo-refresh').addEventListener('click',async()=>{
+   if(siteSeoDirty&&!confirm('放弃未保存的修改并重新读取吗？'))return;
+   try{await refreshSiteSeo()}catch(e){message(e.message,false)}
+ });
+ $('#cms-page-seo-pick-image').addEventListener('click',async()=>{
+   state.mediaField='cms-page-seo-image';state.mediaTarget=null;await openMedia();
+ });
+ $('#cms-page-seo-clear-image').addEventListener('click',()=>{
+   $('#cms-page-seo-image').value='';siteSeoDirty=true;previewSiteSeo();
+ });
+ for(const action of ['save','submit','publish','reject'])
+   $('#cms-page-seo-'+action).addEventListener('click',()=>updateSiteSeo(action));
  for(const area of ['review','settings']){
   const dialog=$('#cms-'+area+'-dialog');
   dialog.addEventListener('close',()=>markWorkspace(state.selected?.status==='review'?'review':'content'));
@@ -3018,7 +3119,7 @@ function boot(){
      if(routeParams.get('workspace')==='schedule'&&can('view'))await openScheduleQueue();
      if(routeParams.get('workspace')==='media'&&can('media')){markWorkspace('media');await openMedia()}
      if(routeParams.get('workspace')==='review'&&can('view'))await openReviewQueue();
-     if(routeParams.get('workspace')==='settings'&&(can('taxonomy')||can('team')||can('export')))await openSettingsHub();
+     if(routeParams.get('workspace')==='settings'&&can('view'))await openSettingsHub();
    }catch(e){
      console.error('[CMS] initial content load failed',e);
      setNotice('无法读取后台内容：'+e.message,true);
