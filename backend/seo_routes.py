@@ -202,6 +202,52 @@ def _research_table(rows):
     return '<div role="region" aria-label="研究对比表格"><table>'+header+body+"</table></div>"
 
 
+def source_url(value):
+    """Recognize external reference URLs without performing network requests."""
+    if not isinstance(value,str) or len(value)>650 or not re.fullmatch(r"https?://[^<>\s\"'\\]+",value,re.I):
+        return None
+    from urllib.parse import urlsplit
+    try:
+        parsed=urlsplit(value)
+        if not parsed.hostname or parsed.username or parsed.password:
+            return None
+    except ValueError:
+        return None
+    return value
+
+
+def article_sources(item,collection,limit=24):
+    """Sources from explicit research links and referenced public websites.
+
+    References are drawn only from published catalog snapshots; other content,
+    hidden drafts and non-HTTP schemes never become citations.
+    """
+    sources=[]
+    seen=set()
+    if not isinstance(item,dict) or not isinstance(collection,dict):return sources
+    sections=item.get("sections") if isinstance(item.get("sections"),list) else []
+    for section in sections:
+        if not isinstance(section,dict):continue
+        for block in section.get("blocks",[]) if isinstance(section.get("blocks"),list) else []:
+            if not isinstance(block,dict) or block.get("type")!="link":continue
+            url=source_url(block.get("url"))
+            if url and url not in seen:
+                sources.append((str(block.get("text") or "参考资料")[:200],url))
+                seen.add(url)
+            if len(sources)>=limit:return sources
+    sites=collection.get("sites",{})
+    for ref in item.get("references",[]) if isinstance(item.get("references"),list) else []:
+        if not isinstance(ref,(tuple,list)) or len(ref)<2 or ref[0]!="website":continue
+        source=sites.get(ref[1]) if isinstance(sites,dict) and isinstance(ref[1],str) else None
+        if not isinstance(source,dict):continue
+        url=source_url(source.get("url"))
+        if url and url not in seen:
+            sources.append(("原始案例网站 · "+str(source.get("name") or ref[1])[:140],url))
+            seen.add(url)
+        if len(sources)>=limit:break
+    return sources
+
+
 def _record_link(kind, slug, item):
     if not isinstance(slug,str) or not _SLUG.fullmatch(slug) or not isinstance(item,dict):
         return ""
@@ -333,6 +379,13 @@ def public_prerender(path, record, collection):
                 name=target.get("name") if r[0]=="websites" else target.get("title")
                 refs.append('<li><a href="/'+r[0]+'/'+ref[1]+'">'+safe(name or ref[1],220)+'</a></li>')
         if refs:out.append('<section><h2>相关研究与参考资料</h2><ul>'+''.join(refs)+'</ul></section>')
+        sources=article_sources(item,collection)
+        if sources:
+            links=['<li><a href="'+safe(url,650)+'" rel="nofollow noopener noreferrer">'
+                   +safe(label,200)+'</a></li>' for label,url in sources]
+            out.append('<section aria-label="研究来源"><h2>参考资料与原始来源</h2>'
+                       +'<p>资料链接供读者核对公开信息；案例观察不等于第三方性能验证。</p>'
+                       +'<ul>'+''.join(links)+'</ul></section>')
     out.append('</article>'+nav+'</div>')
     return ''.join(out)
 
@@ -361,11 +414,19 @@ def seo_schema(path,record,collection,canonical,image):
     article={"@type":"Article","headline":record["title"],"description":record["description"],
              "inLanguage":"zh-CN","author":{"@type":"Organization","name":record.get("author") or "B2B Atlas 编辑部"},
              "publisher":{"@type":"Organization","name":"B2B Atlas"},
-             "mainEntityOfPage":canonical,"image":image}
+             "mainEntityOfPage":canonical}
+    if record.get("image"):article["image"]=image
+    original=collection.get("articles",{}).get(parts[1]) if isinstance(collection,dict) else None
+    if original:
+        citations=[url for _label,url in article_sources(original,collection)]
+        if citations:article["citation"]=citations
     if record.get("keywords"):article["keywords"]=record["keywords"]
     published=record.get("published")
     if isinstance(published,str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}",published):
         article["datePublished"]=published
+    modified=original.get("updated_at") if isinstance(original,dict) else None
+    if isinstance(modified,str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}",modified) and (not published or modified>=published):
+        article["dateModified"]=modified
     return {**base,"@graph":[article,breadcrumbs]}
 
 
