@@ -35,6 +35,8 @@ def patch_main(source: str) -> str:
         "register_schedule_routes(app)\n"        "from app.cms_diff import register_diff_routes\n"
         "register_diff_routes(app)\n"        "from app.cms_quality import register_quality_routes\n"
         "register_quality_routes(app)\n"
+        "from app.seo_pages import register_page_seo_routes\n"
+        "register_page_seo_routes(app)\n"
         "from app.analytics_routes import register_analytics_routes\n"
         "register_analytics_routes(app)\n"
         "from app.analytics_growth import register_growth_routes\n"
