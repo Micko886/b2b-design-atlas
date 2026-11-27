@@ -183,7 +183,9 @@ function listView(type){
  const filterChoices=isSite?cats:cats;
  const tabs=isSite?[['全部网站',''],...cats.slice(0,11).map(x=>[x,x])]:[['全部模块',''],...cats.map(x=>[x,x])];
  const tabField=isSite?'sector':'category';
- const spotlight=!isSite&&state.modules.length?state.modules.find(m=>m.category&&/Hero|首屏/i.test(m.category))||state.modules[0]:null;
+ // Keep the curated spotlight separate from filtered results: it may not match a search or category.
+ const spotlight=!isSite&&!activeDiscoveryFilters(type).length&&state.modules.length
+  ?state.modules.find(m=>m.category&&/Hero|首屏/i.test(m.category))||state.modules[0]:null;
  return `<div class="shell listing listing-v38 ${isSite?'listing-websites':'listing-sections'}" data-listing="${type}">
   <div class="listing-header"><div><div class="eyebrow">${isSite?'WEBSITE DISCOVERY':'PAGE SECTION LIBRARY'}</div><h1>${isSite?'Websites':'Sections'}</h1><p>${isSite?'视觉优先的 B2B 网站灵感库。浏览真实案例，探索不同行业的设计语言。':'按设计任务发现真实网页中的高质量模块，研究页面细节和信息组织。'}</p></div><strong>${n} / CURATED REFERENCES</strong></div>
   <div class="listing-toolbar"><label class="search-input"><span aria-hidden="true">⌕</span><input id="library-search" type="search" placeholder="${isSite?'搜索网站、行业、设计风格…':'搜索页面模块、应用场景或公司…'}" value="${h(state.q)}" aria-label="搜索资源"><kbd>/</kbd></label>
