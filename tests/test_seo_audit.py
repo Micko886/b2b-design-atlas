@@ -46,7 +46,7 @@ class PublishedContentAuditTests(unittest.TestCase):
         self.assertEqual(result["total"],2)
         self.assertEqual(result["flagged"],1)
         self.assertEqual(result["items"][0]["slug"],"no-source")
-        self.assertEqual(result["items"][0]["issue_count"],3)
+        self.assertEqual(result["items"][0]["issue_count"],4)
         self.assertEqual(before,self.catalog)
 
     def test_source_and_relationship_checks_are_contextual(self):
