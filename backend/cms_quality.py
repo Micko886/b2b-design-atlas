@@ -80,8 +80,8 @@ def audit_resource(kind,slug,item,catalog):
     issues=[]
     if not isinstance(item,dict):
         return {"kind":kind,"slug":slug,"title":slug,"issues":[
-            {"code":"invalid","label":"内容结构无效","advice":"请检查公开内容的数据结构。"}],
-            "issue_count":1}
+            {"code":"invalid","label":"内容结构无效","advice":"请检查公开内容的数据结构。","priority":"high"}],
+            "issue_count":1,"high_issue_count":1,"priority":"high"}
     title=item.get("seo_title") or item.get("name") or item.get("title") or ""
     description=(item.get("seo_description") or
                  (item.get("summary") or item.get("focus") if kind=="site" else
@@ -91,7 +91,11 @@ def audit_resource(kind,slug,item,catalog):
     title=str(title).strip()
     description=str(description).strip()
     def warn(code,label,advice):
-        issues.append({"code":code,"label":label,"advice":advice})
+        urgent=(code in ("source","broken_refs","sources") or
+                (code in ("title","description") and label.startswith("缺少")) or
+                (code=="links" and label=="缺少已发布的参考模块"))
+        issues.append({"code":code,"label":label,"advice":advice,
+                       "priority":"high" if urgent else "normal"})
     if not title:
         warn("title","缺少标题","补全内容标题或 SEO 标题。")
     elif len(title)>70:
@@ -175,8 +179,10 @@ def audit_resource(kind,slug,item,catalog):
         if missing_alt:
             warn("alt",str(missing_alt)+" 张正文配图缺少 ALT",
                  "为配图写明具体内容；旧版章节图片可补充说明或转换为独立图片块。")
+    urgent=sum(x["priority"]=="high" for x in issues)
     return {"kind":kind,"slug":slug,"title":title or slug,
-            "issues":issues,"issue_count":len(issues)}
+            "issues":issues,"issue_count":len(issues),
+            "high_issue_count":urgent,"priority":"high" if urgent else "normal"}
 
 
 def audit_published(kind,catalog,limit=100):
@@ -188,10 +194,11 @@ def audit_published(kind,catalog,limit=100):
         if not isinstance(slug,str):continue
         result=audit_resource(kind,slug,item,catalog)
         if result["issue_count"]:findings.append(result)
-    findings.sort(key=lambda x:(-x["issue_count"],x["slug"]))
+    findings.sort(key=lambda x:(x["priority"]!="high",-x["high_issue_count"],-x["issue_count"],x["slug"]))
     count=len(findings)
     return {"kind":kind,"route":route,"total":len(records),
-            "flagged":count,"clear":max(0,len(records)-count),
+            "flagged":count,"high":sum(x["priority"]=="high" for x in findings),
+            "clear":max(0,len(records)-count),
             "items":findings[:limit],"remaining":max(0,count-limit),
             "note":"仅检查已公开内容的文本、图片和关联完整性；不检测外链是否在线，也不代表搜索排名或收录状态。"}
 
