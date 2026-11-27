@@ -829,7 +829,7 @@ function seoStudio(v){
  return '<section id="cms-seo-panel" class="cms-seo-panel"><div class="cms-seo-head"><div>'
    +'<span class="section-eyebrow">EDITORIAL SEO / PRE-PUBLISH</span><h3>SEO 与发布质量检查</h3>'
    +'<p>检查标题、摘要、内容深度、图片替代文字和来源。检查分数不是搜索排名预测。</p></div>'
-   +'<button type="button" data-seo-check>运行质量检查 ↗</button></div>'
+   +'<div class="cms-seo-panel-actions"><button type="button" data-open-seo-settings>编辑 SEO 设置</button><button type="button" data-seo-check>运行质量检查 ↗</button></div></div>'
    +'<div class="cms-seo-snippet"><span id="cms-seo-url">b2b-design-atlas-preview.onrender.com/insights/'+h(state.selected?.slug||'')+'</span>'
    +'<strong id="cms-seo-title">'+h(v.seo_title||v.title||'文章标题')+'</strong>'
    +'<p id="cms-seo-desc">'+h(v.seo_description||v.subtitle||'请填写文章摘要')+'</p></div>'
@@ -908,8 +908,8 @@ function renderForm(item){
  const mediaHint=item.kind==='site'?'':mode==='admin'&&can('media')?'<div class="cms-editor-media-hint"><span>需要上传或更换图片？</span><button type="button" data-editor-open-media>打开媒体库 / 上传图片</button></div>':'';
  const form='<div class="cms-editor-content"><form id="cms-edit-form" class="cms-form">'
   +(item.kind==='site'?siteEditorForm(values,editable):simpleEditorForm(item.kind,values,editable))
-  +(item.kind==='article'?articleStudio(values,editable):'')
   +seoSettings(values,item.kind,editable)
+  +(item.kind==='article'?articleStudio(values,editable):'')
   +(editable?'<div class="cms-easy-save-note"><span class="cms-autosave-led" aria-hidden="true"></span><span id="cms-autosave-status" role="status" aria-live="polite">修改后自动保存草稿</span><button type="button" data-autosave-retry hidden>重试保存</button><button type="button" data-autosave-copy hidden>复制未保存内容</button></div>':'')
   +'</form></div>';
  const schedule=item.schedule||null;
@@ -2685,7 +2685,8 @@ function boot(){
    if(blockFormat){applyBlockFormat(blockFormat);return}
    const blockPick=e.target.closest('[data-block-pick-image]');
    if(blockPick){state.mediaField=null;state.mediaTarget=blockPick.closest('[data-cms-block]');await openMedia();return}
-   if(e.target.closest('[data-seo-check]')){await runSeoAudit();return}
+   if(e.target.closest('[data-open-seo-settings]')){setEditorTab('content');const seo=$('#cms-edit-form .cms-seo-settings');if(seo){seo.open=true;seo.scrollIntoView({block:'start',behavior:'smooth'});seo.querySelector('#field-seo_title')?.focus({preventScroll:true})}return}
+    if(e.target.closest('[data-seo-check]')){await runSeoAudit();return}
     const formatter=e.target.closest('[data-v514-format]');if(formatter){applyArticleFormat(formatter);return}
    if(e.target.closest('[data-v512-preview]')){toggleArticlePreview();return}
    if(e.target.closest('[data-article-undo]')){restoreArticleStructure('undo');return}
