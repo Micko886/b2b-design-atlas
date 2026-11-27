@@ -171,7 +171,7 @@ class EditorialFrontendContracts(unittest.TestCase):
                        "function runSeoAudit(","function seoStudio("):
             self.assertIn(needle,self.cms)
     def test_asset_cache_versions_include_new_public_bundle(self):
-        self.assertIn("app.js?v=seo-geo-v62-1",self.index)
+        self.assertIn("app.js?v=retina-v77-1",self.index)
         self.assertIn("app.css?v=seo-geo-v62-1",self.index)
         self.assertRegex(self.html,r"cms\.js\?v=\d{4,}")
         self.assertRegex(self.html,r"cms\.css\?v=\d{4,}")

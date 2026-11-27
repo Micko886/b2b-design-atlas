@@ -50,7 +50,7 @@ class MobileExperienceV60(unittest.TestCase):
         self.assertIn("$('.mobile-menu-button')?.setAttribute('aria-expanded','false')",self.js)
         self.assertIn("if(ev.key==='Escape')",self.js)
         self.assertIn("/assets/articles.json?v=60",self.js)
-        self.assertIn("app.js?v=seo-geo-v62-1",self.html)
+        self.assertIn("app.js?v=retina-v77-1",self.html)
         self.assertIn("app.css?v=seo-geo-v62-1",self.html)
         self.assertIn("function researchTopic(topic)",self.js)
         self.assertIn("topic.related.includes(a.id)",self.js)
