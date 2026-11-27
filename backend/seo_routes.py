@@ -180,7 +180,12 @@ def content_image(kind,item,collection):
 
 
 def _paragraph(value,limit=2000):
-    return "<p>"+safe(value,limit)+"</p>" if isinstance(value,str) and value.strip() else ""
+    if not isinstance(value,str) or not value.strip():return ""
+    # The article editor supports **emphasis**; keep crawler HTML readable
+    # without interpreting untrusted HTML or arbitrary Markdown links.
+    escaped=safe(value,limit)
+    emphasized=re.sub(r"\*\*(.{1,500}?)\*\*",r"<strong>\1</strong>",escaped)
+    return "<p>"+emphasized+"</p>"
 
 
 def _bullet_list(values,limit=12):
@@ -444,9 +449,9 @@ def seo_document(full_path):
     template=(STATIC/"index.html").read_text(encoding="utf-8")
     template=re.sub(r"<title>.*?</title>","<title>"+safe(title,220)+"</title>",template,count=1,flags=re.S)
     template=re.sub(r'<meta name="description" content="[^"]*">','<meta name="description" content="'+safe(desc,270)+'">',template,count=1)
-    image=ORIGIN+(record.get("image") or "/screenshots/sites/vast.webp")
+    image=ORIGIN+(record.get("image") or "/assets/visual-placeholder.svg")
     extras=(
-        '<link rel="canonical" href="'+safe(canonical,650)+'">'
+        ('<link rel="canonical" href="'+safe(canonical,650)+'">' if record["indexed"] else '')
         '<meta name="robots" content="'+("index, follow" if record["indexed"] else "noindex, follow")+'">'
         '<meta property="og:type" content="'+("article" if record.get("kind")=="article" else "website")+'">'
         '<meta property="og:site_name" content="B2B Atlas">'
