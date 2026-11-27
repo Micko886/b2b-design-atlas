@@ -393,12 +393,13 @@ function closeSeoAudit(clear=false){
 function renderSeoAuditRows(){
  const list=$('#cms-audit-list'),more=$('#cms-audit-more');
  if(!list||!more||!seoAuditData)return;
- const issues=seoAuditData.items||[];
+ const priority=$('#cms-audit-priority')?.value||'all';
+ const issues=(seoAuditData.items||[]).filter(x=>priority==='all'||x.priority===priority);
  list.innerHTML=issues.length?issues.slice(0,seoAuditShown).map(item=>
   '<article class="cms-audit-item"><div><strong>'+h(item.title)+'</strong>'
-  +'<small>'+item.issue_count+' 项建议 · '+h(item.issues.slice(0,3).map(x=>x.label).join('、'))+'</small></div>'
-  +'<button type="button" data-seo-audit-edit="'+h(item.slug)+'">打开编辑</button></article>'
- ).join(''):'<p class="cms-audit-empty">当前栏目未发现这些基础检查项的问题。其他 SEO 要求仍需人工核对。</p>';
+  +'<small>'+(item.priority==='high'?'优先处理 · ':'一般建议 · ')+item.issue_count+' 项 · '+h(item.issues.slice(0,3).map(x=>x.label).join('、'))+'</small></div>'
+  +'<button type="button" data-seo-audit-edit="'+h(item.slug)+'" data-seo-audit-focus="'+h(item.issues.find(x=>['title','description','image'].includes(x.code))?.code||'')+'">定位并编辑</button></article>'
+ ).join(''):'<p class="cms-audit-empty">当前筛选条件下没有待改善的记录，可切换其他筛选项查看。</p>';
  more.hidden=seoAuditShown>=issues.length;
  if(!more.hidden)more.textContent='继续查看（剩余 '+(issues.length-seoAuditShown)+' 条）';
 }
@@ -416,7 +417,7 @@ async function runPublishedSeoAudit(){
   const data=await api('/api/admin/seo/audit?kind='+encodeURIComponent(kind));
   if(generation!==seoAuditGeneration||kind!==state.kind||panel.hidden)return;
   seoAuditData=data;
-  $('#cms-audit-summary').textContent='共 '+data.total+' 条公开资料 · '+data.flagged+' 条有优化建议 · '+data.clear+' 条通过基础检查';
+  $('#cms-audit-summary').textContent='共 '+data.total+' 条公开资料 · '+data.flagged+' 条有优化建议（'+data.high+' 条需优先处理） · '+data.clear+' 条通过基础检查';
   $('#cms-audit-note').textContent=data.note+(data.remaining?' · 列表仅列出前 '+data.items.length+' 条优先处理内容。':'');
   renderSeoAuditRows();
  }catch(error){
@@ -2634,6 +2635,7 @@ function boot(){
  $('#cms-audit-refresh').addEventListener('click',runPublishedSeoAudit);
  $('#cms-audit-close').addEventListener('click',()=>closeSeoAudit());
  $('#cms-audit-more').addEventListener('click',()=>{seoAuditShown+=12;renderSeoAuditRows()});
+ $('#cms-audit-priority').addEventListener('change',()=>{seoAuditShown=12;renderSeoAuditRows()});
  $('#cms-audit-list').addEventListener('click',async event=>{
   const button=event.target.closest('[data-seo-audit-edit]');
   if(!button)return;
@@ -2642,6 +2644,13 @@ function boot(){
    message('该内容不在当前列表，请刷新后重试。',false);return;
   }
   await selectItem(slug,true);
+  if(state.selected?.slug===slug&&can('edit')){
+   const code=button.dataset.seoAuditFocus;
+   const target={title:'seo_title',description:'seo_description',image:'seo_image'}[code];
+   const panel=$('#cms-edit-form .cms-seo-settings');
+   if(target&&panel){panel.open=true;setEditorTab('content');
+    const field=$('#field-'+target);field?.scrollIntoView({behavior:'smooth',block:'center'});field?.focus({preventScroll:true})}
+  }
  });
  for(const id of ['cms-new','cms-export','cms-media-open','cms-categories-open',
                   'cms-tags-open','cms-review-shortcut','cms-schedules-open',
