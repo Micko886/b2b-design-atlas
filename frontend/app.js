@@ -25,7 +25,7 @@ function formatArticleInline(value){
   .replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<em>$2</em>')
   .replace(/`([^`\n]+)`/g,'<code>$1</code>');
 }
-function img(v){return h(v||'/screenshots/sites/vast.webp')}
+function img(v){return h(v||'/assets/visual-placeholder.svg')}
 function safeHex(c){return /^#[0-9a-fA-F]{6}$/.test(c||'')?c:'#E0E2E6'}
 function site(id){return state.sites.find(x=>x.id===id)}
 function moduleBy(id){return state.modules.find(x=>x.id===id)}
@@ -275,7 +275,14 @@ function topicLinks(){
 function articleBy(id){return state.articles.find(a=>a.id===id)}
 function articleCat(id){return state.articleCategories.find(x=>x.id===id)}
 function articleLink(a){return '/insights/'+encodeURIComponent(a.id)}
-function articleImage(a){return /^\/api\/media\/[0-9a-f-]{36}$/.test(a.cover_image||'')?a.cover_image:(site(a.cover_site)?.screenshot_url||'/screenshots/sites/vast.webp')}
+function articleImage(a){
+ if(/^\/api\/media\/[0-9a-f-]{36}$/.test(a.cover_image||''))return a.cover_image;
+ // The verified source screenshot belongs to the article's cover_site.
+ // Do not accidentally reuse another company's image as a generic fallback.
+ const slug=typeof a.cover_site==='string'?a.cover_site:'';
+ if(/^[a-z0-9][a-z0-9-]{0,110}$/.test(slug))return '/screenshots/sites/'+slug+'.webp';
+ return site(slug)?.screenshot_url||'';
+}
 function articleDate(a){return (a.published_at||'').replace(/-/g,'.')}
 function articleCard(a,index,small=false){
  const cat=articleCat(a.category),url=articleLink(a),k=key(a);
