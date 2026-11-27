@@ -163,6 +163,19 @@ def _bullet_list(values,limit=12):
     return "<ul>"+"".join("<li>"+x+"</li>" for x in items)+"</ul>" if items else ""
 
 
+def _research_table(rows):
+    """Preserve readable, semantic comparison tables in crawler HTML."""
+    if not isinstance(rows,list) or not rows:return ""
+    normalized=[r[:8] for r in rows[:40] if isinstance(r,list) and r]
+    if not normalized:return ""
+    width=len(normalized[0])
+    header="<thead><tr>"+''.join('<th scope="col">'+safe(str(cell),550)+'</th>' for cell in normalized[0])+"</tr></thead>"
+    body="<tbody>"+''.join("<tr>"+''.join(
+        "<td>"+safe(str(row[i]) if i<len(row) else "",850)+"</td>"
+        for i in range(width))+"</tr>" for row in normalized[1:])+"</tbody>"
+    return '<div role="region" aria-label="研究对比表格"><table>'+header+body+"</table></div>"
+
+
 def _record_link(kind, slug, item):
     if not isinstance(slug,str) or not _SLUG.fullmatch(slug) or not isinstance(item,dict):
         return ""
@@ -269,8 +282,8 @@ def public_prerender(path, record, collection):
                     elif t in ("paragraph","quote","callout"):out.append(_paragraph(block.get("text")))
                     elif t=="list":out.append(_bullet_list(block.get("items"),30))
                     elif t=="table":
-                        for row in block.get("rows",[]) if isinstance(block.get("rows"),list) else []:
-                            if isinstance(row,list):out.append(_paragraph(" · ".join(str(v) for v in row[:8]),1000))
+                        table=_research_table(block.get("rows"))
+                        if table:out.append(table)
                     elif t=="image":
                         image=public_image(block.get("src"))
                         if image:out.append('<figure><img loading="lazy" src="'+safe(image,550)+'" alt="'+safe(block.get("alt") or "文章配图",200)+'"></figure>')
