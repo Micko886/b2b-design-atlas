@@ -140,7 +140,9 @@ class LaunchPreflightV73(unittest.TestCase):
         self.assertIn('id="cms-seo-readiness"',html)
         self.assertIn('id="cms-seo-readiness-refresh"',html)
         self.assertIn("function renderSeoReadiness(data)",script)
-        self.assertIn("await Promise.all([refreshSeoHistory(),refreshSeoReadiness()])",script)
+        self.assertIn("refreshSeoHistory()",script)
+        self.assertIn("refreshSeoReadiness()",script)
+        self.assertIn("refreshSeoFinalAudit()",script)
         self.assertIn("/assets/cms.js?v=7401",html)
         self.assertIn("/assets/cms.css?v=7401",html)
 
