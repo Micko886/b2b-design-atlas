@@ -344,6 +344,13 @@ function renderInsightBlock(block){
    return '<p class="insight-block-link"><a target="_blank" rel="nofollow noopener noreferrer" href="'+h(block.url)+'">'+(text||h(block.url))+' ↗</a></p>';
  return '';
 }
+function industrySeries(a){
+ const topic=researchTopic(a.industry_topic);
+ if(!topic)return '';
+ const url='/insights?topic='+encodeURIComponent(topic.id);
+ return '<div class="insight-article-series"><span>INDUSTRY STUDY</span><a href="'+url+'" data-link="'+url+'">返回'+h(topic.label)+'专题 ↗</a>'
+ +'<p>章节中的官方链接用于核实公开资料，设计观察与编辑建议不代表企业经营或技术效果。</p></div>';
+}
 function insightArticle(a){
  const cat=articleCat(a.category),url=articleLink(a);
  const related=[...state.articles.filter(x=>x.id!==a.id&&x.category===a.category),...state.articles.filter(x=>x.id!==a.id&&x.category!==a.category)].slice(0,3);
@@ -361,6 +368,7 @@ function insightArticle(a){
  return `<div class="shell insight-article">
  <nav class="insight-breadcrumb" aria-label="当前位置"><a href="/" data-link="/">首页</a><span>/</span><a href="/insights" data-link="/insights">资讯与研究</a><span>/</span><a href="/insights?category=${h(a.category)}" data-link="/insights?category=${h(a.category)}">${h(cat?.name||a.category)}</a></nav>
  <header class="insight-article-header"><a href="/insights?category=${h(a.category)}" data-link="/insights?category=${h(a.category)}" class="insight-article-category">${h(cat?.name||a.category)}</a><h1>${h(a.title)}</h1><p>${h(a.subtitle)}</p><div class="insight-article-meta"><span class="insight-author-avatar">BA</span><span> B2B Atlas 编辑部</span><i></i><time datetime="${h(a.published_at)}">${h(articleDate(a))}</time><i></i><span>阅读约 ${a.reading_minutes} 分钟</span><button type="button" class="detail-bookmark-button" data-action="save" data-key="${h(key(a))}" aria-pressed="${saved(key(a))}">${bookmarkIcon(saved(key(a)))} ${saved(key(a))?'已收藏':'收藏文章'}</button><button data-action="share-article" type="button"><span aria-hidden="true">↗</span> 复制文章链接</button></div></header>
+ ${industrySeries(a)}
  <figure class="insight-cover"><img src="${img(articleImage(a))}" alt="${h(site(a.cover_site)?.name||'设计案例')} 网站截图"><figcaption>配图：B2B Atlas 收录的 ${h(site(a.cover_site)?.name||'网站')} 页面截图，供设计观察使用。</figcaption></figure>
  <div class="insight-article-layout"><article class="insight-prose"><div class="insight-intro"><span class="eyebrow">EDITORIAL NOTE</span><p>${h(a.subtitle)}</p></div><div class="insight-takeaways"><h2>本文要点</h2><ul>${a.takeaways.map(t=>`<li>${h(t)}</li>`).join('')}</ul></div>${sections}
  <div class="insight-conclusion"><h2>把观察带回设计项目</h2><p>这些内容是基于收录案例与设计方法整理的编辑性研究，适合用于建立讨论框架。具体到你的项目，仍需结合真实用户、业务内容和产品限制验证。</p><div class="insight-tags">${a.tags.map(t=>`<span># ${h(t)}</span>`).join('')}</div></div></article>
