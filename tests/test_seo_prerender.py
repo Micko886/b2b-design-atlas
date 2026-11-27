@@ -123,6 +123,23 @@ class SeoPrerenderTests(unittest.TestCase):
         self.assertIn('name="robots" content="noindex, follow"', private)
         self.assertNotIn("Acme Manufacturing", private)
 
+    def test_canonical_origin_and_social_images_follow_deployment_configuration(self):
+        with patch.object(seo_routes, "ORIGIN", "https://atlas.example.org"):
+            body = self.html("websites/acme")
+            self.assertIn('href="https://atlas.example.org/websites/acme"', body)
+            self.assertIn('content="https://atlas.example.org/api/media/12345678-1234-1234-1234-123456789abc"', body)
+            self.assertNotIn('content="https://b2b-design-atlas-preview.onrender.com/api/media/', body)
+
+    def test_robots_excludes_admin_without_blocking_public_research(self):
+        from fastapi import FastAPI
+        app = FastAPI()
+        seo_routes.register_seo_routes(app)
+        route = next(x.endpoint for x in app.routes if getattr(x, "path", "") == "/robots.txt")
+        body = route().body.decode("utf-8")
+        self.assertIn("Disallow: /admin", body)
+        self.assertIn("Sitemap:", body)
+        self.assertNotIn("Disallow: /websites", body)
+
     def test_untrusted_fields_are_html_escaped_and_nonlocal_images_ignored(self):
         self.collection["sites"]["acme"]["name"] = '<img src=x onerror=alert(1)>'
         self.collection["sites"]["acme"]["summary"] = '<script>alert("x")</script>'
