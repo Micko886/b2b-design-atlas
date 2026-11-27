@@ -94,6 +94,7 @@ COPY tests/test_seo_readiness_v73.py /srv/atlas/tests/test_seo_readiness_v73.py
 COPY tests/test_seo_final_audit_v74.py /srv/atlas/tests/test_seo_final_audit_v74.py
 COPY tests/test_editorial_remediation_v75.py /srv/atlas/tests/test_editorial_remediation_v75.py
 COPY tests/test_source_remediation_v76.py /srv/atlas/tests/test_source_remediation_v76.py
+COPY tests/test_retina_featured_v77.py /srv/atlas/tests/test_retina_featured_v77.py
 COPY tests/test_release_identity.py /srv/atlas/tests/test_release_identity.py
 COPY tests/test_auth_workflow_v544.py /srv/atlas/tests/test_auth_workflow_v544.py
 COPY tests/browser/cms-v525.spec.mjs /srv/atlas/tests/browser/cms-v525.spec.mjs
@@ -141,6 +142,7 @@ RUN bash -n /srv/atlas/scripts/backup-postgres.sh /srv/atlas/scripts/verify-post
  && python -m unittest discover -s /srv/atlas/tests -p "test_seo_final_audit_v74.py" -v \
  && python -m unittest discover -s /srv/atlas/tests -p "test_editorial_remediation_v75.py" -v \
  && python -m unittest discover -s /srv/atlas/tests -p "test_source_remediation_v76.py" -v \
+ && python -m unittest discover -s /srv/atlas/tests -p "test_retina_featured_v77.py" -v \
  && python -m unittest discover -s /srv/atlas/tests -p "test_release_identity.py" -v \
  && python -m unittest discover -s /srv/atlas/tests -p "test_auth_workflow_v544.py" -v
 EXPOSE 8000

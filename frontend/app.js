@@ -26,6 +26,16 @@ function formatArticleInline(value){
   .replace(/`([^`\n]+)`/g,'<code>$1</code>');
 }
 function img(v){return h(v||'/assets/visual-placeholder.svg')}
+ // V77: 800px true Retina card images from original 2x Chromium captures.
+ // Only use for bundled originals; CMS screenshot overrides take priority.
+ const retinaFeaturedSites=new Set(['vast','figure-robotics','fictiv','skydio']);
+ function featuredCardImage(s){
+  if(s && retinaFeaturedSites.has(s.id) &&
+     s.screenshot_url==='/screenshots/sites/'+s.id+'.webp'){
+   return '/screenshots/featured/'+s.id+'-800.webp';
+  }
+  return s?.screenshot_url;
+ }
 function safeHex(c){return /^#[0-9a-fA-F]{6}$/.test(c||'')?c:'#E0E2E6'}
 function site(id){return state.sites.find(x=>x.id===id)}
 function moduleBy(id){return state.modules.find(x=>x.id===id)}
@@ -175,7 +185,7 @@ if(state.sort==='az')src.sort((a,b)=>cardInfo(a).name.localeCompare(cardInfo(b).
 function paletteCircles(x){return '<span class="palette-dots" aria-label="Representative screenshot colors">'+pal(x).slice(0,3).map(c=>'<button type="button" class="color-dot" style="--swatch:'+safeHex(c)+'" title="Copy '+safeHex(c)+'" data-action="copy" data-value="'+safeHex(c)+'" aria-label="Copy '+safeHex(c)+'"></button>').join('')+'</span>'}
 function card(x,index,type){
  const info=cardInfo(x),k=key(x),kind=entityKind(x),isSite=kind==='site',selected=isSite&&state.compare.includes(x.id);
- return `<article class="reference-card ${kind==='module'?'is-section':'is-'+kind}"><div class="reference-media"><a href="${info.url}" data-link="${info.url}" aria-label="研究 ${h(info.name)}"><img src="${img(entityImage(x))}" alt="${h(info.name)} 视觉预览" ${index<2?'loading="eager"':'loading="lazy"'} ${index===0?'fetchpriority="high"':''} decoding="async"></a><div class="card-actions"><button title="${saved(k)?'取消收藏':'收藏案例'}" data-action="save" data-key="${h(k)}" aria-label="${saved(k)?'取消收藏':'收藏'} ${h(info.name)}" aria-pressed="${saved(k)}">${bookmarkIcon(saved(k))}</button>${isSite?`<button class="compare-card-action ${selected?'is-selected':''}" data-action="compare-toggle" data-site-id="${h(x.id)}" aria-pressed="${selected}" title="${selected?'从对比中移除':'加入网站对比'}" aria-label="${selected?'从对比中移除':'加入对比'} ${h(info.name)}">⇄</button>`:''}<button title="快速预览" aria-label="预览 ${h(info.name)}" data-action="preview" data-key="${h(k)}">⤢</button></div></div><div class="reference-meta"><a class="reference-name" href="${info.url}" data-link="${info.url}">${h(info.name)}</a>${kind==='site'||kind==='module'?paletteCircles(x):''}<span class="reference-category">${h(info.sub)}</span></div></article>`;
+ return `<article class="reference-card ${kind==='module'?'is-section':'is-'+kind}"><div class="reference-media"><a href="${info.url}" data-link="${info.url}" aria-label="研究 ${h(info.name)}"><img src="${img(isSite?featuredCardImage(x):entityImage(x))}" alt="${h(info.name)} 视觉预览" ${index<2?'loading="eager"':'loading="lazy"'} ${index===0?'fetchpriority="high"':''} decoding="async"></a><div class="card-actions"><button title="${saved(k)?'取消收藏':'收藏案例'}" data-action="save" data-key="${h(k)}" aria-label="${saved(k)?'取消收藏':'收藏'} ${h(info.name)}" aria-pressed="${saved(k)}">${bookmarkIcon(saved(k))}</button>${isSite?`<button class="compare-card-action ${selected?'is-selected':''}" data-action="compare-toggle" data-site-id="${h(x.id)}" aria-pressed="${selected}" title="${selected?'从对比中移除':'加入网站对比'}" aria-label="${selected?'从对比中移除':'加入对比'} ${h(info.name)}">⇄</button>`:''}<button title="快速预览" aria-label="预览 ${h(info.name)}" data-action="preview" data-key="${h(k)}">⤢</button></div></div><div class="reference-meta"><a class="reference-name" href="${info.url}" data-link="${info.url}">${h(info.name)}</a>${kind==='site'||kind==='module'?paletteCircles(x):''}<span class="reference-category">${h(info.sub)}</span></div></article>`;
 }
 
 function selection(opts,selected,all,field){return '<label class="filter-select"><span class="sr-only">'+h(field)+'</span><select data-field="'+field+'" aria-label="'+h(field)+'"><option value="">'+h(all)+'</option>'+opts.map(x=>'<option value="'+h(x)+'" '+(x===selected?'selected':'')+'>'+h(x)+'</option>').join('')+'</select></label>'}
@@ -215,7 +225,7 @@ function homeView(){
  const featured=featuredSites(),vast=site('vast')||featured[0],study=state.profiles[vast?.id]||null;
  const industryGroups=[['工业制造','Manufacturing'],['机器人与自动化','Robotics'],['航天科技','Aerospace'],['新能源','Energy'],['企业软件','Software'],['医疗科技','Health']];
  const groups=industryGroups.map(([label,term],i)=>{const chosen=state.sites.find(s=>(s.sector||'').toLowerCase().includes(term.toLowerCase()));return {label,term,sector:chosen?.sector||'',index:i+1}}).filter(x=>x.sector);
- const trio=featured.slice(0,3).map((s,i)=>`<a href="${pathSite(s)}" data-link="${pathSite(s)}" class="hero-preview hero-preview-${i}" aria-label="查看 ${h(s.name)}"><img src="${img(s.screenshot_url)}" loading="eager" ${i===0?'fetchpriority="high"':''} decoding="async" alt="${h(s.name)} 网站视觉预览"></a>`).join('');
+ const trio=featured.slice(0,3).map((s,i)=>`<a href="${pathSite(s)}" data-link="${pathSite(s)}" class="hero-preview hero-preview-${i}" aria-label="查看 ${h(s.name)}"><img src="${img(featuredCardImage(s))}" loading="eager" ${i===0?'fetchpriority="high"':''} decoding="async" alt="${h(s.name)} 网站视觉预览"></a>`).join('');
  return `<div class="home-v38">
   <section class="hero-area"><div class="shell hero-grid"><div class="hero-left">
     <span class="eyebrow">B2B VISUAL RESEARCH LIBRARY</span>
@@ -247,7 +257,7 @@ function homeView(){
   <section class="pattern-band"><div class="shell"><div class="eyebrow">04 / DESIGN METHODS</div><div class="section-heading"><div><h2>让灵感成为方法</h2><p>从真实案例中总结可复用的思考框架，而不是复制一张截图。</p></div><a href="/patterns" data-link="/patterns">查看全部 ↗</a></div><div class="home-pattern-grid">${state.patterns.slice(0,3).map(patternCard).join('')}</div></div></section>
   <section class="shell content-section home-insights"><div class="eyebrow">05 / INSIGHTS & RESEARCH</div><div class="section-heading"><div><h2>资讯与深度研究</h2><p>关于 B2B 数字体验的案例拆解、视觉观察与可复用的设计方法。</p></div><a href="/insights" data-link="/insights">查看全部文章 ↗</a></div><div class="insights-grid home-insights-grid">${state.articles.slice(0,3).map((a,i)=>articleCard(a,i,true)).join('')}</div></section>
   <section class="shell content-section industries"><div class="eyebrow">06 / INDUSTRIES</div><div class="section-heading"><div><h2>跨行业探索设计</h2><p>从行业与业务背景出发，发现更多值得借鉴的表达方式。</p></div><a href="/websites" data-link="/websites">查看全部 ↗</a></div><div class="industry-tiles">${groups.map(x=>`<a href="/websites?sector=${encodeURIComponent(x.sector)}" data-link="/websites?sector=${encodeURIComponent(x.sector)}"><span>${String(x.index).padStart(2,'0')}</span><strong>${h(x.label)}</strong><small>${h(x.term)}</small><b aria-hidden="true">↗</b></a>`).join('')}</div></section>
-  <section class="shell bottom-cta"><div><small>YOUR NEXT REFERENCE IS HERE</small><h2>从一个好设计，<br>开始下一个好项目。</h2><p>探索资源、收藏灵感、建立自己的研究板。</p><a href="/websites" data-link="/websites">开始探索 ↗</a></div><div class="cta-visual">${featured.slice(1,3).map((s,i)=>`<img src="${img(s.screenshot_url)}" loading="lazy" alt="${h(s.name)} 网站">`).join('')}</div></section>
+  <section class="shell bottom-cta"><div><small>YOUR NEXT REFERENCE IS HERE</small><h2>从一个好设计，<br>开始下一个好项目。</h2><p>探索资源、收藏灵感、建立自己的研究板。</p><a href="/websites" data-link="/websites">开始探索 ↗</a></div><div class="cta-visual">${featured.slice(1,3).map((s,i)=>`<img src="${img(featuredCardImage(s))}" loading="lazy" alt="${h(s.name)} 网站">`).join('')}</div></section>
  </div>`;
 }
 /* Insights editorial module — all content comes from articles.json */
