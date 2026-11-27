@@ -34,6 +34,7 @@
       "id": "b2b-homepage-value-proposition",
       "title": "B2B 官网首页，应该先回答客户的哪三个问题？",
       "subtitle": "让访客快速知道你做什么、为谁服务，以及下一步能做什么。",
+      "seo_description": "面向工业与科技企业官网，拆解 B2B 首页首屏应回答的业务能力、目标客户和下一步行动三个问题。结合 Fictiv 案例，分析 Hero 文案、产品影像、主次 CTA 与采购角色的信息需求。",
       "category": "methods",
       "cover_site": "fictiv",
       "tags": [
@@ -123,6 +124,7 @@
       "id": "vast-cinematic-engineering",
       "title": "从 Vast 看高端工程网站如何建立视觉可信度",
       "subtitle": "当产品极其复杂、用户无法直接体验时，影像、细节与叙事如何共同工作。",
+      "seo_description": "从 Vast 的航天网站观察高端工程品牌如何通过产品影像、尺度感和页面叙事表达技术可信度，并讨论愿景表达、工程细节与可核实项目资料之间如何相互支撑。",
       "category": "cases",
       "cover_site": "vast",
       "tags": [
@@ -204,6 +206,7 @@
       "id": "industrial-rfq-journey",
       "title": "从产品展示到 RFQ：制造业网站的转化路径如何设计",
       "subtitle": "把浏览、规格判断、应用匹配和询价，组织成连续而自然的决策过程。",
+      "seo_description": "以制造业官网为研究对象，梳理从产品浏览、规格判断、应用匹配到 RFQ 询价的连续路径。结合案例讨论询价入口的位置、报价前置条件与采购者资料准备提示。",
       "category": "conversion",
       "cover_site": "fictiv",
       "tags": [
@@ -285,6 +288,7 @@
       "id": "design-palette-beyond-screenshot",
       "title": "网站配色不是三颗圆点：如何研究真正的色彩系统",
       "subtitle": "从截图颜色走向品牌色、功能色和信息层级的完整分析。",
+      "seo_description": "从品牌主色、背景色、功能色到按钮和提示状态，说明为什么网站截图中的高频颜色并不等于完整配色系统。结合工业科技网站案例，提供更严谨的色彩观察与记录方法。",
       "category": "visual",
       "cover_site": "lumafield",
       "tags": [
@@ -362,6 +366,7 @@
       "id": "sections-as-research-unit",
       "title": "为什么页面模块比整站截图更适合学习设计？",
       "subtitle": "从整站发现灵感，再把 Hero、产品展示、案例和信任模块拆成可比较的单位。",
+      "seo_description": "比较整站研究与页面模块拆解的不同价值，说明如何将 B2B 官网的 Hero、产品展示、案例和信任模块整理为可比较的设计参考，并从信息任务与页面结构中提炼可复用原则。",
       "category": "methods",
       "cover_site": "skydio",
       "tags": [
@@ -439,6 +444,7 @@
       "id": "technical-spec-content-architecture",
       "title": "技术参数那么多，产品页面应该怎样组织信息？",
       "subtitle": "帮助专业访客快速扫描规格、应用场景、限制条件与相关资料。",
+      "seo_description": "针对技术参数繁多的 B2B 产品页面，分析规格、应用场景、限制条件与相关资料应如何分层组织。讨论目录导航、内容扫描与型号比较，让专业访客更快找到评估依据。",
       "category": "content",
       "cover_site": "prima-power",
       "tags": [
@@ -516,6 +522,7 @@
       "id": "industrial-photography-and-3d",
       "title": "工业产品网站，什么时候用实拍，什么时候用 3D？",
       "subtitle": "从内容可信度、产品复杂度和使用场景判断视觉素材的任务。",
+      "seo_description": "研究工业产品网站在实拍摄影、3D 渲染与混合媒介之间的选择。根据产品可信度、内部结构、使用场景和信息解释任务，说明不同视觉素材的适用条件与事实标注原则。",
       "category": "visual",
       "cover_site": "figure-robotics",
       "tags": [
@@ -593,6 +600,7 @@
       "id": "b2b-trust-signals",
       "title": "B2B 网站的信任信号，应该出现在哪里？",
       "subtitle": "案例、认证、团队、过程与交付能力，应对应采购旅程中的具体疑问。",
+      "seo_description": "拆解 B2B 企业官网中客户案例、认证、专家团队、制造过程和交付证据的呈现位置，说明如何根据采购者的具体疑问配置可信信息，并避免使用未经核实的客户标识或背书。",
       "category": "conversion",
       "cover_site": "hadrian",
       "tags": [
@@ -670,6 +678,7 @@
       "id": "website-to-pattern-workflow",
       "title": "从 Websites 到 Patterns：建立自己的 B2B 设计研究工作流",
       "subtitle": "用一套可复用的记录方法，让参考资料真正参与设计决策。",
+      "seo_description": "建立从 Websites 案例收集、Sections 模块比较到 Patterns 设计原则归纳的研究流程。通过问题导向的收藏、事实与假设分离、研究笔记和可验证建议，让设计参考真正支持决策。",
       "category": "methods",
       "cover_site": "skydio",
       "tags": [
@@ -747,6 +756,7 @@
       "id": "product-navigation-families",
       "title": "产品线复杂时，B2B 官网导航应该怎样设计？",
       "subtitle": "用产品、能力、场景与客户任务组织入口，而不是一次性列出全部名称。",
+      "seo_description": "针对产品线、型号和应用场景复杂的 B2B 官网，分析产品导航与信息架构的组织方法。讨论以客户任务为核心的分类、比较入口和清晰命名，避免照搬企业内部组织结构。",
       "category": "content",
       "cover_site": "vention",
       "tags": [
