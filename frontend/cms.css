@@ -1444,3 +1444,10 @@ body.cms-editor-active .cms-edit-quick-actions{display:flex;align-items:center;g
 .cms-page-seo-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 .cms-page-seo-actions #cms-page-seo-publish{background:var(--blue);color:white;border-color:transparent}
 @media(max-width:600px){.cms-page-seo-body{padding:4px 13px 12px}.cms-page-seo-image input{flex-basis:100%}.cms-page-seo-preview{padding:12px}}
+
+
+/* V57 · Keep the audit priority filter as compact as the other list controls. */
+.cms-audit-actions select{border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);color:var(--ink-strong);font-size:11px;padding:7px 9px;max-width:140px}
+.cms-audit-actions select:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.cms-audit-item:has(button[data-seo-audit-focus]){min-width:0}
+@media(max-width:600px){.cms-audit-actions{width:100%}.cms-audit-actions select{flex:1;max-width:none}}
