@@ -103,6 +103,14 @@ class PublishedEditorialV75(unittest.TestCase):
         for slug in RELATED:
             path="/insights/"+slug
             self.assertIn(path,paths)
+            self.assertEqual(paths[path],"2026-11-27")
+            self.assertEqual(seo_routes.article_lastmod(self.articles[slug]),"2026-11-27")
+            schema=seo_routes.seo_schema(path,seo_routes.seo_record(path,self.public),
+              self.public,seo_routes.ORIGIN+path,seo_routes.ORIGIN+"/assets/visual-placeholder.svg")
+            nodes=schema.get("@graph",[])
+            article_node=next(node for node in nodes if node.get("@type")=="Article")
+            self.assertEqual(article_node["datePublished"],"2026-11-24")
+            self.assertEqual(article_node["dateModified"],"2026-11-27")
             page=seo_routes.public_prerender(path,seo_routes.seo_record(path,self.public),self.public)
             self.assertIn('<h1>',page)
             self.assertIn('<h2>相关研究与参考资料</h2>',page)
