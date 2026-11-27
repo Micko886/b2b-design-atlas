@@ -3,6 +3,9 @@
 (function(){
 const $=q=>document.querySelector(q), $$=q=>Array.from(document.querySelectorAll(q));
 const app=$('#app'), overlay=$('#overlay'), toast=$('#toast');
+const publicOrigin=(()=>{try{
+  return new URL(document.querySelector('link[rel="canonical"]')?.href||location.origin).origin;
+ }catch(_){return location.origin}})();
 const state={sites:[],notes:[],modules:[],patterns:[],articles:[],articleCategories:[],articleEditorialNotice:'',profiles:{},palettes:{},q:'',sector:'',category:'',style:'',color:'',sort:'curated',density:'standard',siteType:'',audienceTerm:'',structureTerm:'',styleTag:'',researchOnly:'',saved:[],board:[],notesByKey:{},folders:[],folderItems:{},annotations:{},comparisons:[],legacySaved:read('saved',[]),legacyBoard:read('board',[]),legacyNotes:read('atlas-board-notes',{}),auth:{authenticated:false,user:null,csrf_token:''},authStatus:{available:false,mode:'unconfigured',message:''},pendingFavorite:null,authReady:false,compare:read('atlas-compare',[]),imageIndex:0};
 const FILTER_STYLE=['Minimal','Cinematic','Product-led','Technical','Editorial','Photography','3D / Illustration','Motion'];
 const FILTER_COLOR=['Black','White','Gray','Red','Orange','Yellow','Green','Blue','Purple','Pink'];
@@ -734,33 +737,33 @@ function refreshSeo(section,parts,isMissing){
  const isPrivate=isMissing||['account','board','collections','discover','login','register','forgot-password','reset-password','compare'].includes(section);
  let robots=document.querySelector('meta[name="robots"]');if(!robots){robots=document.createElement('meta');robots.name='robots';document.head.appendChild(robots)}robots.content=isPrivate?'noindex, follow':'index, follow';
  let canonical=document.querySelector('link[rel="canonical"]');if(!canonical){canonical=document.createElement('link');canonical.rel='canonical';document.head.appendChild(canonical)}
- canonical.href=location.origin+(location.pathname.replace(/\/+$/,'')||'/');
- const og=[['og:title',document.title],['og:description',description],['og:url',canonical.href],['og:image',location.origin+image],['og:type',section==='insights'&&id?'article':'website']];
+ canonical.href=publicOrigin+(location.pathname.replace(/\/+$/,'')||'/');
+ const og=[['og:title',document.title],['og:description',description],['og:url',canonical.href],['og:image',publicOrigin+image],['og:type',section==='insights'&&id?'article':'website']];
  for(const [property,value] of og){
   let meta=document.querySelector('meta[property="'+property+'"]');if(!meta){meta=document.createElement('meta');meta.setAttribute('property',property);document.head.appendChild(meta)}meta.content=value;
  }
- let twitter=document.querySelector('meta[name="twitter:image"]');if(!twitter){twitter=document.createElement('meta');twitter.name='twitter:image';document.head.appendChild(twitter)}twitter.content=location.origin+image;
+ let twitter=document.querySelector('meta[name="twitter:image"]');if(!twitter){twitter=document.createElement('meta');twitter.name='twitter:image';document.head.appendChild(twitter)}twitter.content=publicOrigin+image;
  let schema=document.getElementById('atlas-seo-schema');if(schema)schema.remove();
  if(isPrivate)return;
  const data={'@context':'https://schema.org'},current=canonical.href;
- if(section==='home'){Object.assign(data,{'@type':'WebSite',name:'B2B Atlas',url:location.origin+'/',description,inLanguage:'zh-CN'})}
+ if(section==='home'){Object.assign(data,{'@type':'WebSite',name:'B2B Atlas',url:publicOrigin+'/',description,inLanguage:'zh-CN'})}
  else if(!id){Object.assign(data,{'@type':'CollectionPage',name:title,url:current,description,inLanguage:'zh-CN'})}
  else if(item){
   const categories={websites:'Websites · B2B 网站灵感库',sections:'Sections · 页面模块参考',patterns:'Patterns · 设计模式研究',insights:'Insights · 资讯与研究'};
   const breadcrumb={'@type':'BreadcrumbList',itemListElement:[
-   {'@type':'ListItem',position:1,name:'首页',item:location.origin+'/'},
-   {'@type':'ListItem',position:2,name:categories[section]||section,item:location.origin+'/'+section},
+   {'@type':'ListItem',position:1,name:'首页',item:publicOrigin+'/'},
+   {'@type':'ListItem',position:2,name:categories[section]||section,item:publicOrigin+'/'+section},
    {'@type':'ListItem',position:3,name:title,item:current}]};
   if(section==='insights'){
    const article={'@type':'Article',headline:title,description,inLanguage:'zh-CN',
     author:{'@type':'Organization',name:item.author||'B2B Atlas 编辑部'},
     publisher:{'@type':'Organization',name:'B2B Atlas'},
-    mainEntityOfPage:current,image:location.origin+image};
+    mainEntityOfPage:current,image:publicOrigin+image};
    if(/^\d{4}-\d{2}-\d{2}$/.test(item.published_at||''))article.datePublished=item.published_at;
    data['@graph']=[article,breadcrumb];
   }else {
    const webpage={'@type':'WebPage',name:title,url:current,description,
-    inLanguage:'zh-CN',primaryImageOfPage:location.origin+image,breadcrumb};
+    inLanguage:'zh-CN',primaryImageOfPage:publicOrigin+image,breadcrumb};
    data['@graph']=[webpage,breadcrumb];
   }
  }else return;
