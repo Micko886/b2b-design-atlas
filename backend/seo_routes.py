@@ -117,8 +117,12 @@ def public_image(value):
 
 
 def resource_image(kind, item, collection):
-    share=public_image(item.get("seo_image"))
-    if share:return share
+    """Use the editor's sharing override only for social and structured metadata."""
+    return public_image(item.get("seo_image")) or content_image(kind,item,collection)
+
+
+def content_image(kind,item,collection):
+    """The original visual belongs in the article body, even with a custom share card."""
     if kind in ("websites","sections"):
         return public_image(item.get("screenshot_url"))
     if kind=="insights":
@@ -197,7 +201,7 @@ def public_prerender(path, record, collection):
     title=item.get("name") if kind=="websites" else item.get("title")
     out=['<div class="shell listing seo-prerender"><nav aria-label="面包屑"><a href="/">首页</a> / <a href="/'
          +kind+'">'+safe(PUBLIC[kind][0],130)+'</a></nav><article><h1>'+safe(title or parts[1],220)+'</h1>']
-    image=resource_image(kind,item,collection)
+    image=content_image(kind,item,collection)
     if image:
         out.append('<figure><img src="'+safe(image,550)+'" loading="lazy" alt="'+safe(title or "页面研究截图",200)+'"></figure>')
     if kind=="websites":
