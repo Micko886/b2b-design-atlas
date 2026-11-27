@@ -52,8 +52,8 @@ class V530WorkspaceTests(unittest.TestCase):
 
     def test_permission_checks_precede_sensitive_ui_actions(self):
         self.assertIn("if(!can('view')){message('当前账号没有内容查看权限。'",self.js)
-        self.assertIn("if(!(can('taxonomy')||can('team')||can('export')))",self.js)
-        self.assertIn("$('#cms-settings-open').hidden=!(can('taxonomy')",self.js)
+        self.assertIn("if(!can('view')){message('当前账号没有查看设置的权限。'",self.js)
+        self.assertIn("$('#cms-settings-open').hidden=!can('view')",self.js)
         self.assertIn("$('#cms-media-open').hidden=!can('media')",self.js)
         self.assertIn("$('#cms-review-shortcut').hidden=!can('view')",self.js)
         self.assertIn("$('#cms-tools-menu').hidden=true",self.js)
