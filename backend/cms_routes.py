@@ -121,7 +121,16 @@ SCHEMA = [
        id TEXT PRIMARY KEY,kind TEXT NOT NULL,slug TEXT NOT NULL,
        action TEXT NOT NULL,actor_id TEXT NOT NULL,
        details TEXT NOT NULL,created_at TEXT NOT NULL
-    )"""
+    )""",
+    """CREATE TABLE IF NOT EXISTS atlas_cms_seo_snapshots(
+        id TEXT PRIMARY KEY,
+        created_at TEXT NOT NULL,
+        created_by TEXT NOT NULL,
+        summary_json TEXT NOT NULL,
+        snapshot_json TEXT NOT NULL
+    )""",
+    """CREATE INDEX IF NOT EXISTS atlas_cms_seo_snapshots_created
+       ON atlas_cms_seo_snapshots(created_at DESC,id DESC)"""
 ]
 
 def utc_now():

@@ -466,6 +466,101 @@ function renderSeoAuditRows(){
  more.hidden=seoAuditShown>=issues.length;
  if(!more.hidden)more.textContent='继续查看（剩余 '+(issues.length-seoAuditShown)+' 条）';
 }
+// V72: explicit snapshots of published-only SEO issues, with saved-history comparison.
+function seoHistoryDate(v){
+ const date=new Date(v);
+ return Number.isNaN(date.getTime())?String(v||''):date.toLocaleString('zh-CN',{
+  year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+}
+function renderSeoHistoryComparison(data){
+ const el=$('#cms-audit-history-compare');if(!el)return;
+ if(!data){el.textContent='保存至少两次快照后，才能对比新增、持续、解决及下线的问题。';return}
+ const a=data.changes||{};
+ const count=[['已消除','resolved_count'],['新增','introduced_count'],
+              ['持续','persisting_count'],['随内容下线','unpublished_issue_count']];
+ let html='<div class="cms-audit-history-stats">'+count.map(([label,key])=>
+  '<div class="cms-audit-history-stat"><span>'+h(label)+'</span><strong>'
+   +Number(a[key]||0)+'</strong></div>').join('')+'</div>';
+ html+='<p class="cms-audit-history-note">新增公开记录 '+Number(a.new_record_count||0)
+    +' 条 · 下线公开记录 '+Number(a.unpublished_record_count||0)
+    +' 条。下线或归档不代表修复。</p>';
+ const kinds={site:'网站案例',module:'页面模块',pattern:'设计模式',article:'研究文章'};
+ for(const [label,key,num] of [['已消除问题','resolved','resolved_count'],
+     ['新出现的问题','introduced','introduced_count'],
+     ['内容下线（不算修复）','unpublished','unpublished_issue_count']]){
+  const list=(a[key]||[]).slice(0,7);
+  if(!list.length)continue;
+  html+='<div class="cms-audit-history-group"><strong>'+h(label)+'</strong><ul>'
+   +list.map(item=>'<li><span>'+h(kinds[item.kind]||item.kind)+' · '
+     +h(item.title||item.slug)+'</span><small>'+h(item.label||item.code)+'</small></li>').join('')
+   +'</ul>'+(Number(a[num]||0)>list.length?'<small>只展示部分示例，统计覆盖全部问题。</small>':'')
+   +'</div>';
+ }
+ el.innerHTML=html;
+}
+function renderSeoHistory(data){
+ const el=$('#cms-audit-history-content');if(!el)return;
+ const list=Array.isArray(data.snapshots)?data.snapshots:[];
+ if(!list.length){el.textContent='还没有保存历史基准。点击“保存全站巡检快照”即可记录当前公开内容。日常刷新不会自动记录。';
+  renderSeoHistoryComparison(null);return}
+ const option=list.map(item=>'<option value="'+h(item.id)+'">'
+  +h(seoHistoryDate(item.created_at))+' · '+Number(item.summary?.flagged||0)+' 条待优化</option>').join('');
+ el.innerHTML='<p class="cms-audit-history-note">最近 '+list.length+' 次已保存巡检，最新：'
+  +h(seoHistoryDate(list[0].created_at))+' · '+Number(list[0].summary?.flagged||0)
+  +' 条待优化。</p>'
+  +(list.length>1?'<div class="cms-audit-history-choose"><label>基准时间'
+   +'<select id="cms-audit-history-base">'+option+'</select></label><label>对比时间'
+   +'<select id="cms-audit-history-current">'+option+'</select></label>'
+   +'<button type="button" id="cms-audit-history-compare-button">比较变化</button></div>':'');
+ if(list.length>1){
+  $('#cms-audit-history-base').value=list[1].id;
+  $('#cms-audit-history-current').value=list[0].id;
+ }
+ renderSeoHistoryComparison(data.latest_comparison);
+}
+async function refreshSeoHistory(){
+ const parent=$('#cms-audit-history'),el=$('#cms-audit-history-content');
+ if(mode!=='admin'||!parent||!el)return;
+ parent.hidden=false;$('#cms-audit-save-history').hidden=!can('edit');
+ const generation=seoAuditGeneration,kind=state.kind;
+ el.textContent='正在读取历史巡检快照…';
+ try{
+  const data=await api('/api/admin/seo/history');
+  if(generation!==seoAuditGeneration||kind!==state.kind||$('#cms-audit-panel').hidden)return;
+  renderSeoHistory(data);
+ }catch(err){
+  if(generation!==seoAuditGeneration||kind!==state.kind||$('#cms-audit-panel').hidden)return;
+  el.textContent='历史加载失败：'+err.message;
+ }
+}
+async function saveSeoHistory(){
+ if(!can('edit'))return;
+ const btn=$('#cms-audit-save-history');if(!btn||btn.disabled)return;
+ btn.disabled=true;btn.textContent='正在保存全站快照…';
+ try{
+  const value=await api('/api/admin/seo/history',{method:'POST'});
+  message('巡检快照已保存 · '+Number(value.summary?.flagged||0)+' 条建议优化');
+  await refreshSeoHistory();
+ }catch(err){message('保存巡检快照失败：'+err.message,false)}
+ finally{btn.disabled=false;btn.textContent='保存全站巡检快照'}
+}
+async function compareSeoHistorySelection(){
+ const base=$('#cms-audit-history-base')?.value,current=$('#cms-audit-history-current')?.value;
+ const out=$('#cms-audit-history-compare');
+ if(!base||!current||!out)return;
+ if(base===current){out.textContent='请选择两个不同时间的快照。';return}
+ const generation=seoAuditGeneration;out.textContent='正在对比两次巡检…';
+ try{
+  const data=await api('/api/admin/seo/history/compare?base='+encodeURIComponent(base)
+                        +'&current='+encodeURIComponent(current));
+  if(generation!==seoAuditGeneration||$('#cms-audit-panel').hidden)return;
+  renderSeoHistoryComparison(data);
+ }catch(err){
+  if(generation!==seoAuditGeneration||$('#cms-audit-panel').hidden)return;
+  out.textContent='无法对比快照：'+err.message;
+ }
+}
+
 async function runPublishedSeoAudit(){
  if(mode!=='admin')return;
  const panel=$('#cms-audit-panel'),trigger=$('#cms-audit-open');
@@ -486,6 +581,7 @@ async function runPublishedSeoAudit(){
   $('#cms-audit-summary').textContent='共 '+data.total+' 条公开资料 · '+data.flagged+' 条有优化建议（'+data.high+' 条需优先处理） · '+data.clear+' 条通过基础检查';
   $('#cms-audit-note').textContent=data.note+(data.remaining?' · 列表仅列出前 '+data.items.length+' 条优先处理内容。':'');
   renderSeoAuditRows();
+  await refreshSeoHistory();
   if(seoAuditTarget?.kind===kind){
    if(seoAuditTarget.stage==='published'){
     try{
@@ -2730,6 +2826,10 @@ function boot(){
   else closeSeoAudit();
  });
  $('#cms-audit-refresh').addEventListener('click',runPublishedSeoAudit);
+ $('#cms-audit-save-history').addEventListener('click',saveSeoHistory);
+ $('#cms-audit-history-content').addEventListener('click',event=>{
+  if(event.target.closest('#cms-audit-history-compare-button'))compareSeoHistorySelection();
+ });
  $('#cms-audit-close').addEventListener('click',()=>closeSeoAudit());
  $('#cms-audit-more').addEventListener('click',()=>{seoAuditShown+=12;renderSeoAuditRows()});
  $('#cms-audit-priority').addEventListener('change',()=>{seoAuditShown=12;renderSeoAuditRows()});

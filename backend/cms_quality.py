@@ -335,6 +335,8 @@ def audit_overview(catalog):
         "note":"仅检查当前正式发布的四类公开资料（含 CMS 已发布版本）；不包含审核中草稿及个人资料。"}
 
 def register_quality_routes(app:FastAPI):
+    from app import seo_history
+    seo_history.register_history_routes(app)
     @app.get("/api/admin/seo/audit",include_in_schema=False)
     def audit_catalog(request:Request,kind:cms_routes.KIND="site"):
         cms_routes.require_admin(request,permission="view")
