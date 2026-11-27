@@ -1209,3 +1209,15 @@ body{color:var(--ink);background:#fff;font-family:Inter,"Noto Sans CJK SC",ui-sa
  .insight-topic-visual.visual-load-failed{min-height:124px}
  .insight-feature-image.visual-load-failed{min-height:170px}
 }
+
+
+/* V61 · 320px resource toolbar: two readable filter columns instead of overhang. */
+@media(max-width:380px){
+ .listing-v38,.listing-v38 .listing-toolbar,.listing-v38 .listing-header{min-width:0;max-width:100%}
+ .listing-v38 .listing-toolbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .listing-v38 .listing-toolbar .search-input{grid-column:1/-1;width:100%;min-width:0;max-width:100%;flex:none}
+ .listing-v38 .listing-toolbar .filter-select{display:block;min-width:0;flex:none}
+ .listing-v38 .listing-toolbar .filter-select select{display:block;min-width:0;max-width:100%;width:100%}
+ .listing-v38 .listing-toolbar .view-control{grid-column:2;justify-self:end;max-width:100%;margin-left:0}
+ .listing-v38 .category-nav{max-width:100%;min-width:0}
+}
