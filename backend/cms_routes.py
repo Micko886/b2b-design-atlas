@@ -851,12 +851,13 @@ def register_cms_routes(app: FastAPI):
             user_auth.error(422,"媒体搜索条件无效。")
         if not 0<=offset<=100000 or not 1<=limit<=150:
             user_auth.error(422,"媒体分页参数无效。")
-        from app import seo_pages
-        seo_pages.ensure_pages()
+        if user_auth.PG_URL or user_auth.SQLITE_DEMO:
+            from app import seo_pages
+            seo_pages.ensure_pages()
         with user_auth.db() as db:
             rows=db.all("SELECT id,file_name,mime_type,byte_size,sha256,created_at FROM atlas_cms_media ORDER BY created_at DESC,id DESC")
             entries=db.all("SELECT kind,slug,draft_json,published_json FROM atlas_cms_entries")
-            page_entries=db.all("SELECT page,draft_json,published_json FROM atlas_seo_pages")
+            page_entries=db.all("SELECT page,draft_json,published_json FROM atlas_seo_pages") if (user_auth.PG_URL or user_auth.SQLITE_DEMO) else []
             notes=db.all("SELECT media_id,alt_text,caption,updated_at FROM atlas_cms_media_meta")
         metadata={item["media_id"]:item for item in notes}
         # Count references across drafts AND public snapshots; one content item
@@ -1007,7 +1008,7 @@ def register_cms_routes(app: FastAPI):
             if not db.one("SELECT id FROM atlas_cms_media WHERE id=?",(media_id,)):
                 user_auth.error(404,"有图片已不存在，请刷新列表。")
         refs=db.all("SELECT draft_json,published_json FROM atlas_cms_entries")
-        page_refs=db.all("SELECT draft_json,published_json FROM atlas_seo_pages")
+        page_refs=db.all("SELECT draft_json,published_json FROM atlas_seo_pages") if (user_auth.PG_URL or user_auth.SQLITE_DEMO) else []
         for media_id in ids:
             target="/api/media/"+media_id
             for row in refs+page_refs:
@@ -1020,8 +1021,9 @@ def register_cms_routes(app: FastAPI):
     @app.post("/api/admin/media/bulk-delete",include_in_schema=False)
     def bulk_delete_media(data:MediaBulkDelete,request:Request):
         require_admin(request,mutate=True,permission="media");ensure_cms()
-        from app import seo_pages
-        seo_pages.ensure_pages()
+        if user_auth.PG_URL or user_auth.SQLITE_DEMO:
+            from app import seo_pages
+            seo_pages.ensure_pages()
         with user_auth.db() as db:
             safely_delete_media(db,data.ids)
         return {"ok":True,"deleted":len(data.ids)}
@@ -1029,8 +1031,9 @@ def register_cms_routes(app: FastAPI):
     @app.delete("/api/admin/media/{media_id}",include_in_schema=False)
     def delete_media(media_id:str,request:Request):
         require_admin(request,mutate=True,permission="media");ensure_cms()
-        from app import seo_pages
-        seo_pages.ensure_pages()
+        if user_auth.PG_URL or user_auth.SQLITE_DEMO:
+            from app import seo_pages
+            seo_pages.ensure_pages()
         with user_auth.db() as db:
             safely_delete_media(db,[media_id])
         return {"ok":True}
