@@ -16,6 +16,7 @@ COPY backend/seo_methodology.py /srv/atlas/app/seo_methodology.py
 COPY backend/seo_feed.py /srv/atlas/app/seo_feed.py
 COPY backend/seo_topics.py /srv/atlas/app/seo_topics.py
 COPY backend/seo_readiness.py /srv/atlas/app/seo_readiness.py
+COPY backend/seo_final_audit.py /srv/atlas/app/seo_final_audit.py
 COPY backend/seo_history.py /srv/atlas/app/seo_history.py
 COPY backend/admin_routes.py /srv/atlas/app/admin_routes.py
 COPY backend/cms_routes.py /srv/atlas/app/cms_routes.py
@@ -89,6 +90,7 @@ COPY tests/test_global_seo_audit_v70.py /srv/atlas/tests/test_global_seo_audit_v
 COPY tests/test_seo_remediation_v71.py /srv/atlas/tests/test_seo_remediation_v71.py
 COPY tests/test_seo_history_v72.py /srv/atlas/tests/test_seo_history_v72.py
 COPY tests/test_seo_readiness_v73.py /srv/atlas/tests/test_seo_readiness_v73.py
+COPY tests/test_seo_final_audit_v74.py /srv/atlas/tests/test_seo_final_audit_v74.py
 COPY tests/test_release_identity.py /srv/atlas/tests/test_release_identity.py
 COPY tests/test_auth_workflow_v544.py /srv/atlas/tests/test_auth_workflow_v544.py
 COPY tests/browser/cms-v525.spec.mjs /srv/atlas/tests/browser/cms-v525.spec.mjs
@@ -133,6 +135,7 @@ RUN bash -n /srv/atlas/scripts/backup-postgres.sh /srv/atlas/scripts/verify-post
  && python -m unittest discover -s /srv/atlas/tests -p "test_seo_remediation_v71.py" -v \
  && python -m unittest discover -s /srv/atlas/tests -p "test_seo_history_v72.py" -v \
  && python -m unittest discover -s /srv/atlas/tests -p "test_seo_readiness_v73.py" -v \
+ && python -m unittest discover -s /srv/atlas/tests -p "test_seo_final_audit_v74.py" -v \
  && python -m unittest discover -s /srv/atlas/tests -p "test_release_identity.py" -v \
  && python -m unittest discover -s /srv/atlas/tests -p "test_auth_workflow_v544.py" -v
 EXPOSE 8000

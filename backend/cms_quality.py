@@ -339,6 +339,8 @@ def register_quality_routes(app:FastAPI):
     seo_history.register_history_routes(app)
     from app import seo_readiness
     seo_readiness.register_readiness_routes(app)
+    from app import seo_final_audit
+    seo_final_audit.register_final_routes(app)
     @app.get("/api/admin/seo/audit",include_in_schema=False)
     def audit_catalog(request:Request,kind:cms_routes.KIND="site"):
         cms_routes.require_admin(request,permission="view")

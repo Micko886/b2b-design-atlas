@@ -55,8 +55,8 @@ class RemediationV71(unittest.TestCase):
         self.assertIn("data-seo-audit-verify",js)
         self.assertIn("data-seo-audit-return",js)
         self.assertIn('id="cms-audit-followup"',html)
-        self.assertIn('/assets/cms.js?v=7301',html)
-        self.assertIn('/assets/cms.css?v=7301',html)
+        self.assertIn('/assets/cms.js?v=7401',html)
+        self.assertIn('/assets/cms.css?v=7401',html)
 
 if __name__=="__main__":
     unittest.main()

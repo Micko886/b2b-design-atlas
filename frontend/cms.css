@@ -1515,3 +1515,26 @@ body.cms-editor-active .cms-edit-quick-actions{display:flex;align-items:center;g
 #cms-seo-readiness-examples ul{padding-left:16px}
 #cms-seo-readiness-examples li{overflow-wrap:anywhere;padding:2px 0}
 
+
+/* V74: published-only editorial link graph audit integrated in SEO panel */
+.cms-final-panel[hidden]{display:none!important}
+.cms-final-panel{padding:13px;border:1px solid var(--line);border-radius:11px;margin:12px 0;background:var(--surface)}
+.cms-final-head{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap}
+.cms-final-head strong{font-size:12px;color:var(--ink-strong)}
+.cms-final-head p{font-size:10px;color:var(--muted-strong);line-height:1.6;margin:4px 0 0}
+.cms-final-actions{display:flex;align-items:center;flex-wrap:wrap;gap:5px}
+.cms-final-actions select{font-size:11px;background:var(--surface-2);color:var(--ink-strong);border:1px solid var(--line);border-radius:7px;padding:7px}
+.cms-final-actions button{font-size:11px}
+#cms-final-summary{font-size:11px;font-weight:650;color:var(--ink-strong);line-height:1.7;margin:12px 0}
+.cms-final-details{margin-top:6px;color:var(--muted-strong);font-size:11px}
+.cms-final-details summary{padding:8px 0;cursor:pointer;font-weight:650}
+.cms-final-item{display:flex;align-items:center;justify-content:space-between;gap:9px;padding:9px 0;border-top:1px solid var(--line);min-width:0}
+.cms-final-item>div{display:grid;gap:5px;min-width:0}
+.cms-final-item strong{font-size:11px;color:var(--ink-strong);overflow-wrap:anywhere}
+.cms-final-item small{font-size:10px;line-height:1.5;overflow-wrap:anywhere;color:var(--muted-strong)}
+.cms-final-item button{flex:none;font-size:10px;white-space:nowrap}
+#cms-final-more{display:block;width:100%;margin:10px 0}
+#cms-final-more[hidden]{display:none!important}
+#cms-final-note{display:block;font-size:10px;line-height:1.6;color:var(--muted);margin-top:9px}
+@media(max-width:600px){.cms-final-head{align-items:stretch}.cms-final-actions{width:100%}.cms-final-actions select{flex:1}.cms-final-item{align-items:flex-start}}
+

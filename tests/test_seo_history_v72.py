@@ -133,8 +133,8 @@ class SeoHistoryV72(unittest.TestCase):
         self.assertIn("function compareSeoHistorySelection()",script)
         self.assertIn("await refreshSeoHistory()",script)
         self.assertIn("if(!can('edit'))return;",script)
-        self.assertIn("/assets/cms.js?v=7301",html)
-        self.assertIn("/assets/cms.css?v=7301",html)
+        self.assertIn("/assets/cms.js?v=7401",html)
+        self.assertIn("/assets/cms.css?v=7401",html)
 
 if __name__=="__main__":
     unittest.main()

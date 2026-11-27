@@ -418,7 +418,9 @@ function focusSeoIssue(issue){
   duplicate_description:['#field-seo_description','#field-summary','#field-subtitle','#field-lesson','#field-question'],
   source:['#field-url'],source_url:['#field-url'],image:['#field-screenshot_url','#field-cover_image'],
   date:['#field-published_at'],context:['#field-when'],links:['#field-modules','#field-site_id'],
-  depth:['[data-block-text]','[data-v51-paragraphs]'],
+  depth:state.selected.kind==='article'
+   ?['[data-block-text]','[data-v51-paragraphs]']
+   :['#field-summary','#field-focus','#field-lesson','#field-principle','#field-when'],
   alt:['[data-block-alt]','[data-v513-caption]'],
   invalid_links:['[data-block-url]'],sources:['#field-references','[data-block-url]'],
   broken_refs:['#field-references'],image_labels:['[data-gallery-label]']
@@ -604,6 +606,76 @@ async function refreshSeoReadiness(){
  }
 }
 
+// V74: structured published-only content/link audit. A directory-listed page is
+// not considered crawl-orphaned just because no editorial citation points at it.
+let seoFinalRows=[],seoFinalRequest=0;
+function renderSeoFinalItems(rows,append=false){
+ const list=$('#cms-final-list');if(!list)return;
+ if(!append)list.innerHTML='';
+ const names={site:'网站案例',module:'页面模块',pattern:'设计模式',article:'研究文章'};
+ const items=rows.map(x=>'<article class="cms-final-item"><div><strong>'+h(x.title)+'</strong>'
+    +'<small>'+h(names[x.kind]||x.kind)+' · '+Number(x.issue_count||0)+' 项'
+    +' · '+h((x.issues||[]).slice(0,3).map(y=>y.label).join('、'))+'</small></div>'
+    +'<button type="button" data-final-open="'+h(x.kind)+':'+h(x.slug)+'">'
+    +(can('edit')?'查看并整改':'查看记录')+'</button></article>').join('');
+ if(items)list.insertAdjacentHTML('beforeend',items);
+ else if(!append)list.innerHTML='<p class="cms-audit-empty">当前筛选条件没有待处理记录。</p>';
+}
+function renderSeoFinalSummary(data){
+ const info=$('#cms-final-summary');if(!info)return;
+ info.textContent=Number(data.total||0)+' 条公开资料 · '+Number(data.flagged||0)
+  +' 条有建议 · '+Number(data.broken_records||0)+' 条关联需核对 · '
+  +Number(data.thin_records||0)+' 条内容较薄 · '
+  +Number(data.unlinked_records||0)+' 条缺少编辑关联';
+ const tip=$('#cms-final-note');if(tip)tip.textContent=data.note||'';
+}
+async function refreshSeoFinalAudit(offset=0){
+ if(mode!=='admin')return;
+ const root=$('#cms-final-panel'),list=$('#cms-final-list'),more=$('#cms-final-more');
+ if(!root||!list||!more)return;
+ root.hidden=false;
+ const currentKind=state.kind,kind=$('#cms-final-kind')?.value||'all';
+ const generation=seoAuditGeneration,request=++seoFinalRequest;
+ if(offset===0){seoFinalRows=[];list.innerHTML='<p class="cms-loading">正在检查公开内容关联和研究证据…</p>';}
+ more.hidden=true;
+ try{
+  const result=await api('/api/admin/seo/final-audit?kind='+encodeURIComponent(kind)
+    +'&offset='+offset+'&limit=12');
+  if(request!==seoFinalRequest||generation!==seoAuditGeneration||
+     currentKind!==state.kind||$('#cms-audit-panel').hidden)return;
+  seoFinalRows.push(...(result.items||[]));
+  renderSeoFinalSummary(result);
+  renderSeoFinalItems(result.items||[],offset>0);
+  more.hidden=!result.has_more;
+  more.dataset.nextOffset=String(offset+(result.items||[]).length);
+  if(result.has_more)more.textContent='继续查看（剩余 '+Math.max(0,result.matched-seoFinalRows.length)+' 条）';
+ }catch(error){
+  if(request!==seoFinalRequest||generation!==seoAuditGeneration||
+      currentKind!==state.kind||$('#cms-audit-panel').hidden)return;
+  if(offset===0)list.innerHTML='<p class="cms-audit-empty">内容与关联检查失败：'+h(error.message)+'</p>';
+  else message('更多问题加载失败：'+error.message,false);
+ }
+}
+async function openSeoFinalFinding(kind,slug){
+ const issue=seoFinalRows.find(x=>x.kind===kind&&x.slug===slug);
+ if(!issue||state.busy)return;
+ const original=seoAuditTarget;
+ if(kind!==state.kind){
+  if(!await changeKind(kind))return;
+ }
+ if(!state.items.some(x=>x.slug===slug)){
+  message('内容已不在当前列表，请刷新后重新检查。',false);return;
+ }
+ seoAuditTarget={kind,slug,issues:issue.issues.map(x=>({...x})),
+  stage:'editing',lastChecked:null};
+ const opened=await selectItem(slug,true);
+ if(!opened){seoAuditTarget=original;return;}
+ if(can('edit')){
+  const first=issue.issues.find(x=>x.priority==='high')||issue.issues[0];
+  if(first)focusSeoIssue(first);
+ }
+}
+
 async function runPublishedSeoAudit(){
  if(mode!=='admin')return;
  const panel=$('#cms-audit-panel'),trigger=$('#cms-audit-open');
@@ -624,7 +696,7 @@ async function runPublishedSeoAudit(){
   $('#cms-audit-summary').textContent='共 '+data.total+' 条公开资料 · '+data.flagged+' 条有优化建议（'+data.high+' 条需优先处理） · '+data.clear+' 条通过基础检查';
   $('#cms-audit-note').textContent=data.note+(data.remaining?' · 列表仅列出前 '+data.items.length+' 条优先处理内容。':'');
   renderSeoAuditRows();
-  await Promise.all([refreshSeoHistory(),refreshSeoReadiness()]);
+  await Promise.all([refreshSeoHistory(),refreshSeoReadiness(),refreshSeoFinalAudit()]);
   if(seoAuditTarget?.kind===kind){
    if(seoAuditTarget.stage==='published'){
     try{
@@ -2870,6 +2942,17 @@ function boot(){
  });
  $('#cms-audit-refresh').addEventListener('click',runPublishedSeoAudit);
  $('#cms-seo-readiness-refresh').addEventListener('click',refreshSeoReadiness);
+ $('#cms-final-refresh').addEventListener('click',()=>refreshSeoFinalAudit());
+ $('#cms-final-kind').addEventListener('change',()=>refreshSeoFinalAudit());
+ $('#cms-final-more').addEventListener('click',event=>{
+  refreshSeoFinalAudit(Number(event.currentTarget.dataset.nextOffset||0));
+ });
+ $('#cms-final-list').addEventListener('click',async event=>{
+  const button=event.target.closest('[data-final-open]');if(!button)return;
+  const value=button.dataset.finalOpen,split=value.indexOf(':');
+  if(split<0)return;
+  await openSeoFinalFinding(value.slice(0,split),value.slice(split+1));
+ });
  $('#cms-audit-save-history').addEventListener('click',saveSeoHistory);
  $('#cms-audit-history-content').addEventListener('click',event=>{
   if(event.target.closest('#cms-audit-history-compare-button'))compareSeoHistorySelection();
