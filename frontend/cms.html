@@ -121,6 +121,7 @@
 <dialog id="cms-settings-dialog" class="cms-dialog cms-v530-dialog" aria-label="系统设置">
  <div class="cms-dialog-head"><div><span class="section-eyebrow">WORKSPACE SETTINGS</span><h2>系统设置</h2><p>按账号权限显示可管理的项目。不常用的功能统一放在这里。</p></div><button type="button" data-v530-close="settings" aria-label="关闭系统设置">×</button></div>
  <div id="cms-tools-menu" class="cms-v530-settings-tools" hidden>
+  <button id="cms-page-seo-open" type="button" class="cms-v530-tool" hidden><strong>首页与栏目 SEO</strong><span>设置五个公共入口页面的标题、描述与分享图片</span></button>
   <button id="cms-categories-open" type="button" class="cms-v530-tool" hidden><strong>文章分类</strong><span>整理文章栏目与说明</span></button>
   <button id="cms-tags-open" type="button" class="cms-v530-tool" hidden><strong>标签管理</strong><span>维护编辑使用的标签</span></button>
   <button id="cms-team-open" type="button" class="cms-v530-tool" hidden><strong>团队权限</strong><span>管理编辑与审核角色</span></button>
@@ -128,6 +129,39 @@
  </div>
  <p class="cms-v530-settings-foot">所有设置仍由服务器验证角色权限；这里不会向未授权账号开放管理操作。</p>
  <div class="cms-dialog-actions"><button type="button" class="cms-btn-primary" data-v530-close="settings">完成</button></div>
+</dialog>
+<dialog id="cms-page-seo-dialog" class="cms-dialog cms-v530-dialog cms-page-seo-dialog" aria-label="首页与栏目 SEO 设置">
+ <div class="cms-dialog-head"><div><span class="section-eyebrow">PUBLIC PAGE / SEO</span><h2>首页与栏目 SEO</h2><p>默认自动生成；修改先保存草稿，经审核后才更新公开页面。</p></div><button type="button" id="cms-page-seo-close" aria-label="关闭 SEO 设置">×</button></div>
+ <div class="cms-page-seo-body">
+  <label for="cms-page-seo-page">选择页面</label>
+  <select id="cms-page-seo-page" aria-label="选择要设置 SEO 的公开页面"><option value="home">网站首页</option><option value="websites">网站案例 Websites</option><option value="sections">页面模块 Sections</option><option value="patterns">设计模式 Patterns</option><option value="insights">研究文章 Insights</option></select>
+  <p id="cms-page-seo-state" role="status" aria-live="polite">正在读取设置…</p>
+  <label for="cms-page-seo-title">SEO 标题 <small>选填，不填时使用默认标题</small></label>
+  <input id="cms-page-seo-title" maxlength="100" placeholder="自动使用默认标题">
+  <label for="cms-page-seo-desc">SEO 描述 <small>选填，简洁地解释本栏目内容</small></label>
+  <textarea id="cms-page-seo-desc" maxlength="300" rows="3" placeholder="自动使用默认说明"></textarea>
+  <label for="cms-page-seo-image">社交分享封面 <small>选填，默认使用现有网站图片</small></label>
+  <div class="cms-page-seo-image">
+   <input id="cms-page-seo-image" readonly placeholder="默认分享图片">
+   <button id="cms-page-seo-pick-image" type="button">选择图片</button>
+   <button id="cms-page-seo-clear-image" type="button">恢复默认</button>
+  </div>
+  <div class="cms-page-seo-preview">
+   <span>搜索预览（效果示意）</span>
+   <small id="cms-page-seo-preview-url"></small>
+   <strong id="cms-page-seo-preview-title"></strong>
+   <p id="cms-page-seo-preview-desc"></p>
+   <p id="cms-page-seo-preview-warnings"></p>
+  </div>
+  <p class="cms-page-seo-foot">Canonical、索引策略和结构化数据由系统自动处理。修改已发布页面会创建新草稿，不会立即覆盖线上 SEO。</p>
+ </div>
+ <div class="cms-dialog-actions cms-page-seo-actions">
+  <button type="button" id="cms-page-seo-refresh">重新读取</button>
+  <button type="button" id="cms-page-seo-reject" hidden>退回草稿</button>
+  <button type="button" id="cms-page-seo-save" class="cms-btn-secondary" hidden>保存草稿</button>
+  <button type="button" id="cms-page-seo-submit" class="cms-btn-secondary" hidden>提交审核</button>
+  <button type="button" id="cms-page-seo-publish" class="cms-btn-primary" hidden>审核并发布</button>
+ </div>
 </dialog>
 <dialog id="cms-create-dialog" class="cms-dialog cms-v551-create-dialog" aria-label="创建内容草稿">
  <form id="cms-create-form" method="dialog">
