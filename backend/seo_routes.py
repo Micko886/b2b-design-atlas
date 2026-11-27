@@ -395,6 +395,78 @@ def public_prerender(path, record, collection):
     return ''.join(out)
 
 
+
+def valid_date(value):
+    """Use only actual calendar dates in search metadata."""
+    if not isinstance(value,str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}",value):
+        return None
+    from datetime import date
+    try:date.fromisoformat(value)
+    except ValueError:return None
+    return value
+
+
+def article_lastmod(article):
+    """Only published/edited dates present on the public content snapshot."""
+    if not isinstance(article,dict):return None
+    published=valid_date(article.get("published_at"))
+    updated=valid_date(article.get("updated_at"))
+    return updated if updated and (not published or updated>=published) else published
+
+
+def sitemap_items(collection):
+    """Yield valid, indexable URL paths and verifiable article dates."""
+    for route in ("","websites","sections","patterns","insights"):
+        yield ("/"+route if route else "/"),None
+    for route,key in (("websites","sites"),("sections","modules"),
+                      ("patterns","patterns"),("insights","articles")):
+        entries=collection.get(key,{}) if isinstance(collection,dict) else {}
+        if not isinstance(entries,dict):continue
+        for slug,item in sorted(entries.items()):
+            if not isinstance(slug,str) or not _SLUG.fullmatch(slug):continue
+            yield "/"+route+"/"+slug,(article_lastmod(item) if route=="insights" else None)
+
+
+def llms_document(collection):
+    """An optional AI-readable navigation index, not a claim of AI endorsement.
+
+    The published catalog is the only source; no drafts, user profiles, or
+    editorial review records are included.
+    """
+    def label(value):
+        value=re.sub(r"[\[\]()<>#*\\\r\n]+"," ",str(value or "")[:160])
+        return re.sub(r"\s+"," ",value).strip()
+    lines=[
+        "# B2B Atlas", "",
+        "> 工业、科技与企业产品网站的独立视觉设计研究库，整理公开案例、页面模块、设计模式与研究文章。", "",
+        "## 公开研究栏目",
+        "- [网站案例]("+ORIGIN+"/websites)",
+        "- [页面模块]("+ORIGIN+"/sections)",
+        "- [设计模式]("+ORIGIN+"/patterns)",
+        "- [研究文章]("+ORIGIN+"/insights)", "",
+        "## 研究文章"
+    ]
+    articles=collection.get("articles",{}) if isinstance(collection,dict) else {}
+    if isinstance(articles,dict):
+        ordered=sorted(articles.items(),
+                       key=lambda pair:(str(pair[1].get("published_at") or "") if isinstance(pair[1],dict) else "",str(pair[0])),
+                       reverse=True)
+        count=0
+        for slug,item in ordered:
+            if count>=30:break
+            if not isinstance(slug,str) or not _SLUG.fullmatch(slug) or not isinstance(item,dict):continue
+            title=label(item.get("title"))
+            if title:
+                lines.append("- ["+title+"]("+ORIGIN+"/insights/"+slug+")")
+                count+=1
+    lines.extend(["", "## 来源与使用说明",
+        "- 文章页面列出其公开参考链接与原始案例，便于读者核对。",
+        "- 网站案例的编辑观察不等于对第三方产品或性能的独立验证。",
+        "- 本索引仅包含正式发布的公开资料，不包含个人收藏、后台信息和审核中草稿。",
+        "- [XML Sitemap]("+ORIGIN+"/sitemap.xml)", ""])
+    return "\n".join(lines)
+
+
 def seo_schema(path,record,collection,canonical,image):
     """Single route-aware JSON-LD node; avoid guessed performance claims."""
     parts=[x for x in path.strip("/").split("/") if x]
@@ -413,7 +485,8 @@ def seo_schema(path,record,collection,canonical,image):
     if record.get("kind")!="article":
         webpage={"@type":"WebPage","name":record["title"],"url":canonical,
                  "description":record["description"],"inLanguage":"zh-CN",
-                 "primaryImageOfPage":image,"breadcrumb":breadcrumbs}
+                 "breadcrumb":breadcrumbs}
+        if record.get("image"):webpage["primaryImageOfPage"]=image
         if record.get("keywords"):webpage["keywords"]=record["keywords"]
         return {**base,"@graph":[webpage,breadcrumbs]}
     article={"@type":"Article","headline":record["title"],"description":record["description"],
@@ -426,12 +499,10 @@ def seo_schema(path,record,collection,canonical,image):
         citations=[url for _label,url in article_sources(original,collection)]
         if citations:article["citation"]=citations
     if record.get("keywords"):article["keywords"]=record["keywords"]
-    published=record.get("published")
-    if isinstance(published,str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}",published):
-        article["datePublished"]=published
-    modified=original.get("updated_at") if isinstance(original,dict) else None
-    if isinstance(modified,str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}",modified) and (not published or modified>=published):
-        article["dateModified"]=modified
+    published=valid_date(record.get("published"))
+    if published:article["datePublished"]=published
+    modified=valid_date(original.get("updated_at")) if isinstance(original,dict) else None
+    if modified and (not published or modified>=published):article["dateModified"]=modified
     return {**base,"@graph":[article,breadcrumbs]}
 
 
@@ -455,11 +526,15 @@ def seo_document(full_path):
         '<meta name="robots" content="'+("index, follow" if record["indexed"] else "noindex, follow")+'">'
         '<meta property="og:type" content="'+("article" if record.get("kind")=="article" else "website")+'">'
         '<meta property="og:site_name" content="B2B Atlas">'
+        '<meta property="og:locale" content="zh_CN">'
         '<meta property="og:title" content="'+safe(title,220)+'">'
         '<meta property="og:description" content="'+safe(desc,270)+'">'
         '<meta property="og:url" content="'+safe(canonical,650)+'">'
         '<meta property="og:image" content="'+safe(image,650)+'">'
+        '<meta property="og:image:alt" content="'+safe(record["title"],220)+'">'
         '<meta name="twitter:card" content="summary_large_image">'
+        '<meta name="twitter:title" content="'+safe(title,220)+'">'
+        '<meta name="twitter:description" content="'+safe(desc,270)+'">'
         '<meta name="twitter:image" content="'+safe(image,650)+'">'
     )
     if record["indexed"]:
@@ -478,17 +553,21 @@ def seo_document(full_path):
 def register_seo_routes(app:FastAPI):
     @app.get("/robots.txt",include_in_schema=False)
     def robots():
-        return PlainTextResponse("User-agent: *\nDisallow: /admin\nDisallow: /account\nDisallow: /collections\nDisallow: /board\nDisallow: /login\nDisallow: /register\nDisallow: /forgot-password\nDisallow: /reset-password\nDisallow: /compare\nSitemap: "+ORIGIN+"/sitemap.xml\n",headers={"Cache-Control":"public, max-age=3600"})
+        return PlainTextResponse("User-agent: *\nDisallow: /admin\nDisallow: /api/admin\nDisallow: /account\nDisallow: /collections\nDisallow: /board\nDisallow: /login\nDisallow: /register\nDisallow: /forgot-password\nDisallow: /reset-password\nDisallow: /compare\nSitemap: "+ORIGIN+"/sitemap.xml\n",headers={"Cache-Control":"public, max-age=3600"})
     @app.get("/sitemap.xml",include_in_schema=False)
     def sitemap():
-        c=catalog()
-        paths=["/","/websites","/sections","/patterns","/insights"]
-        paths+=["/websites/"+x for x in sorted(c["sites"])]
-        paths+=["/sections/"+x for x in sorted(c["modules"])]
-        paths+=["/patterns/"+x for x in sorted(c["patterns"])]
-        paths+=["/insights/"+x for x in sorted(c["articles"])]
-        body='<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+''.join('<url><loc>'+safe(ORIGIN+x,700)+'</loc></url>' for x in paths)+'</urlset>'
+        entries=sitemap_items(catalog())
+        urls=[]
+        for path,lastmod in entries:
+            date_tag="<lastmod>"+lastmod+"</lastmod>" if lastmod else ""
+            urls.append("<url><loc>"+safe(ORIGIN+path,700)+"</loc>"+date_tag+"</url>")
+        body='<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+''.join(urls)+'</urlset>'
         return Response(body,media_type="application/xml",headers={"Cache-Control":"public, max-age=3600"})
+
+    @app.get("/llms.txt",include_in_schema=False)
+    def llms():
+        return PlainTextResponse(llms_document(catalog()),headers={"Cache-Control":"public, max-age=3600"})
+
     @app.middleware("http")
     async def security_headers(request,call_next):
         response=await call_next(request)
