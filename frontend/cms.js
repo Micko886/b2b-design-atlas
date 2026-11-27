@@ -2478,7 +2478,7 @@ function renderSiteSeo(){
  const item=selectedSiteSeo();if(!item)return;
  siteSeoLast=item.page;siteSeoDirty=false;
  const p=item.payload||{};
- for(const [field,value] of [['title',p.seo_title||''],['desc',p.seo_description||''],['image',p.seo_image||'']]){
+ for(const [field,value] of [['title',p.seo_title||''],['desc',p.seo_description||''],['keywords',p.seo_keywords||''],['image',p.seo_image||'']]){
   $('#cms-page-seo-'+field).value=value;
   $('#cms-page-seo-'+field).disabled=!can('edit');
  }
@@ -2522,6 +2522,7 @@ async function updateSiteSeo(action){
    ?{expected_revision:item.revision,payload:{
      seo_title:$('#cms-page-seo-title').value,
      seo_description:$('#cms-page-seo-desc').value,
+     seo_keywords:$('#cms-page-seo-keywords').value,
      seo_image:$('#cms-page-seo-image').value}}
    :{expected_revision:item.revision};
   await api(path+(action==='save'?'':'/'+action),{method:action==='save'?'PUT':'POST',body:JSON.stringify(payload)});
@@ -2930,7 +2931,7 @@ function boot(){
    }
    renderSiteSeo();
  });
- for(const id of ['title','desc'])$('#cms-page-seo-'+id).addEventListener('input',()=>{
+ for(const id of ['title','desc','keywords'])$('#cms-page-seo-'+id).addEventListener('input',()=>{
    siteSeoDirty=true;previewSiteSeo();
  });
  $('#cms-page-seo-refresh').addEventListener('click',async()=>{
