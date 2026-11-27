@@ -41,8 +41,13 @@ async function metrics(page){
   }).slice(0,5).map(x=>({
    tag:x.tagName,className:typeof x.className==='string'?x.className.slice(0,60):''
   }));
+  const regions=['header','.topbar-inner','#app','.listing-toolbar','.category-nav','.discovery-advanced','.footer'].map(selector=>{
+   const el=document.querySelector(selector);if(!el)return null;
+   const rect=el.getBoundingClientRect();
+   return {selector,left:Math.round(rect.left),right:Math.round(rect.right),width:Math.round(rect.width),scrollWidth:el.scrollWidth};
+  }).filter(Boolean);
   return {scrollWidth,clientWidth,images:all.length,broken:broken.length,
-          recovered:protectedImages.length,overflowing};
+          recovered:protectedImages.length,overflowing,regions};
  });
 }
 
@@ -60,6 +65,7 @@ test('V61 Chromium desktop/tablet/mobile visual renders and article content',asy
    for(const [name,path] of selected){
     await loaded(page,path);
     const report=await metrics(page);
+    await page.screenshot({path:join(out,mode+'-'+name+'.png'),animations:'disabled',timeout:18000});
     expect(report.scrollWidth,mode+' '+name+' horizontal overflow: '+JSON.stringify(report))
       .toBeLessThanOrEqual(report.clientWidth+2);
     expect(errors,mode+' '+name+' uncaught JS errors').toEqual([]);
@@ -74,7 +80,9 @@ test('V61 Chromium desktop/tablet/mobile visual renders and article content',asy
      await expect(page.locator('.insight-block-table-scroll')).toHaveCount(1);
      if(width<=680)await expect(page.locator('.insight-mobile-toc')).toBeVisible();
     }
-    await page.screenshot({path:join(out,mode+'-'+name+'.png'),animations:'disabled',timeout:18000});
+    if(width<=380&&(name==='websites'||name==='sections')){
+     expect(await page.locator('.listing-toolbar').evaluate(el=>getComputedStyle(el).display)).toBe('grid');
+    }
     console.log('V61_VISUAL_PASS',mode,name,JSON.stringify(report));
    }
   }finally{await context.close();}
