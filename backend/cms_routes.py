@@ -851,9 +851,12 @@ def register_cms_routes(app: FastAPI):
             user_auth.error(422,"媒体搜索条件无效。")
         if not 0<=offset<=100000 or not 1<=limit<=150:
             user_auth.error(422,"媒体分页参数无效。")
+        from app import seo_pages
+        seo_pages.ensure_pages()
         with user_auth.db() as db:
             rows=db.all("SELECT id,file_name,mime_type,byte_size,sha256,created_at FROM atlas_cms_media ORDER BY created_at DESC,id DESC")
             entries=db.all("SELECT kind,slug,draft_json,published_json FROM atlas_cms_entries")
+            page_entries=db.all("SELECT page,draft_json,published_json FROM atlas_seo_pages")
             notes=db.all("SELECT media_id,alt_text,caption,updated_at FROM atlas_cms_media_meta")
         metadata={item["media_id"]:item for item in notes}
         # Count references across drafts AND public snapshots; one content item
@@ -879,6 +882,17 @@ def register_cms_routes(app: FastAPI):
                                    re.fullmatch(r"/api/media/[0-9a-f-]{36}",u))
             for mid in identifiers:
                 usage_map.setdefault(mid,[]).append({"kind":entry["kind"],"slug":entry["slug"]})
+        for entry in page_entries:
+            refs=set()
+            for field in ("draft_json","published_json"):
+                try:document=parse_json(entry[field]) if entry[field] else {}
+                except (TypeError,ValueError):continue
+                if isinstance(document,dict):
+                    url=document.get("seo_image","")
+                    if isinstance(url,str) and re.fullmatch(r"/api/media/[0-9a-f-]{36}",url):
+                        refs.add(url.rsplit("/",1)[-1])
+            for mid in refs:
+                usage_map.setdefault(mid,[]).append({"kind":"site-seo","slug":entry["page"]})
         search=q.casefold().strip()
         found=[]
         for row in rows:
@@ -993,11 +1007,12 @@ def register_cms_routes(app: FastAPI):
             if not db.one("SELECT id FROM atlas_cms_media WHERE id=?",(media_id,)):
                 user_auth.error(404,"有图片已不存在，请刷新列表。")
         refs=db.all("SELECT draft_json,published_json FROM atlas_cms_entries")
+        page_refs=db.all("SELECT draft_json,published_json FROM atlas_seo_pages")
         for media_id in ids:
             target="/api/media/"+media_id
-            for row in refs:
+            for row in refs+page_refs:
                 if any(target in (row[field] or "") for field in ("draft_json","published_json")):
-                    user_auth.error(409,"有图片仍被草稿或公开内容引用。请先替换并发布或归档对应内容，重新检查引用后再删除。")
+                    user_auth.error(409,"图片仍被内容或站点 SEO 草稿/已发布设置引用，请先更换后重新删除。")
         for media_id in ids:
             db.execute("DELETE FROM atlas_cms_media_meta WHERE media_id=?",(media_id,))
             db.execute("DELETE FROM atlas_cms_media WHERE id=?",(media_id,))
@@ -1005,6 +1020,8 @@ def register_cms_routes(app: FastAPI):
     @app.post("/api/admin/media/bulk-delete",include_in_schema=False)
     def bulk_delete_media(data:MediaBulkDelete,request:Request):
         require_admin(request,mutate=True,permission="media");ensure_cms()
+        from app import seo_pages
+        seo_pages.ensure_pages()
         with user_auth.db() as db:
             safely_delete_media(db,data.ids)
         return {"ok":True,"deleted":len(data.ids)}
@@ -1012,6 +1029,8 @@ def register_cms_routes(app: FastAPI):
     @app.delete("/api/admin/media/{media_id}",include_in_schema=False)
     def delete_media(media_id:str,request:Request):
         require_admin(request,mutate=True,permission="media");ensure_cms()
+        from app import seo_pages
+        seo_pages.ensure_pages()
         with user_auth.db() as db:
             safely_delete_media(db,[media_id])
         return {"ok":True}
