@@ -25,8 +25,8 @@ class Cms542(unittest.TestCase):
         self.assertIn('max-height:calc(100dvh - 24px)',self.css)
 
     def test_assets(self):
-        self.assertIn('/assets/cms.js?v=5590',self.html)
-        self.assertIn('/assets/cms.css?v=5590',self.html)
+        self.assertIn('/assets/cms.js?v=5600',self.html)
+        self.assertIn('/assets/cms.css?v=5600',self.html)
 
     def test_bulk_selection_is_action_and_role_aware(self):
         self.assertIn("const bulkActionRules=",self.js)
