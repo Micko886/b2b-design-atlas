@@ -1626,7 +1626,10 @@ test('V55.6 calendar summary and actions fit a 320px viewport',async({page})=>{
  records.site.schedule={status:'pending',publish_at:new Date(Date.now()+86400000).toISOString(),revision:2};
  await page.setViewportSize({width:320,height:760});
  await page.goto(origin+'/admin/content?kind=site');
+ await page.locator('#cms-menu').click();
+ await expect(page.locator('#cms-menu')).toHaveAttribute('aria-expanded','true');
  await page.locator('#cms-schedules-open').click();
+ await expect(page.locator('#cms-schedules-dialog')).toHaveJSProperty('open',true);
  await expect(page.locator('#cms-v556-schedule-summary button')).toHaveCount(3);
  await expect(page.locator('#cms-calendar-grid')).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
