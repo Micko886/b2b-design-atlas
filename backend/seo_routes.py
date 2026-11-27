@@ -147,7 +147,7 @@ def content_image(kind,item,collection):
             # Bundled case screenshots are authoritative for editorial cover art.
             # A missing source record must never substitute an unrelated site.
             original="/screenshots/sites/"+site_slug+".webp"
-            if (STATIC/original.lstrip("/")).is_file():
+            if (BASE/original.lstrip("/")).is_file():
                 return original
         site=collection["sites"].get(site_slug)
         return public_image(site.get("screenshot_url")) if isinstance(site,dict) else None
