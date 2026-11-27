@@ -98,6 +98,15 @@ class SeoPrerenderTests(unittest.TestCase):
     def test_section_and_pattern_have_cross_links(self):
         self.assertIn('href="/websites/acme"', self.html("sections/acme-hero"))
         self.assertIn('href="/sections/acme-hero"', self.html("patterns/trust-first"))
+        self.assertIn('href="/sections/acme-hero"', self.html("websites/acme"))
+        self.assertIn('href="/patterns/trust-first"', self.html("sections/acme-hero"))
+
+    def test_og_image_override_does_not_change_content_cover(self):
+        self.collection["sites"]["acme"]["seo_image"]="/screenshots/sites/vast.webp"
+        page=self.html("websites/acme")
+        self.assertIn('property="og:image" content="https://b2b-design-atlas-preview.onrender.com/screenshots/sites/vast.webp"',page)
+        self.assertIn('<figure><img src="/api/media/12345678-1234-1234-1234-123456789abc"',page)
+        self.assertNotIn('<figure><img src="/screenshots/sites/vast.webp"',page)
 
     def test_article_has_complete_text_and_structured_metadata(self):
         body = self.html("insights/sample")
