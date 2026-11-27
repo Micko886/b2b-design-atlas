@@ -89,6 +89,9 @@ test('V61 Chromium desktop/tablet/mobile visual renders and article content',asy
     }
     if(name==='websites'||name==='sections'){
      await expect(page.locator('#library-results .reference-card').first()).toBeVisible();
+     const visual=page.locator('#library-results .reference-card .reference-media img').first();
+     await expect(visual).toHaveAttribute('src',/^\/screenshots\/(sites|modules)\//);
+     await expect.poll(async()=>visual.evaluate(img=>img.complete&&img.naturalWidth>0),{timeout:12000}).toBe(true);
      const cols=await page.locator('.masonry').evaluate(el=>getComputedStyle(el).columnCount);
      expect(Number(cols),mode+' '+name+' masonry columns').toBe(
       mode==='desktop'?4:mode==='tablet'?2:1);
