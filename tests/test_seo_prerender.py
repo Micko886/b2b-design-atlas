@@ -88,6 +88,12 @@ class SeoPrerenderTests(unittest.TestCase):
         self.assertIn('href="https://example.org"', body)
         self.assertIn('href="https://b2b-design-atlas-preview.onrender.com/websites/acme"', body)
         self.assertIn("BreadcrumbList", body)
+        self.assertIn('"@type": "WebPage"', body)
+
+    def test_home_title_does_not_repeat_brand(self):
+        body = self.html("")
+        self.assertIn("<title>B2B Atlas · B2B 视觉设计研究库</title>", body)
+        self.assertNotIn("B2B 视觉设计研究库 · B2B Atlas", body)
 
     def test_section_and_pattern_have_cross_links(self):
         self.assertIn('href="/websites/acme"', self.html("sections/acme-hero"))
