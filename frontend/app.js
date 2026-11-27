@@ -728,10 +728,10 @@ function refreshSeo(section,parts,isMissing){
  let title=labels[section]?.[0]||'B2B Atlas',description=labels[section]?.[1]||'B2B 网站设计研究库。';
  let image=fallbackImage;
  if(isMissing){title='404 · 页面未找到';description='该页面不存在或已经移动。返回 B2B Atlas 探索设计参考。'}
- else if(section==='websites'&&item){title=item.name+' · 网站设计研究';description=item.summary||item.focus||description;image=safeImage(item.screenshot_url)||fallbackImage}
- else if(section==='sections'&&item){title=item.title+' · 页面模块研究';description=item.lesson||item.summary||description;image=safeImage(item.screenshot_url)||fallbackImage}
- else if(section==='patterns'&&item){title=item.title+' · 设计模式';description=item.question||item.principle||description;image=(item.modules||[]).map(moduleBy).filter(Boolean).map(x=>safeImage(x.screenshot_url)).find(Boolean)||fallbackImage}
- else if(section==='insights'&&item){title=item.seo_title||item.title;description=item.seo_description||item.subtitle||description;image=safeImage(item.cover_image)||safeImage(site(item.cover_site)?.screenshot_url)||fallbackImage}
+ else if(section==='websites'&&item){title=item.seo_title||item.name+' · 网站设计研究';description=item.seo_description||item.summary||item.focus||description;image=safeImage(item.seo_image)||safeImage(item.screenshot_url)||fallbackImage}
+ else if(section==='sections'&&item){title=item.seo_title||item.title+' · 页面模块研究';description=item.seo_description||item.lesson||item.summary||description;image=safeImage(item.seo_image)||safeImage(item.screenshot_url)||fallbackImage}
+ else if(section==='patterns'&&item){title=item.seo_title||item.title+' · 设计模式';description=item.seo_description||item.question||item.principle||description;image=safeImage(item.seo_image)||(item.modules||[]).map(moduleBy).filter(Boolean).map(x=>safeImage(x.screenshot_url)).find(Boolean)||fallbackImage}
+ else if(section==='insights'&&item){title=item.seo_title||item.title;description=item.seo_description||item.subtitle||description;image=safeImage(item.seo_image)||safeImage(item.cover_image)||safeImage(site(item.cover_site)?.screenshot_url)||fallbackImage}
  document.title=title.startsWith('B2B Atlas')?title:title+' · B2B Atlas';
  const desc=document.querySelector('meta[name="description"]');if(desc)desc.content=description;
  const isPrivate=isMissing||['account','board','collections','discover','login','register','forgot-password','reset-password','compare'].includes(section);
@@ -754,16 +754,19 @@ function refreshSeo(section,parts,isMissing){
    {'@type':'ListItem',position:1,name:'首页',item:publicOrigin+'/'},
    {'@type':'ListItem',position:2,name:categories[section]||section,item:publicOrigin+'/'+section},
    {'@type':'ListItem',position:3,name:title,item:current}]};
+  const keywords=item.seo_keywords||((section==='insights'&&Array.isArray(item.tags))?item.tags.join(', '):'');
   if(section==='insights'){
    const article={'@type':'Article',headline:title,description,inLanguage:'zh-CN',
     author:{'@type':'Organization',name:item.author||'B2B Atlas 编辑部'},
     publisher:{'@type':'Organization',name:'B2B Atlas'},
     mainEntityOfPage:current,image:publicOrigin+image};
+   if(keywords)article.keywords=keywords;
    if(/^\d{4}-\d{2}-\d{2}$/.test(item.published_at||''))article.datePublished=item.published_at;
    data['@graph']=[article,breadcrumb];
   }else {
    const webpage={'@type':'WebPage',name:title,url:current,description,
     inLanguage:'zh-CN',primaryImageOfPage:publicOrigin+image,breadcrumb};
+   if(keywords)webpage.keywords=keywords;
    data['@graph']=[webpage,breadcrumb];
   }
  }else return;
