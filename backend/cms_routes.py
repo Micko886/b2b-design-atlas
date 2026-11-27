@@ -466,6 +466,13 @@ def cleaned(kind,slug,payload):
     return result
 
 def verify_links(kind,payload):
+    # A missing custom sharing image must not silently reach a public OG card.
+    seo_cover=payload.get("seo_image","")
+    if isinstance(seo_cover,str) and seo_cover.startswith("/api/media/"):
+        ensure_cms()
+        with user_auth.db() as db:
+            if not db.one("SELECT id FROM atlas_cms_media WHERE id=?",(seo_cover.rsplit("/",1)[-1],)):
+                user_auth.error(422,"SEO 分享图片已不存在，请重新从媒体库选择。")
     current=seo_routes.catalog()
     if kind=="module" and payload["site_id"] not in current["sites"]:
         user_auth.error(422,"关联的网站不存在或尚未发布。")
@@ -858,7 +865,7 @@ def register_cms_routes(app: FastAPI):
                 try:document=parse_json(entry[field]) if entry[field] else {}
                 except (TypeError,ValueError):continue
                 if not isinstance(document,dict):continue
-                media_urls=[document.get("cover_image",""),document.get("screenshot_url","")]
+                media_urls=[document.get("cover_image",""),document.get("screenshot_url",""),document.get("seo_image","")]
                 if isinstance(document.get("gallery"),list):
                     media_urls.extend(shot.get("url","") for shot in document["gallery"] if isinstance(shot,dict))
                 if isinstance(document.get("sections"),list):
