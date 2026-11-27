@@ -266,7 +266,10 @@ def seo_schema(path,record,collection,canonical,image):
         {"@type":"ListItem","position":2,"name":PUBLIC[parts[0]][0],"item":ORIGIN+"/"+parts[0]},
         {"@type":"ListItem","position":3,"name":record["title"],"item":canonical}]}
     if record.get("kind")!="article":
-        return {**base,**breadcrumbs}
+        webpage={"@type":"WebPage","name":record["title"],"url":canonical,
+                 "description":record["description"],"inLanguage":"zh-CN",
+                 "primaryImageOfPage":image,"breadcrumb":breadcrumbs}
+        return {**base,"@graph":[webpage,breadcrumbs]}
     article={"@type":"Article","headline":record["title"],"description":record["description"],
              "inLanguage":"zh-CN","author":{"@type":"Organization","name":record.get("author") or "B2B Atlas 编辑部"},
              "publisher":{"@type":"Organization","name":"B2B Atlas"},
@@ -285,7 +288,7 @@ def seo_document(full_path):
     found=record is not None
     if not found:record={"title":"404 · 页面未找到","description":"页面不存在或已移动。探索 B2B Atlas 的网站、页面模块和设计文章。","path":clean,"indexed":False}
     canonical=ORIGIN+record["path"]
-    title=record["title"]+" · B2B Atlas"
+    title=record["title"] if record["title"].startswith("B2B Atlas") else record["title"]+" · B2B Atlas"
     desc=record["description"]
     template=(STATIC/"index.html").read_text(encoding="utf-8")
     template=re.sub(r"<title>.*?</title>","<title>"+safe(title,220)+"</title>",template,count=1,flags=re.S)
