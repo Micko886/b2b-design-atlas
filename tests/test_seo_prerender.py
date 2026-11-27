@@ -117,6 +117,17 @@ class SeoPrerenderTests(unittest.TestCase):
         self.assertIn('"datePublished": "2026-11-24"', body)
         self.assertIn('https://b2b-design-atlas-preview.onrender.com/api/media/12345678-1234-1234-1234-123456789abc', body)
 
+    def test_article_external_research_links_are_crawlable_and_safe(self):
+        blocks=self.collection["articles"]["sample"]["sections"][1]["blocks"]
+        blocks.append({"type":"link","text":"Manufacturer reference & details",
+                       "url":"https://example.org/research?view=1&source=atlas"})
+        blocks.append({"type":"link","text":"Unsafe URL","url":"javascript:alert(1)"})
+        page=self.html("insights/sample")
+        self.assertIn('href="https://example.org/research?view=1&amp;source=atlas"',page)
+        self.assertIn("Manufacturer reference &amp; details",page)
+        self.assertNotIn("javascript:alert(1)",page)
+        self.assertNotIn("Unsafe URL",page)
+
     def test_nonpublic_content_is_never_added_to_main_or_sitemap(self):
         self.collection["articles"]["draft"] = {
             "title": "未审核内容",
