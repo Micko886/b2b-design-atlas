@@ -3,6 +3,7 @@
 (function(){
 const $=q=>document.querySelector(q), $$=q=>Array.from(document.querySelectorAll(q));
 const app=$('#app'), overlay=$('#overlay'), toast=$('#toast');
+const pageSeoOverrides=(()=>{try{return JSON.parse(document.getElementById('atlas-page-seo-data')?.textContent||'{}')}catch{return {}}})();
 const publicOrigin=(()=>{try{
   return new URL(document.querySelector('link[rel="canonical"]')?.href||location.origin).origin;
  }catch(_){return location.origin}})();
@@ -727,6 +728,12 @@ function refreshSeo(section,parts,isMissing){
  const fallbackImage='/screenshots/sites/vast.webp';
  let title=labels[section]?.[0]||'B2B Atlas',description=labels[section]?.[1]||'B2B 网站设计研究库。';
  let image=fallbackImage;
+ if(!parts[1]&&labels[section]){
+   const approved=pageSeoOverrides[section]||{};
+   title=approved.seo_title||title;
+   description=approved.seo_description||description;
+   if(typeof approved.seo_image==='string')image=safeImage(approved.seo_image)||fallbackImage;
+ }
  if(isMissing){title='404 · 页面未找到';description='该页面不存在或已经移动。返回 B2B Atlas 探索设计参考。'}
  else if(section==='websites'&&item){title=item.seo_title||item.name+' · 网站设计研究';description=item.seo_description||item.summary||item.focus||description;image=safeImage(item.seo_image)||safeImage(item.screenshot_url)||fallbackImage}
  else if(section==='sections'&&item){title=item.seo_title||item.title+' · 页面模块研究';description=item.seo_description||item.lesson||item.summary||description;image=safeImage(item.seo_image)||safeImage(item.screenshot_url)||fallbackImage}
