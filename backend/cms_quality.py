@@ -138,15 +138,30 @@ def audit_resource(kind,slug,item,catalog):
         if not str(item.get("published_at") or "").strip():
             warn("date","缺少文章发布日期","填写可核实的发布日期，帮助读者判断研究时效。")
         references=item.get("references")
-        has_refs=isinstance(references,list) and bool(references)
+        target_kind={"website":"sites","module":"modules","pattern":"patterns","article":"articles"}
+        valid_refs=0
+        broken_refs=0
+        for ref in references if isinstance(references,list) else []:
+            if (not isinstance(ref,(list,tuple)) or len(ref)<2 or
+                not isinstance(ref[0],str) or not isinstance(ref[1],str)):
+                broken_refs+=1
+                continue
+            target=target_kind.get(ref[0])
+            if target and ref[1] in catalog[target]:
+                valid_refs+=1
+            else:
+                broken_refs+=1
+        if broken_refs:
+            warn("broken_refs",str(broken_refs)+" 条引用无法对应公开内容",
+                 "重新选择已发布的案例、模块、模式或文章，避免无效内链。")
         has_external=any(
             isinstance(block,dict) and block.get("type")=="link"
             and isinstance(block.get("url"),str) and block["url"].startswith(("https://","http://"))
             for section in (item.get("sections") if isinstance(item.get("sections"),list) else [])
             if isinstance(section,dict)
             for block in (section.get("blocks") if isinstance(section.get("blocks"),list) else []))
-        if not has_refs and not has_external:
-            warn("sources","缺少可核验的参考来源","加入相关案例、模块、设计模式或原始资料链接。")
+        if not valid_refs and not has_external:
+            warn("sources","没有有效的公开参考来源","加入已发布的案例、模块或可核实的原始资料链接。")
         missing_alt=0
         for section in (item.get("sections") if isinstance(item.get("sections"),list) else []):
             if not isinstance(section,dict):continue
