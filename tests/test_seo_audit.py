@@ -104,6 +104,20 @@ class PublishedContentAuditTests(unittest.TestCase):
                 descriptions.append(desc)
         self.assertEqual(len(set(descriptions)),len(descriptions))
 
+    def test_priority_ranking_separates_missing_sources_from_minor_improvements(self):
+        report=cms_quality.audit_published("site",self.catalog)
+        self.assertEqual(report["high"],1)
+        self.assertEqual(report["items"][0]["priority"],"high")
+        self.assertTrue(any(issue["priority"]=="high" for issue in report["items"][0]["issues"]))
+        self.catalog["sites"]["good"]["summary"]="Short but valid"
+        report=cms_quality.audit_published("site",self.catalog)
+        self.assertEqual(report["flagged"],2)
+        self.assertEqual(report["high"],1)
+        self.assertEqual(report["items"][0]["slug"],"no-source")
+        minor=next(x for x in report["items"] if x["slug"]=="good")
+        self.assertEqual(minor["priority"],"normal")
+        self.assertTrue(all(issue["priority"]=="normal" for issue in minor["issues"]))
+
     def test_api_requires_admin_view_permission_before_reading_catalog(self):
         app=FastAPI()
         cms_quality.register_quality_routes(app)
@@ -130,6 +144,9 @@ class PublishedContentAuditTests(unittest.TestCase):
         self.assertIn('id="cms-audit-open"',html)
         self.assertIn("/api/admin/seo/audit?kind=",js)
         self.assertIn("data-seo-audit-edit",js)
+        self.assertIn("data-seo-audit-focus",js)
+        self.assertIn('id="cms-audit-priority"',html)
+        self.assertIn("优先处理",html)
         self.assertIn("seoAuditData?.kind===item.kind",js)
 
 
