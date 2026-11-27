@@ -59,6 +59,22 @@ class IndustryStudyTests(unittest.TestCase):
                     self.assertIn(kind,keys)
                     self.assertIn(ref_id,self.catalog[keys[kind]],f"{slug} missing {kind}:{ref_id}")
 
+    def test_legacy_catalog_preview_paths_are_restored_only_from_existing_files(self):
+        original={"id":"vast","name":"Vast"}
+        restored=seo_routes._snapshot_if_present(original,"sites")
+        self.assertEqual(restored["screenshot_url"],"/screenshots/sites/vast.webp")
+        self.assertNotIn("screenshot_url",original)
+        custom={"id":"vast","screenshot_url":"/api/media/12345678-1234-1234-1234-123456789abc"}
+        self.assertIs(seo_routes._snapshot_if_present(custom,"sites"),custom)
+        missing={"id":"no-image-qa-293810"}
+        self.assertIs(seo_routes._snapshot_if_present(missing,"sites"),missing)
+        module=seo_routes._snapshot_if_present({"id":"vast-hero"},"modules")
+        self.assertEqual(module["screenshot_url"],"/screenshots/modules/vast-hero.webp")
+        sources=self.catalog["sites"]
+        self.assertGreaterEqual(len(sources),60)
+        self.assertTrue(sources["vast"]["screenshot_url"].endswith("/vast.webp"))
+        self.assertTrue(sources["fictiv"]["screenshot_url"].endswith("/fictiv.webp"))
+
     def test_editorial_covers_match_real_bundled_company_screenshots(self):
         root=Path(__file__).resolve().parents[1]
         for article in self.articles:
