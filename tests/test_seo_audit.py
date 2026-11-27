@@ -1,6 +1,7 @@
 """V56: SEO/GEO published-content audit; no production DB or network calls."""
 from __future__ import annotations
 import copy
+import json
 import unittest
 from unittest.mock import patch
 
@@ -73,6 +74,35 @@ class PublishedContentAuditTests(unittest.TestCase):
         self.assertEqual(len(result["items"]),2)
         self.assertEqual(result["remaining"],result["flagged"]-2)
         self.assertEqual([x["slug"] for x in result["items"]],["extra-0","extra-1"])
+
+    def test_broken_article_citations_are_flagged_separately(self):
+        item=self.catalog["articles"]["guide"]
+        item["references"]=[["pattern","no-such-pattern"],["website","good"]]
+        report=cms_quality.audit_resource("article","guide",item,self.catalog)
+        codes=[x["code"] for x in report["issues"]]
+        self.assertIn("broken_refs",codes)
+        self.assertNotIn("sources",codes)
+        item["references"]=[["pattern","no-such-pattern"]]
+        codes=[x["code"] for x in cms_quality.audit_resource("article","guide",item,self.catalog)["issues"]]
+        self.assertIn("broken_refs",codes)
+        self.assertIn("sources",codes)
+
+    def test_original_articles_have_unique_search_metadata(self):
+        article_file=seo_routes.STATIC/"assets"/"articles.json"
+        source=json.loads(article_file.read_text(encoding="utf-8"))
+        articles=source["articles"]
+        self.assertGreaterEqual(len(articles),10)
+        descriptions=[]
+        base=seo_routes.base_catalog()
+        for item in articles:
+            with self.subTest(article=item["id"]):
+                desc=item["seo_description"]
+                self.assertGreaterEqual(len(desc),50)
+                self.assertLessEqual(len(desc),170)
+                public=seo_routes.seo_record("insights/"+item["id"],base)
+                self.assertEqual(public["description"],desc)
+                descriptions.append(desc)
+        self.assertEqual(len(set(descriptions)),len(descriptions))
 
     def test_api_requires_admin_view_permission_before_reading_catalog(self):
         app=FastAPI()
