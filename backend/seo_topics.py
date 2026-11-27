@@ -186,7 +186,7 @@ def prerender(path,record,collection):
                 '<p class="topics-lead">'+seo.safe(record["description"])+'</p>'
                 '<section><h2>按真实案例进入行业研究</h2><ul class="topics-cards">'
                 +''.join(cards)+'</ul></section>'
-                '<p class="topics-note"><a href="/methodology">研究方法与引用说明</a> · <a href="/directory">全部公开资源目录</a></p></div>')
+                +'<p class="topics-note"><a href="/methodology">研究方法与引用说明</a> · <a href="/directory">全部公开资源目录</a></p></div>')
     slug=record["topic"]
     info=TOPICS[slug]
     article=study(collection,slug)
@@ -218,6 +218,6 @@ def prerender(path,record,collection):
             +('<section><h2>研究结论与观察</h2><ul>'+takeaways+'</ul></section>' if takeaways else '')
             +''.join(grouped)
             +('<section><h2>其他行业专题</h2><ul class="topics-related">'+siblings+'</ul></section>' if siblings else '')
-            '<p class="topics-note">第三方产品能力和商业表现需以原始来源为准。'
+            +'<p class="topics-note">第三方产品能力和商业表现需以原始来源为准。'
             '<a href="/methodology">阅读研究方法与引用说明</a>。</p>'
             '</div>')
