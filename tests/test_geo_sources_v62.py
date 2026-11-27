@@ -127,7 +127,7 @@ class GeoSourcesV62(unittest.TestCase):
         self.assertIn("insightSourceLinks(a)}",js)
         self.assertIn('rel="nofollow noopener noreferrer"',js)
         self.assertIn("原始案例网站",js)
-        self.assertIn('fallbackImage=\\'/assets/visual-placeholder.svg\\'',js)
+        self.assertIn("fallbackImage='/assets/visual-placeholder.svg'",js)
         self.assertIn(".insight-source-links a:focus-visible",css)
 
 
