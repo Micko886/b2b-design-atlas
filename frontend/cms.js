@@ -392,12 +392,11 @@ function drawItems(){
    +'<span class="cms-item-thumb">'+(img?'<img src="'+h(img)+'" loading="lazy" alt="">':icon(kinds[state.kind].icon))+'</span>'
    +'<span class="cms-item-copy"><strong>'+h(item.label)+'</strong><small>'+h(item.sector||item.slug)+'</small><small class="cms-item-open-label">'+h(listNextAction(item))+'</small></span>'
    +stateClasses(item.status)+'</button>'+compare+'</div>';
- }).join(''):'<div class="cms-empty-results" role="status"><strong>'+(state.q||state.status?'没有匹配的内容':'当前还没有内容')+'</strong><p>'+(state.q||state.status?'调整关键词或筛选条件，或者直接查看全部记录。'
+ }).join(''):'<div class="cms-empty-results" role="status"><strong>'+(state.q||state.status?'没有匹配的内容':'当前还没有内容')+'</strong><p>'+(state.q||state.status?'请使用上方“清除筛选”，或调整关键词和状态。'
    :mode==='preview'?'此栏目暂未收录公开内容，可以先查看其他栏目。'
    :can('edit')?'这里还没有内容，点击下方按钮创建第一条草稿。'
    :'这里还没有内容，请联系具有编辑权限的团队成员添加。')+'</p>'
-  +(state.q||state.status?'<button type="button" data-clear-content-filters>清除筛选 · 查看全部</button>'
-   :can('edit')?'<button type="button" data-v559-create-first>新建第一条内容</button>':'')+'</div>';
+  +(!(state.q||state.status)&&can('edit')?'<button type="button" data-v559-create-first>新建第一条内容</button>':'')+'</div>';
  $('#cms-count').textContent=filtered.length+' 条';
  renderListContext(filtered);
  updateListPager(filtered,items);
