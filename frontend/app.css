@@ -1192,3 +1192,20 @@ body{color:var(--ink);background:#fff;font-family:Inter,"Noto Sans CJK SC",ui-sa
  .insight-prose-section:focus{outline-offset:3px}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+
+/* V60 · Failed image fallback without misrepresenting another company's screenshot. */
+.visual-load-failed{position:relative;background:linear-gradient(135deg,#eef2f7,#e1e8f2)!important;isolation:isolate}
+.visual-load-failed img{display:none!important}
+.visual-load-failed::after{content:attr(data-image-status);position:absolute;inset:0;z-index:0;display:grid;place-items:center;padding:15px;text-align:center;color:#586782;font-size:12px;font-weight:650;line-height:1.5;pointer-events:none}
+.reference-media.visual-load-failed>a{display:block;min-height:170px}
+.reference-media.visual-load-failed .card-actions{z-index:2}
+.insight-topic-visual.visual-load-failed{min-height:145px}
+.insight-card-media.visual-load-failed{min-height:140px}
+.insight-feature-image.visual-load-failed{min-height:220px}
+.spotlight-image.visual-load-failed{min-height:220px}
+@media(max-width:680px){
+ .reference-media.visual-load-failed>a{min-height:144px}
+ .insight-topic-visual.visual-load-failed{min-height:124px}
+ .insight-feature-image.visual-load-failed{min-height:170px}
+}
