@@ -101,6 +101,9 @@ def seo_record(path,collection=None,page_overrides=None):
     if parts==["methodology"]:
         from app import seo_methodology
         return dict(seo_methodology.RECORD)
+    if parts and parts[0]=="topics":
+        from app import seo_topics
+        return seo_topics.record(parts,collection if collection is not None else catalog())
     if len(parts)==1 and parts[0] in PRIVATE:
         k=parts[0]
         return {"title":PRIVATE[k][0],"description":PRIVATE[k][1],"path":"/"+k,"indexed":False}
@@ -307,6 +310,9 @@ def public_prerender(path, record, collection):
     is passed here; no drafts, profile data, or private collection is included.
     """
     if not record or not record.get("indexed") or collection is None:return ""
+    if record.get("kind")=="topic":
+        from app import seo_topics
+        return seo_topics.prerender(path,record,collection)
     if record.get("kind")=="methodology":
         from app import seo_methodology
         return seo_methodology.prerender()
@@ -461,8 +467,9 @@ def sitemap_items(collection):
             if not isinstance(slug,str) or not _SLUG.fullmatch(slug):continue
             yield "/"+route+"/"+slug,(article_lastmod(item) if route=="insights" else None)
     yield "/methodology",None
-    from app import seo_directory
+    from app import seo_directory,seo_topics
     yield from seo_directory.sitemap_entries(collection)
+    yield from seo_topics.sitemap_entries(collection)
 
 
 def llms_document(collection):
@@ -500,6 +507,12 @@ def llms_document(collection):
             if title:
                 lines.append("- ["+title+"]("+ORIGIN+"/insights/"+slug+")")
                 count+=1
+    from app import seo_topics
+    topics=seo_topics.live_topics(collection)
+    if topics:
+        lines.extend(["","## 行业专题"])
+        for slug,info in topics:
+            lines.append("- ["+info["title"]+"]("+ORIGIN+"/topics/"+slug+")")
     lines.extend(["", "## 来源与使用说明",
         "- 文章页面列出其公开参考链接与原始案例，便于读者核对。",
         "- 网站案例的编辑观察不等于对第三方产品或性能的独立验证。",
@@ -512,6 +525,9 @@ def seo_schema(path,record,collection,canonical,image):
     """Single route-aware JSON-LD node; avoid guessed performance claims."""
     parts=[x for x in path.strip("/").split("/") if x]
     base={"@context":"https://schema.org"}
+    if record.get("kind")=="topic":
+        from app import seo_topics
+        return seo_topics.schema(record,collection,ORIGIN)
     if record.get("kind")=="methodology":
         return {**base,"@type":"AboutPage","name":record["title"],
                 "url":canonical,"description":record["description"],"inLanguage":"zh-CN"}
@@ -557,7 +573,7 @@ def seo_schema(path,record,collection,canonical,image):
 def seo_document(full_path):
     clean="/"+full_path.strip("/") if full_path.strip("/") else "/"
     parts=[part for part in clean.strip("/").split("/") if part]
-    collection=catalog() if (not parts or parts[0] in PUBLIC or parts[0]=="directory") else ({} if parts==["methodology"] else None)
+    collection=catalog() if (not parts or parts[0] in PUBLIC or parts[0] in ("directory","topics")) else ({} if parts==["methodology"] else None)
     page_overrides=read_page_seo() if collection is not None else {}
     record=seo_record(clean,collection,page_overrides)
     found=record is not None
@@ -566,12 +582,13 @@ def seo_document(full_path):
     title=record["title"] if record["title"].startswith("B2B Atlas") else record["title"]+" · B2B Atlas"
     desc=record["description"]
     template=(STATIC/"index.html").read_text(encoding="utf-8")
-    if record.get("kind") in ("directory","methodology"):
-        # Standalone public HTML does not get overwritten by unrelated SPA routes.
-        from app import seo_directory, seo_methodology
+    if record.get("kind") in ("directory","methodology","topic"):
+        # Standalone public HTML is never replaced by the SPA's unrelated 404.
+        from app import seo_directory,seo_methodology,seo_topics
         template=re.sub(r'<script src="/assets/app\.js[^"]*" defer></script>',"",template,count=1)
-        style=seo_directory.STYLE if record["kind"]=="directory" else seo_methodology.STYLE
-        template=template.replace("</head>",style+"</head>",1)
+        styles={"directory":seo_directory.STYLE,"methodology":seo_methodology.STYLE,
+                "topic":seo_topics.STYLE}
+        template=template.replace("</head>",styles[record["kind"]]+"</head>",1)
     template=re.sub(r"<title>.*?</title>","<title>"+safe(title,220)+"</title>",template,count=1,flags=re.S)
     template=re.sub(r'<meta name="description" content="[^"]*">','<meta name="description" content="'+safe(desc,270)+'">',template,count=1)
     image=ORIGIN+(record.get("image") or "/assets/visual-placeholder.svg")
