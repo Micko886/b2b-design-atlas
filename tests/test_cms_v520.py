@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 from fastapi import FastAPI,HTTPException
 
-from app import cms_routes,cms_diff,cms_quality,seo_routes,analytics_routes,analytics_growth
+from app import cms_routes,cms_diff,cms_quality,seo_routes,seo_pages,analytics_routes,analytics_growth
 from test_cms_v514 import DB
 
 STATIC=Path("/srv/atlas/static")
@@ -106,6 +106,7 @@ class DiffAndSeoTests(unittest.TestCase):
 class MediaUsageTests(unittest.TestCase):
     def test_cms_media_usage_counts_draft_and_published_once(self):
         db=DB()
+        db.execute(seo_pages.PAGE_SCHEMA)
         mid=str(uuid.uuid4())
         db.execute("""INSERT INTO atlas_cms_media
            (id,file_name,mime_type,content_b64,byte_size,sha256,uploaded_by,created_at)
@@ -120,6 +121,7 @@ class MediaUsageTests(unittest.TestCase):
         app=FastAPI();cms_routes.register_cms_routes(app)
         fn=next(r.endpoint for r in app.routes if r.path=="/api/admin/media" and "GET" in r.methods)
         with patch.object(cms_routes,"require_admin"),patch.object(cms_routes,"ensure_cms"),\
+             patch.object(seo_pages,"ensure_pages"),\
              patch.object(cms_routes.user_auth,"db",return_value=db):
             result=fn(object())
         row=next(x for x in result["items"] if x["id"]==mid)
