@@ -262,7 +262,7 @@ def public_prerender(path, record, collection):
                         if image:out.append('<figure><img loading="lazy" src="'+safe(image,550)+'" alt="'+safe(block.get("alt") or "文章配图",200)+'"></figure>')
                     elif t=="link":
                         external=block.get("url")
-                        if isinstance(external,str) and re.fullmatch(r"https?://[^<>\\s\\"']+",external,re.I):
+                        if isinstance(external,str) and re.fullmatch(r"https?://[^<>\s\"']+",external,re.I):
                             out.append('<p>参考链接：<a rel="nofollow noopener noreferrer" href="'+safe(external,550)+'">'+safe(block.get("text") or external,240)+'</a></p>')
             else:
                 for text in section.get("paragraphs",[]) if isinstance(section.get("paragraphs"),list) else []:
