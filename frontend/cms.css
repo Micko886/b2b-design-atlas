@@ -1366,6 +1366,8 @@ body.cms-editor-active .cms-edit-quick-actions{display:flex;align-items:center;g
  .cms-v559-retry-actions,.cms-v559-retry-actions button{width:100%}
 }
 
+.cms-seo-panel-actions{display:flex;flex-wrap:wrap;gap:8px}
+.cms-seo-panel-actions button:first-child{background:var(--surface);color:var(--blue);border:1px solid var(--line-strong)}
 /* SEO TDK · one low-noise collapsible panel shared across all content editors. */
 .cms-easy-mode .cms-seo-settings{margin-top:14px}
 .cms-easy-mode .cms-seo-fields{padding:3px 17px 17px;display:grid;gap:9px;min-width:0}
