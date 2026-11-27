@@ -381,6 +381,22 @@ function industrySeries(a){
  return '<div class="insight-article-series"><span>INDUSTRY STUDY</span><a href="'+url+'" data-link="'+url+'">返回'+h(topic.label)+'专题 ↗</a>'
  +'<p>章节中的官方链接用于核实公开资料，设计观察与编辑建议不代表企业经营或技术效果。</p></div>';
 }
+function insightSourceLinks(a){
+ const siteRefs=Array.isArray(a.references)?a.references.filter(r=>Array.isArray(r)&&r[0]==='website'):[];
+ const seen=new Set();
+ const entries=siteRefs.map(r=>site(r[1])).filter(x=>{
+  if(!x||typeof x.url!=='string'||!/^https?:\/\/[^<>\s"'\\]+$/i.test(x.url))return false;
+  try{const parsed=new URL(x.url);if(parsed.username||parsed.password||!parsed.hostname)return false}catch{return false}
+  if(seen.has(x.url))return false;
+  seen.add(x.url);return true;
+ });
+ if(!entries.length)return '';
+ return '<div class="insight-aside-group insight-source-links"><h3>原始案例网站</h3>'
+  +'<p>以下是文章研究对象的公开网站，便于读者自行核验，不代表独立测评。</p>'
+  +entries.map(x=>'<a target="_blank" rel="nofollow noopener noreferrer" href="'+h(x.url)+'">'+h(x.name||x.id)+' · 查看原站 ↗</a>').join('')
+  +'</div>';
+}
+
 function insightArticle(a){
  const cat=articleCat(a.category),url=articleLink(a);
  const related=[...state.articles.filter(x=>x.id!==a.id&&x.category===a.category),...state.articles.filter(x=>x.id!==a.id&&x.category!==a.category)].slice(0,3);
@@ -402,7 +418,7 @@ function insightArticle(a){
  <figure class="insight-cover"><img loading="eager" fetchpriority="high" decoding="async" src="${img(articleImage(a))}" alt="${h(site(a.cover_site)?.name||'设计案例')} 网站截图"><figcaption>配图：B2B Atlas 收录的 ${h(site(a.cover_site)?.name||'网站')} 页面截图，供设计观察使用。</figcaption></figure>
  <div class="insight-article-layout"><article class="insight-prose">${articleMobileToc(a)}<div class="insight-intro"><span class="eyebrow">EDITORIAL NOTE</span><p>${h(a.subtitle)}</p></div><div class="insight-takeaways"><h2>本文要点</h2><ul>${a.takeaways.map(t=>`<li>${h(t)}</li>`).join('')}</ul></div>${sections}
  <div class="insight-conclusion"><h2>把观察带回设计项目</h2><p>这些内容是基于收录案例与设计方法整理的编辑性研究，适合用于建立讨论框架。具体到你的项目，仍需结合真实用户、业务内容和产品限制验证。</p><div class="insight-tags">${a.tags.map(t=>`<span># ${h(t)}</span>`).join('')}</div></div></article>
- <aside class="insight-article-aside"><div class="insight-aside-inner"><div class="insight-aside-group"><h3>文章目录</h3><nav aria-label="文章目录">${a.sections.map((s,i)=>`<a href="#insight-section-${i+1}" data-action="anchor" data-target="insight-section-${i+1}"><span>${String(i+1).padStart(2,'0')}</span>${h(s.title)}</a>`).join('')}</nav></div><div class="insight-aside-group"><h3>关联研究资源</h3><div class="insight-references">${a.references.map(insightReference).join('')}</div></div><a class="insight-back" href="/insights" data-link="/insights">← 返回全部文章</a></div></aside></div>
+ <aside class="insight-article-aside"><div class="insight-aside-inner"><div class="insight-aside-group"><h3>文章目录</h3><nav aria-label="文章目录">${a.sections.map((s,i)=>`<a href="#insight-section-${i+1}" data-action="anchor" data-target="insight-section-${i+1}"><span>${String(i+1).padStart(2,'0')}</span>${h(s.title)}</a>`).join('')}</nav></div><div class="insight-aside-group"><h3>关联研究资源</h3><div class="insight-references">${a.references.map(insightReference).join('')}</div></div>${insightSourceLinks(a)}<a class="insight-back" href="/insights" data-link="/insights">← 返回全部文章</a></div></aside></div>
  <nav class="insight-article-pager" aria-label="上一篇和下一篇"><div>${prev?`<a href="${articleLink(prev)}" data-link="${articleLink(prev)}"><span>← 上一篇</span><strong>${h(prev.title)}</strong></a>`:''}</div><div>${next?`<a href="${articleLink(next)}" data-link="${articleLink(next)}"><span>下一篇 →</span><strong>${h(next.title)}</strong></a>`:''}</div></nav>
  <section class="insight-related"><div class="section-heading"><div><span class="eyebrow">KEEP READING</span><h2>继续阅读</h2><p>更多关于 B2B 产品、设计方法和网站研究的文章。</p></div><a href="/insights" data-link="/insights">全部文章 ↗</a></div><div class="insights-grid">${related.map((x,i)=>articleCard(x,i,true)).join('')}</div></section>
  </div>`;
@@ -788,7 +804,7 @@ function refreshSeo(section,parts,isMissing){
  const labels={home:['B2B Atlas · B2B 视觉设计研究库','工业、科技与企业产品的网站、页面模块和设计模式研究库。'],websites:['Websites · B2B 网站灵感库','探索真实的工业、科技与企业官网，研究配色、布局与 B2B 转化设计。'],sections:['Sections · 页面模块参考','发现优秀 B2B 官网首屏、产品、案例和信任模块，研究页面设计细节。'],patterns:['Patterns · 设计模式研究','从真实案例中探索可复用的 B2B 设计问题、原则和页面模式。'],insights:['Insights · 资讯与研究','阅读 B2B 网站案例分析、设计方法、视觉系统和内容策略原创文章。']};
  const id=parts[1],item=section==='websites'&&id?site(id):section==='sections'&&id?moduleBy(id):section==='patterns'&&id?pattern(id):section==='insights'&&id?articleBy(id):null;
  const safeImage=value=>typeof value==='string'&&(/^\/api\/media\/[0-9a-f-]{36}$/.test(value)||/^\/screenshots\/(?:sites|modules)\/[a-z0-9][a-z0-9/_-]*\.(?:webp|png|jpe?g)$/i.test(value))?value:null;
- const fallbackImage='/screenshots/sites/vast.webp';
+ const fallbackImage='/assets/visual-placeholder.svg';
  let title=labels[section]?.[0]||'B2B Atlas',description=labels[section]?.[1]||'B2B 网站设计研究库。';
  let image=fallbackImage;
  if(!parts[1]&&labels[section]){
