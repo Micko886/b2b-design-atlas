@@ -175,6 +175,12 @@ class MediaWorkBenchV532(unittest.TestCase):
             ("public-example",))
         self.assertEqual(public_before,public_after)
         self.require.assert_any_call(unittest.mock.ANY,mutate=True,permission="media")
+        # The upsert must include an atomic conflict guard, not just a
+        # prior read that can race with a second editor.
+        source=(cms_routes.__file__)
+        from pathlib import Path
+        self.assertIn("WHERE TRIM(atlas_cms_media_meta.alt_text)=''",
+                      Path(source).read_text(encoding="utf-8"))
 
     def test_bulk_alt_rejects_a_stale_item_atomically(self):
         first=self.upload("new.png")

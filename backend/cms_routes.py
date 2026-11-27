@@ -953,16 +953,20 @@ def register_cms_routes(app: FastAPI):
                     (item.id,))
                 if metadata and metadata["alt_text"].strip():
                     user_auth.error(409,"有图片的 ALT 已被其他编辑更新，请刷新后再提交。")
-                existing.append((item.id,item.alt_text.strip(),
-                                 metadata["caption"] if metadata else ""))
+                existing.append((item.id,item.alt_text.strip()))
             now=utc_now()
-            for media_id,alt_text,caption in existing:
-                db.execute("""INSERT INTO atlas_cms_media_meta(media_id,alt_text,caption,updated_by,updated_at)
-                           VALUES(?,?,?,?,?)
+            for media_id,alt_text in existing:
+                cursor=db.execute("""INSERT INTO atlas_cms_media_meta(media_id,alt_text,caption,updated_by,updated_at)
+                           VALUES(?,?,'',?,?)
                            ON CONFLICT(media_id) DO UPDATE SET
-                             alt_text=excluded.alt_text,caption=excluded.caption,
-                             updated_by=excluded.updated_by,updated_at=excluded.updated_at""",
-                           (media_id,alt_text,caption,session["user_id"],now))
+                             alt_text=excluded.alt_text,
+                             updated_by=excluded.updated_by,updated_at=excluded.updated_at
+                           WHERE TRIM(atlas_cms_media_meta.alt_text)=''""",
+                           (media_id,alt_text,session["user_id"],now))
+                # The condition executes under the DB's write lock. A
+                # concurrent fill cannot be overwritten after prevalidation.
+                if cursor.rowcount!=1:
+                    user_auth.error(409,"图片 ALT 已被其他编辑更新，整批保存已取消。")
         return {"ok":True,"updated":len(existing),"ids":ids}
 
     def safely_delete_media(db,ids):
