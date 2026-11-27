@@ -777,6 +777,7 @@ function refreshSeo(section,parts,isMissing){
    data['@graph']=[webpage,breadcrumb];
   }
  }else return;
+ if(!id&&pageSeoOverrides[section]?.seo_keywords)data.keywords=pageSeoOverrides[section].seo_keywords;
  schema=document.createElement('script');schema.id='atlas-seo-schema';schema.type='application/ld+json';
  schema.textContent=JSON.stringify(data).replace(/</g,'\\u003c');
  document.head.appendChild(schema);
