@@ -6,8 +6,8 @@
 <meta name="theme-color" content="#f5f7fb">
 <title>内容管理 · B2B Atlas Control Room</title>
 <link rel="stylesheet" href="/assets/admin.css?v=5300">
-<link rel="stylesheet" href="/assets/cms.css?v=7201">
-<script defer src="/assets/cms.js?v=7201"></script>
+<link rel="stylesheet" href="/assets/cms.css?v=7301">
+<script defer src="/assets/cms.js?v=7301"></script>
 </head>
 <body data-cms-mode="__CMS_MODE__">
 <svg xmlns="http://www.w3.org/2000/svg" class="icon-sprite" aria-hidden="true">
@@ -80,6 +80,15 @@
      <section id="cms-audit-panel" class="cms-audit-panel" aria-label="本栏目公开内容 SEO 巡检" hidden>
      <div class="cms-audit-head"><div><strong>公开内容质量巡检</strong><p id="cms-audit-summary" role="status" aria-live="polite">仅检查已发布的公开资料，不包含草稿。</p></div><div class="cms-audit-actions"><select id="cms-audit-priority" aria-label="按 SEO 问题优先级筛选"><option value="all">全部建议</option><option value="high">优先处理</option><option value="normal">一般建议</option></select><button type="button" id="cms-audit-refresh">整改后重新检查</button><button type="button" id="cms-audit-close" aria-label="关闭 SEO 巡检">关闭</button></div></div>
      <div id="cms-audit-overview" class="cms-audit-overview" hidden></div>
+     <section id="cms-seo-readiness" class="cms-seo-readiness" aria-label="SEO/GEO 正式域名上线前技术验收" hidden>
+      <div class="cms-seo-readiness-head"><div><strong>SEO/GEO 上线前技术验收</strong><p>核对已发布内容与搜索引擎读取的基础技术信息。</p></div>
+      <button type="button" id="cms-seo-readiness-refresh">重新验收</button></div>
+      <p id="cms-seo-readiness-summary" role="status" aria-live="polite">尚未检查。</p>
+      <details class="cms-seo-readiness-details"><summary>查看 Canonical、Sitemap、Schema 与搜索验证配置</summary>
+       <div id="cms-seo-readiness-checks"></div>
+       <div id="cms-seo-readiness-examples"></div>
+      </details>
+     </section>
      <section id="cms-audit-history" class="cms-audit-history" aria-label="SEO 巡检历史与整改对比" hidden>
       <div class="cms-audit-history-header"><div><strong>SEO 巡检历史与整改变化</strong>
       <p>历史快照需手动保存，归档或下线内容不等于修复。</p></div>

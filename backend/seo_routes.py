@@ -618,6 +618,7 @@ def seo_document(full_path):
         extras+='<meta property="og:image:height" content="'+str(height)+'">'
         if mime:extras+='<meta property="og:image:type" content="'+mime+'">'
     if record["indexed"]:
+        extras+=verification_meta_tags()
         data=seo_schema(clean,record,collection,canonical,image)
         extras+='<script id="atlas-seo-schema" type="application/ld+json">'+json.dumps(data,ensure_ascii=False).replace("<","\\u003c")+'</script>'
     # Hydration must keep title/description/image identical to server response.
@@ -630,19 +631,58 @@ def seo_document(full_path):
     headers={"Cache-Control":"no-cache","X-Robots-Tag":"noindex" if not record["indexed"] else "index, follow"}
     return HTMLResponse(template,status_code=200 if found else 404,headers=headers)
 
+# V73: single shared source for crawler documents and optional platform proof.
+_VERIFICATION_CODE=re.compile(r"^[A-Za-z0-9_-]{8,180}$")
+_VERIFICATION_VARS={
+    "google":"ATLAS_GOOGLE_SITE_VERIFICATION",
+    "bing":"ATLAS_BING_SITE_VERIFICATION",
+}
+
+def verification_state():
+    """The token is public in HTML; return status only to the private dashboard."""
+    result={}
+    for provider,name in _VERIFICATION_VARS.items():
+        token=os.getenv(name,"").strip()
+        result[provider]="configured" if token and _VERIFICATION_CODE.fullmatch(token) else ("invalid" if token else "missing")
+    return result
+
+
+def verification_meta_tags():
+    meta={"google":"google-site-verification","bing":"msvalidate.01"}
+    result=[]
+    for provider,environment in _VERIFICATION_VARS.items():
+        token=os.getenv(environment,"").strip()
+        if _VERIFICATION_CODE.fullmatch(token):
+            result.append('<meta name="'+meta[provider]+'" content="'+safe(token,190)+'">')
+    return "".join(result)
+
+
+def robots_document():
+    return ("User-agent: *\nDisallow: /admin\nDisallow: /api/admin\nDisallow: /account"
+            "\nDisallow: /collections\nDisallow: /board\nDisallow: /login"
+            "\nDisallow: /register\nDisallow: /forgot-password"
+            "\nDisallow: /reset-password\nDisallow: /compare\nSitemap: "+ORIGIN+"/sitemap.xml\n")
+
+
+def sitemap_xml(collection):
+    """The exact XML consumed by crawlers and by the V73 readiness preflight."""
+    urls=[]
+    for path,lastmod in sitemap_items(collection):
+        date_tag="<lastmod>"+lastmod+"</lastmod>" if lastmod else ""
+        urls.append("<url><loc>"+safe(ORIGIN+path,700)+"</loc>"+date_tag+"</url>")
+    return ('<?xml version="1.0" encoding="UTF-8"?>'
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+            +"".join(urls)+"</urlset>")
+
+
 def register_seo_routes(app:FastAPI):
     @app.get("/robots.txt",include_in_schema=False)
     def robots():
-        return PlainTextResponse("User-agent: *\nDisallow: /admin\nDisallow: /api/admin\nDisallow: /account\nDisallow: /collections\nDisallow: /board\nDisallow: /login\nDisallow: /register\nDisallow: /forgot-password\nDisallow: /reset-password\nDisallow: /compare\nSitemap: "+ORIGIN+"/sitemap.xml\n",headers={"Cache-Control":"public, max-age=3600"})
+        return PlainTextResponse(robots_document(),headers={"Cache-Control":"public, max-age=3600"})
     @app.get("/sitemap.xml",include_in_schema=False)
     def sitemap():
-        entries=sitemap_items(catalog())
-        urls=[]
-        for path,lastmod in entries:
-            date_tag="<lastmod>"+lastmod+"</lastmod>" if lastmod else ""
-            urls.append("<url><loc>"+safe(ORIGIN+path,700)+"</loc>"+date_tag+"</url>")
-        body='<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+''.join(urls)+'</urlset>'
-        return Response(body,media_type="application/xml",headers={"Cache-Control":"public, max-age=3600"})
+        return Response(sitemap_xml(catalog()),media_type="application/xml",
+                        headers={"Cache-Control":"public, max-age=3600"})
 
     @app.get("/llms.txt",include_in_schema=False)
     def llms():

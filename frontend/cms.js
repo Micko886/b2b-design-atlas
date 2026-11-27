@@ -561,6 +561,49 @@ async function compareSeoHistorySelection(){
  }
 }
 
+// V73: view-only technical SEO/GEO preflight. No indexing or DNS claims.
+function renderSeoReadiness(data){
+ const el=$('#cms-seo-readiness'),summary=$('#cms-seo-readiness-summary');
+ if(!el||!summary)return;
+ const counts=data.counts||{};
+ const headline=data.launch_status==='blocked'?'存在需要修复的技术问题':
+  data.launch_status==='domain_pending'?'技术检查已执行 · 正式域名尚未绑定':
+  '技术检查已执行 · 外部验证仍需确认';
+ summary.textContent=headline+' · '+Number(data.inspected_urls||0)+' 个公开 URL · '
+  +Number(counts.pass||0)+' 项通过 · '+Number(counts.pending||0)+' 项待配置 · '
+  +Number(counts.fail||0)+' 项需处理';
+ const classes={pass:'通过',pending:'待配置',fail:'需修复'};
+ $('#cms-seo-readiness-checks').innerHTML=(data.checks||[]).map(c=>{
+  const status=['pass','pending','fail'].includes(c.status)?c.status:'pending';
+  return '<div class="cms-seo-readiness-check"><div><strong>'+h(c.title)+'</strong>'
+   +'<small class="cms-seo-readiness-state" data-status="'+h(status)+'">'+classes[status]+'</small></div>'
+   +'<p>'+h(c.detail)+'</p>'+(c.action?'<p class="cms-seo-readiness-action">'+h(c.action)+'</p>':'')
+   +'</div>';
+ }).join('');
+ const issues=(data.examples||[]).slice(0,8);
+ $('#cms-seo-readiness-examples').innerHTML=
+  '<p class="cms-seo-readiness-caption">DNS、旧域名跳转及实际收录需要上线后从站外验证。</p>'
+  +(issues.length?'<details><summary>查看 '+Number(data.issue_count||0)+' 处技术问题中的示例</summary><ul>'
+   +issues.map(x=>'<li>'+h(x.path)+' · '+h(x.detail)+'</li>').join('')+'</ul></details>':'');
+ el.hidden=false;
+}
+async function refreshSeoReadiness(){
+ const root=$('#cms-seo-readiness');
+ if(!root||mode!=='admin')return;
+ root.hidden=false;
+ const generation=seoAuditGeneration,kind=state.kind;
+ const summary=$('#cms-seo-readiness-summary');
+ summary.textContent='正在检查 Sitemap、Canonical、Schema 与站长验证配置…';
+ try{
+  const data=await api('/api/admin/seo/readiness');
+  if(generation!==seoAuditGeneration||kind!==state.kind||$('#cms-audit-panel').hidden)return;
+  renderSeoReadiness(data);
+ }catch(error){
+  if(generation!==seoAuditGeneration||kind!==state.kind||$('#cms-audit-panel').hidden)return;
+  summary.textContent='技术验收失败：'+error.message;
+ }
+}
+
 async function runPublishedSeoAudit(){
  if(mode!=='admin')return;
  const panel=$('#cms-audit-panel'),trigger=$('#cms-audit-open');
@@ -581,7 +624,7 @@ async function runPublishedSeoAudit(){
   $('#cms-audit-summary').textContent='共 '+data.total+' 条公开资料 · '+data.flagged+' 条有优化建议（'+data.high+' 条需优先处理） · '+data.clear+' 条通过基础检查';
   $('#cms-audit-note').textContent=data.note+(data.remaining?' · 列表仅列出前 '+data.items.length+' 条优先处理内容。':'');
   renderSeoAuditRows();
-  await refreshSeoHistory();
+  await Promise.all([refreshSeoHistory(),refreshSeoReadiness()]);
   if(seoAuditTarget?.kind===kind){
    if(seoAuditTarget.stage==='published'){
     try{
@@ -2826,6 +2869,7 @@ function boot(){
   else closeSeoAudit();
  });
  $('#cms-audit-refresh').addEventListener('click',runPublishedSeoAudit);
+ $('#cms-seo-readiness-refresh').addEventListener('click',refreshSeoReadiness);
  $('#cms-audit-save-history').addEventListener('click',saveSeoHistory);
  $('#cms-audit-history-content').addEventListener('click',event=>{
   if(event.target.closest('#cms-audit-history-compare-button'))compareSeoHistorySelection();
