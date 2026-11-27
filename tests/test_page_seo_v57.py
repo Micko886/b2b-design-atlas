@@ -95,6 +95,7 @@ class ReviewedPageSeoTests(unittest.TestCase):
                 seo_title="Custom "+page+" research guide"
                 seo_description="This "+page+" page describes curated visual research sources and useful design references."
                 payload={"seo_title":seo_title,"seo_description":seo_description,
+                         "seo_keywords":"B2B research, industrial design",
                          "seo_image":"/screenshots/sites/vast.webp"}
                 uri=("/"+page) if page!="home" else ""
                 first=self.call("PUT",save,page,seo_pages.PageDraft(expected_revision=0,payload=payload),
@@ -121,6 +122,7 @@ class ReviewedPageSeoTests(unittest.TestCase):
                 self.assertIn(seo_title,html)
                 self.assertIn(seo_description,html)
                 self.assertIn('property="og:image"',html)
+                self.assertIn('"keywords": "B2B research, industrial design"',html)
                 self.assertIn('id="atlas-page-seo-data"',html)
                 self.assertIn('"seo_title": "'+seo_title+'"',html)
                 revised={**payload,"seo_title":"PRIVATE NEW "+seo_title}
