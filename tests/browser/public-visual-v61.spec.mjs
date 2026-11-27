@@ -28,6 +28,18 @@ async function loaded(page,path){
    &&!app.textContent.includes('Library unavailable');
  },null,{timeout:30000});
  await expect(page.locator('#app')).not.toContainText('Library unavailable');
+ await page.waitForFunction(()=>Boolean(document.querySelector('#app .home-v38, #app .listing-v38, #app .patterns-v38, #app .insights-index, #app .insight-article')),null,{timeout:20000});
+ // Screenshot after above-the-fold images have decoded, not while they are blank.
+ await page.evaluate(async()=>{
+  const visible=[...document.images].filter(img=>{
+   const rect=img.getBoundingClientRect();
+   return rect.top<window.innerHeight+100&&rect.bottom>-100;
+  });
+  await Promise.race([
+   Promise.all(visible.map(img=>img.decode().catch(()=>null))),
+   new Promise(resolve=>setTimeout(resolve,7000))
+  ]);
+ });
 }
 async function metrics(page){
  return page.evaluate(()=>{
@@ -76,6 +88,10 @@ test('V61 Chromium desktop/tablet/mobile visual renders and article content',asy
       mode==='desktop'?4:mode==='tablet'?2:1);
     }
     if(['manufacturing','robotics','automation'].includes(name)){
+     const company={manufacturing:'fictiv',robotics:'figure-robotics',automation:'vention'}[name];
+     const cover=page.locator('.insight-cover img');
+     await expect(cover).toHaveAttribute('src','/screenshots/sites/'+company+'.webp');
+     await expect.poll(async()=>cover.evaluate(img=>img.complete&&img.naturalWidth>0),{timeout:12000}).toBe(true);
      await expect(page.locator('.insight-prose-section')).toHaveCount(5);
      await expect(page.locator('.insight-block-table-scroll')).toHaveCount(1);
      if(width<=680)await expect(page.locator('.insight-mobile-toc')).toBeVisible();
