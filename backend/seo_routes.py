@@ -35,6 +35,25 @@ def read_json(path, default):
     try:return json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError,ValueError):return default
 
+def _snapshot_if_present(item,folder):
+    """Fill legacy missing preview fields using actual, shipped screenshot files.
+
+    Only repository-backed records are touched. Do not fabricate images for
+    new CMS entries or overwrite existing approved screenshot choices.
+    """
+    if not isinstance(item,dict):return item
+    current=item.get("screenshot_url")
+    if isinstance(current,str) and current.strip():
+        return item
+    slug=item.get("id")
+    if not isinstance(slug,str) or not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,110}",slug):
+        return item
+    candidate=f"/screenshots/{folder}/{slug}.webp"
+    if (BASE/candidate.lstrip("/")).is_file():
+        return {**item,"screenshot_url":candidate}
+    return item
+
+
 @lru_cache(maxsize=1)
 def base_catalog():
     src=read_json(BASE/"app"/"source_index.json",{})
@@ -42,8 +61,8 @@ def base_catalog():
     patterns=read_json(STATIC/"assets"/"patterns.json",[])
     articles=read_json(STATIC/"assets"/"articles.json",{})
     return {
-        "sites":{x["id"]:x for x in src.get("sites",[]) if x.get("id")},
-        "modules":{x["id"]:x for x in modules if x.get("id")} if isinstance(modules,list) else {},
+        "sites":{x["id"]:_snapshot_if_present(x,"sites") for x in src.get("sites",[]) if x.get("id")},
+        "modules":{x["id"]:_snapshot_if_present(x,"modules") for x in modules if x.get("id")} if isinstance(modules,list) else {},
         "patterns":{x["id"]:x for x in patterns if x.get("id")} if isinstance(patterns,list) else {},
         "articles":{x["id"]:x for x in articles.get("articles",[]) if x.get("id")}
     }
