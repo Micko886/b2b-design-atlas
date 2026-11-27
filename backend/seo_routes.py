@@ -155,6 +155,27 @@ def public_image(value):
     return None
 
 
+
+@lru_cache(maxsize=512)
+def _file_image_dimensions(filename):
+    """Read real packaged image dimensions, never infer a CMS media size."""
+    try:
+        from PIL import Image
+        with Image.open(filename) as picture:
+            width,height=picture.size
+        return (width,height) if 0<width<=65535 and 0<height<=65535 else None
+    except (OSError,ValueError):
+        return None
+
+
+def image_dimensions(path):
+    """Only known local screenshots can supply verifiable OG dimensions."""
+    if not isinstance(path,str) or not _SHOT_IMAGE.fullmatch(path):
+        return None
+    filename=BASE/path.lstrip("/")
+    return _file_image_dimensions(str(filename)) if filename.is_file() else None
+
+
 def resource_image(kind, item, collection):
     """Use the editor's sharing override only for social and structured metadata."""
     return public_image(item.get("seo_image")) or content_image(kind,item,collection)
@@ -462,7 +483,8 @@ def llms_document(collection):
         "- [设计模式]("+ORIGIN+"/patterns)",
         "- [研究文章]("+ORIGIN+"/insights)",
         "- [所有公开资源目录]("+ORIGIN+"/directory)",
-        "- [研究方法与引用说明]("+ORIGIN+"/methodology)", "",
+        "- [研究方法与引用说明]("+ORIGIN+"/methodology)",
+        "- [研究文章 RSS]("+ORIGIN+"/feed.xml)", "",
         "## 研究文章"
     ]
     articles=collection.get("articles",{}) if isinstance(collection,dict) else {}
@@ -553,6 +575,7 @@ def seo_document(full_path):
     template=re.sub(r"<title>.*?</title>","<title>"+safe(title,220)+"</title>",template,count=1,flags=re.S)
     template=re.sub(r'<meta name="description" content="[^"]*">','<meta name="description" content="'+safe(desc,270)+'">',template,count=1)
     image=ORIGIN+(record.get("image") or "/assets/visual-placeholder.svg")
+    dimensions=image_dimensions(record.get("image"))
     extras=(
         ('<link rel="canonical" href="'+safe(canonical,650)+'">' if record["indexed"] else '') +
         '<meta name="robots" content="'+("index, follow" if record["indexed"] else "noindex, follow")+'">'
@@ -568,7 +591,15 @@ def seo_document(full_path):
         '<meta name="twitter:title" content="'+safe(title,220)+'">'
         '<meta name="twitter:description" content="'+safe(desc,270)+'">'
         '<meta name="twitter:image" content="'+safe(image,650)+'">'
+        '<meta name="twitter:image:alt" content="'+safe(record["title"],220)+'">'
     )
+    if dimensions:
+        width,height=dimensions
+        mime={"webp":"image/webp","png":"image/png","jpg":"image/jpeg","jpeg":"image/jpeg"}.get(
+            record["image"].rsplit(".",1)[-1].lower())
+        extras+='<meta property="og:image:width" content="'+str(width)+'">'
+        extras+='<meta property="og:image:height" content="'+str(height)+'">'
+        if mime:extras+='<meta property="og:image:type" content="'+mime+'">'
     if record["indexed"]:
         data=seo_schema(clean,record,collection,canonical,image)
         extras+='<script id="atlas-seo-schema" type="application/ld+json">'+json.dumps(data,ensure_ascii=False).replace("<","\\u003c")+'</script>'
@@ -599,6 +630,12 @@ def register_seo_routes(app:FastAPI):
     @app.get("/llms.txt",include_in_schema=False)
     def llms():
         return PlainTextResponse(llms_document(catalog()),headers={"Cache-Control":"public, max-age=3600"})
+
+    @app.get("/feed.xml",include_in_schema=False)
+    def feed():
+        from app import seo_feed
+        return Response(seo_feed.build(catalog(),ORIGIN),media_type="application/rss+xml",
+                        headers={"Cache-Control":"public, max-age=600"})
 
     @app.middleware("http")
     async def security_headers(request,call_next):

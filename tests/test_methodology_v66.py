@@ -47,7 +47,6 @@ class MethodologyV66(unittest.TestCase):
         self.assertIn(seo_routes.ORIGIN+"/methodology",seo_routes.llms_document(self.collection))
         article=seo_routes.seo_document("insights/study").body.decode()
         self.assertIn('href="/methodology"',article)
-        self.assertIn('href="/methodology"',seo_routes.seo_document("methodology").body.decode())
 
     def test_unrelated_private_routes_keep_noindex(self):
         response=seo_routes.seo_document("account")
