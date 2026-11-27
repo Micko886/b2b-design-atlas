@@ -142,7 +142,14 @@ def content_image(kind,item,collection):
     if kind=="insights":
         cover=public_image(item.get("cover_image"))
         if cover:return cover
-        site=collection["sites"].get(item.get("cover_site"))
+        site_slug=item.get("cover_site")
+        if isinstance(site_slug,str) and re.fullmatch(r"[a-z0-9][a-z0-9-]{0,110}",site_slug):
+            # Bundled case screenshots are authoritative for editorial cover art.
+            # A missing source record must never substitute an unrelated site.
+            original="/screenshots/sites/"+site_slug+".webp"
+            if (STATIC/original.lstrip("/")).is_file():
+                return original
+        site=collection["sites"].get(site_slug)
         return public_image(site.get("screenshot_url")) if isinstance(site,dict) else None
     if kind=="patterns":
         for mid in item.get("modules",[]) if isinstance(item.get("modules"),list) else []:
