@@ -149,6 +149,9 @@ def register_page_seo_routes(app:FastAPI):
         session=cms_routes.require_admin(request,mutate=True,permission=permission)
         validate_page(page)
         ensure_pages()
+        if action=="publish":
+            # The media table may not have been initialized before a page is approved.
+            cms_routes.ensure_cms()
         now=cms_routes.utc_now()
         with user_auth.db() as db:
             row=db.one("SELECT * FROM atlas_seo_pages WHERE page=?",(page,))
