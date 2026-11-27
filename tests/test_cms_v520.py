@@ -172,7 +172,7 @@ class EditorialFrontendContracts(unittest.TestCase):
             self.assertIn(needle,self.cms)
     def test_asset_cache_versions_include_new_public_bundle(self):
         self.assertIn("app.js?v=mobile-v60-1",self.index)
-        self.assertIn("app.css?v=reading-v59-1",self.index)
+        self.assertIn("app.css?v=mobile-v60-1",self.index)
         self.assertRegex(self.html,r"cms\.js\?v=\d{4,}")
         self.assertRegex(self.html,r"cms\.css\?v=\d{4,}")
 
