@@ -48,10 +48,10 @@ def validate_page(page):
 def validate_payload(payload):
     from app import seo_routes
     if not isinstance(payload,dict):user_auth.error(422,"SEO 设置格式不正确。")
-    if set(payload)-{"seo_title","seo_description","seo_image"}:
+    if set(payload)-{"seo_title","seo_description","seo_keywords","seo_image"}:
         user_auth.error(422,"SEO 设置包含不支持的字段。")
     clean={}
-    for name,length in (("seo_title",100),("seo_description",300)):
+    for name,length in (("seo_title",100),("seo_description",300),("seo_keywords",240)):
         v=payload.get(name,"")
         if not isinstance(v,str) or len(v)>length:
             user_auth.error(422,name+" 格式或长度不正确。")
