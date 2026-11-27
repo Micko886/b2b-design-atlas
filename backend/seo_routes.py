@@ -77,6 +77,7 @@ def seo_record(path,collection=None,page_overrides=None):
         return {"title":cfg.get("seo_title") or PUBLIC[k][0],
                 "description":cfg.get("seo_description") or PUBLIC[k][1],
                 "image":public_image(cfg.get("seo_image")),
+                "keywords":cfg.get("seo_keywords") or "",
                 "path":"/"+k if k else "/","indexed":True}
     if len(parts)==1 and parts[0] in PRIVATE:
         k=parts[0]
@@ -301,12 +302,13 @@ def seo_schema(path,record,collection,canonical,image):
     """Single route-aware JSON-LD node; avoid guessed performance claims."""
     parts=[x for x in path.strip("/").split("/") if x]
     base={"@context":"https://schema.org"}
-    if not parts:
-        return {**base,"@type":"WebSite","name":"B2B Atlas","url":ORIGIN+"/",
-                "description":record["description"],"inLanguage":"zh-CN"}
-    if len(parts)==1:
-        return {**base,"@type":"CollectionPage","name":record["title"],"url":canonical,
-                "description":record["description"],"inLanguage":"zh-CN"}
+    if not parts or len(parts)==1:
+        item={"@type":"WebSite" if not parts else "CollectionPage",
+              "name":"B2B Atlas" if not parts else record["title"],
+              "url":ORIGIN+"/" if not parts else canonical,
+              "description":record["description"],"inLanguage":"zh-CN"}
+        if record.get("keywords"):item["keywords"]=record["keywords"]
+        return {**base,**item}
     breadcrumbs={"@type":"BreadcrumbList","itemListElement":[
         {"@type":"ListItem","position":1,"name":"首页","item":ORIGIN+"/"},
         {"@type":"ListItem","position":2,"name":PUBLIC[parts[0]][0],"item":ORIGIN+"/"+parts[0]},
