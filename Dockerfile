@@ -26,6 +26,7 @@ RUN python /srv/atlas/install_auth.py
 COPY frontend/index.html /srv/atlas/static/index.html
 COPY frontend/app.css /srv/atlas/static/assets/app.css
 COPY frontend/app.js /srv/atlas/static/assets/app.js
+COPY frontend/visual-placeholder.svg /srv/atlas/static/assets/visual-placeholder.svg
 COPY frontend/admin.html /srv/atlas/static/admin.html
 COPY frontend/admin.css /srv/atlas/static/assets/admin.css
 COPY frontend/admin.js /srv/atlas/static/assets/admin.js
