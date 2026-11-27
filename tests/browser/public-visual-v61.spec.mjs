@@ -72,8 +72,7 @@ test('V61 Chromium desktop/tablet/mobile visual renders and article content',asy
   const errors=[];
   page.on('pageerror',error=>errors.push(error.message));
   try{
-   const selected=mode==='desktop'||mode==='mobile'?targets:
-     [targets[1],targets[4],targets[5]];
+   const selected=mode==='tablet'?[targets[1],targets[4],targets[5]]:targets;
    for(const [name,path] of selected){
     await loaded(page,path);
     const report=await metrics(page);
@@ -81,6 +80,13 @@ test('V61 Chromium desktop/tablet/mobile visual renders and article content',asy
     expect(report.scrollWidth,mode+' '+name+' horizontal overflow: '+JSON.stringify(report))
       .toBeLessThanOrEqual(report.clientWidth+2);
     expect(errors,mode+' '+name+' uncaught JS errors').toEqual([]);
+    if(mode==='small'&&name==='home'){
+     await expect(page.locator('.bookmark-nav')).toBeHidden();
+     const menu=page.locator('.mobile-menu-button');
+     await menu.click();
+     await expect(page.locator('#mobile-menu a[href="/collections"]')).toBeVisible();
+     await menu.click();
+    }
     if(name==='websites'||name==='sections'){
      await expect(page.locator('#library-results .reference-card').first()).toBeVisible();
      const cols=await page.locator('.masonry').evaluate(el=>getComputedStyle(el).columnCount);
