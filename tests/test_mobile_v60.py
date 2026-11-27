@@ -51,7 +51,7 @@ class MobileExperienceV60(unittest.TestCase):
         self.assertIn("if(ev.key==='Escape')",self.js)
         self.assertIn("/assets/articles.json?v=60",self.js)
         self.assertIn("app.js?v=visual-v61-2",self.html)
-        self.assertIn("app.css?v=visual-v61-1",self.html)
+        self.assertIn("app.css?v=visual-v61-3",self.html)
         self.assertIn("function researchTopic(topic)",self.js)
         self.assertIn("topic.related.includes(a.id)",self.js)
 
