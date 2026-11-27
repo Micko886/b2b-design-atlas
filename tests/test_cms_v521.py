@@ -113,8 +113,8 @@ class UnifiedNavigationContracts(unittest.TestCase):
 
     def test_settings_and_logout_fail_closed(self):
         self.assertIn("$('#cms-tools-menu').hidden=true",self.cms_js)
-        self.assertIn("$('#cms-tools-menu').hidden=!(can('taxonomy')",self.cms_js)
-        self.assertIn("$('#cms-settings-open').hidden=!(can('taxonomy')",self.cms_js)
+        self.assertIn("$('#cms-tools-menu').hidden=!can('view')",self.cms_js)
+        self.assertIn("$('#cms-settings-open').hidden=!can('view')",self.cms_js)
         self.assertIn("async function logoutCms()",self.cms_js)
         self.assertIn("async function logoutAdmin()",self.admin_js)
         self.assertIn("'/api/auth/logout'",self.cms_js)
