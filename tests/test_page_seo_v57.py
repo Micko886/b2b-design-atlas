@@ -93,7 +93,7 @@ class ReviewedPageSeoTests(unittest.TestCase):
         for page in seo_pages.PAGE_KEYS:
             with self.subTest(page=page):
                 seo_title="Custom "+page+" research guide"
-                seo_description="This published page describes a research catalog with carefully curated source material."
+                seo_description="This "+page+" page describes curated visual research sources and useful design references."
                 payload={"seo_title":seo_title,"seo_description":seo_description,
                          "seo_image":"/screenshots/sites/vast.webp"}
                 uri=("/"+page) if page!="home" else ""
